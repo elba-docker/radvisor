@@ -17,12 +17,25 @@ pub fn run(tx: Sender<Vec<String>>, interval: u32) -> () {
             Err(_)         => Vec::with_capacity(0)
         };
         // Reduce container vector to list of ids
-        let to_collect: Vec<String> = containers.iter()
-            .filter(|&c| should_collect_stats(c))
-            .map(|c| c.id.clone())
+        let to_collect: Vec<String> = containers.into_iter()
+            .filter_map(|c| match should_collect_stats(&c) {
+                true  => Some(c.id),
+                false => None
+            })
             .collect::<Vec<_>>();
         // If sending fails, then panic the thread anyways
         tx.send(to_collect).unwrap();
+    }
+}
+
+/// Determines whether the monitoring process can connect to the dockerd socket
+pub fn can_connect() -> bool {
+    let docker = Docker::new();
+    let future = docker.ping();
+    // Block on the future and match on the result
+    match Runtime::new().unwrap().block_on(future) {
+        Ok(_)  => true,
+        Err(_) => false
     }
 }
 
@@ -31,10 +44,12 @@ fn get_containers(docker: &Docker) -> Result<Vec<Container>, shiplift::errors::E
     let future = docker
         .containers()
         .list(&Default::default());
+    // Block on the future and return the result
     Runtime::new().unwrap().block_on(future)
 }
 
-/// Whether dadvisor should collect statistics for the given container
+/// Whether radvisor should collect statistics for the given container
 fn should_collect_stats(_c: &Container) -> bool {
+    // TODO implement
     true
 }

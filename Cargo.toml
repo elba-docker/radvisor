@@ -11,3 +11,4 @@ jod-thread = "0.1.0"
 shiplift = "0.6"
 tokio = "0.1"
 eventual = "0.1.7"
+clap = { git = "https://github.com/clap-rs/clap/" }
