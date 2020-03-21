@@ -108,6 +108,7 @@ impl Iterator for Timer {
         while !*next_tick {
             next_tick = self.shared.signal_tick.wait(next_tick).unwrap();
         }
+        *next_tick = false;
 
         // If stopping was flagged, then stop. Else, return an empty option to yield
         // to the caller and let them process the next tick

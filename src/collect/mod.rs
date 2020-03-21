@@ -1,10 +1,11 @@
 use crate::timer::{Stoppable, Timer};
 use crate::types::ContainerMetadata;
+use crate::util;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::fs;
 use std::fs::{File, OpenOptions};
-use std::io::{BufWriter, Error, ErrorKind, Write};
+use std::io::{Error, ErrorKind, Write};
 use std::path::Path;
 use std::sync::mpsc::Receiver;
 use std::sync::{Arc, Mutex};
@@ -12,6 +13,7 @@ use std::time::Duration;
 use std::vec::Vec;
 
 use bus::BusReader;
+use csv::{Writer, WriterBuilder};
 
 mod container;
 
@@ -21,7 +23,7 @@ const BUFFER_LENGTH: usize = 64 * 1024;
 /// when writing. `active` is used during difference resolution to mark inactive
 /// collectors for teardown/removal.
 struct Collector {
-    buffer: BufWriter<File>,
+    csv_writer: Writer<File>,
     active: bool,
 }
 
@@ -33,29 +35,31 @@ impl Collector {
         // Ensure directories exist before creating the collector
         fs::create_dir_all(logs_location)?;
         let path = construct_log_path(&container.id, logs_location)?;
-        let mut collector = Collector::new(&path)?;
-        collector.initialize(&container.info)?;
+        let collector = Collector::new(&path, &container.info)?;
         Ok(collector)
     }
 
     /// Initializes a new collector and opens up a file handle at its corresponding
-    /// log filepath
-    fn new(log_path: &str) -> Result<Collector, Error> {
-        let file = OpenOptions::new()
+    /// log filepath. Writes
+    fn new(log_path: &str, info: &String) -> Result<Collector, Error> {
+        let mut file = OpenOptions::new()
             .write(true)
             .create(true)
             .append(true)
             .open(log_path)?;
+
+        // Write the initial info to the file before initializing the CSV writer
+        file.write(info.as_bytes())?;
+        file.write(format!("# Initialized at: {}\n", util::nano_ts()).as_bytes())?;
+
+        let mut csv_writer = WriterBuilder::new()
+            .buffer_capacity(BUFFER_LENGTH)
+            .from_writer(file);
+        csv_writer.write_byte_record(container::get_header())?;
         Ok(Collector {
-            buffer: BufWriter::with_capacity(BUFFER_LENGTH, file),
+            csv_writer,
             active: true,
         })
-    }
-
-    /// Writes the given info string and CSV header to the underlying file
-    fn initialize(&mut self, info: &String) -> Result<(), Error> {
-        self.buffer.write(info.as_bytes())?;
-        Ok(())
     }
 }
 
@@ -129,7 +133,7 @@ pub fn run(
         // Loop over active container ids and run collection
         for (id, c) in collectors.iter() {
             let mut collector = c.borrow_mut();
-            match container::collect(&id, &mut collector.buffer) {
+            match container::collect(&id, &mut collector.csv_writer) {
                 Ok(_) => (),
                 Err(err) => {
                     eprintln!(
@@ -162,7 +166,7 @@ fn flush_buffers(collectors: &HashMap<String, RefCell<Collector>>) {
 
     for (id, c) in collectors.iter() {
         let mut collector = c.borrow_mut();
-        if let Err(err) = collector.buffer.flush() {
+        if let Err(err) = collector.csv_writer.flush() {
             eprintln!(
                 "Error: could not flush buffer on termination for container {}: {}",
                 id, err
@@ -210,7 +214,7 @@ fn update_collectors(
         let mut c = value.borrow_mut();
         if !c.active {
             // Flush the buffer before dropping it
-            let _result = c.buffer.flush();
+            let _result = c.csv_writer.flush();
         }
         c.active
     })
@@ -219,9 +223,7 @@ fn update_collectors(
 /// Constructs the log filepath for the given container id
 fn construct_log_path(id: &str, logs_location: &str) -> Result<String, Error> {
     // Construct filename
-    let mut filename = id.to_string();
-    let suffix = ".log".to_string();
-    filename.push_str(&suffix);
+    let filename = format!("{}_{}.log", id.to_string(), util::second_ts().to_string());
 
     // Join paths
     let base = Path::new(logs_location);

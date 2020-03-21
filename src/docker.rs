@@ -1,5 +1,6 @@
 use crate::timer::{Stoppable, Timer};
 use crate::types::ContainerMetadata;
+use crate::util;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::Sender;
 use std::sync::Arc;
@@ -78,7 +79,7 @@ fn get_containers(docker: &Docker) -> Result<Vec<Container>, shiplift::errors::E
     Runtime::new().unwrap().block_on(future)
 }
 
-/// Whether rAdvisor should collect statistics for the given container
+/// Whether radvisor should collect statistics for the given container
 fn should_collect_stats(_c: &Container) -> bool {
     true
 }
@@ -87,7 +88,7 @@ fn should_collect_stats(_c: &Container) -> bool {
 fn format_info(c: &Container) -> String {
     format!(
         // Use debug formatting because this function is invoked relatively infrequently
-        "# ID: {}\n# Names: {:?}\n# Command: {}\n# Image: {}\n# Status: {}\n# Labels: {:?}\n# Ports: {:?}\n# Created: {}\n# Size: {:?}\n# Root FS Size: {:?}\n",
-        c.id, c.names, c.command, c.image, c.status, c.labels, c.ports, c.created, c.size_rw, c.size_root_fs
+        "# ID: {}\n# Names: {:?}\n# Command: {}\n# Image: {}\n# Status: {}\n# Labels: {:?}\n# Ports: {:?}\n# Created: {}\n# Size: {:?}\n# Root FS Size: {:?}\n# Poll time: {}\n",
+        c.id, c.names, c.command, c.image, c.status, c.labels, c.ports, c.created, c.size_rw, c.size_root_fs, util::nano_ts()
     )
 }
