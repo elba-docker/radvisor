@@ -12,3 +12,8 @@ csv = "1.1.3"
 lazy_static = "1.4.0"
 clap = { git = "https://github.com/clap-rs/clap/" }
 ctrlc = { version = "3.0", features = ["termination"] }
+
+# Optimize bundle size on release compilation
+[profile.release]
+lto = true
+codegen-units = 1
