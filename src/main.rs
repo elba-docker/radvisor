@@ -1,15 +1,18 @@
-use std::vec::Vec;
-use std::sync::mpsc::{Sender, Receiver};
+use crate::types::ContainerMetadata;
 use std::sync::mpsc;
+use std::sync::mpsc::{Receiver, Sender};
+use std::sync::{Arc, Mutex};
+use std::thread;
+use std::vec::Vec;
 
-use jod_thread;
-use clap::{Arg, App};
+use bus::Bus;
+use cli::ResolvedOpts;
 
-mod docker;
 mod collect;
-
-const DEFAULT_POLLING_INTERVAL: u32 = 1000;
-const DEFAULT_COLLECT_INTERVAL: u32 = 50;
+mod docker;
+mod cli;
+mod timer;
+mod types;
 
 /// Parses CLI args, performs a health check to the docker daemon, and then
 /// spawns two worker threads for:
@@ -17,50 +20,55 @@ const DEFAULT_COLLECT_INTERVAL: u32 = 50;
 ///   b. collecting data on all active containers
 fn main() {
     // Parse command line arguments
-    let matches = App::new("rAdvisor")
-        .version("0.1.0")
-        .author("Joseph Azevedo and Bhanu Garg")
-        .about("Monitors container resource utilization with high granularity and low overhead")
-        .arg(Arg::with_name("interval")
-                .short('i')
-                .long("interval")
-                .takes_value(true)
-                .help("collection interval between log entries (ms)"))
-        .arg(Arg::with_name("polling interval")
-                .short('p')
-                .long("poll")
-                .takes_value(true)
-                .help("interval between requests to docker to get containers (ms)"))
-        .arg(Arg::with_name("directory")
-                .short('d')
-                .long("dir")
-                .takes_value(true)
-                .help("target directory to place log files in ({id}.log)"))
-        .get_matches();
-    
-    // Extract arguments or get defaults
-    let interval = matches.value_of("interval")
-        .and_then(|s| s.parse::<u32>().ok())
-        .unwrap_or(DEFAULT_COLLECT_INTERVAL);
-    let polling_interval = matches.value_of("polling interval")
-        .and_then(|s| s.parse::<u32>().ok())
-        .unwrap_or(DEFAULT_POLLING_INTERVAL);
-    let logs_directory = matches.value_of("directory")
-        .unwrap_or("/var/logs/docker/stats")
-        .to_owned();
+    let opts: ResolvedOpts = cli::load();
 
     // Determine if the current process can connect to the dockerd daemon
     if !docker::can_connect() {
-        eprintln!("Could not connect to the docker socket. Are you running radvisor as root?");
-        eprintln!("If running on a non-standard URI, set DOCKER_HOST to the correct URL.");
+        eprintln!("Could not connect to the docker socket. Are you running rAdvisor as root?");
+        eprintln!("If running at a non-standard URL, set DOCKER_HOST to the correct URL.");
         std::process::exit(1)
     }
 
-    let (tx, rx): (Sender<Vec<String>>, Receiver<Vec<String>>) = mpsc::channel();
-    let _update_thread: jod_thread::JoinHandle<()> = jod_thread::spawn(move || {
-        docker::run(tx, polling_interval)
-    });
-    let _collect_thread: jod_thread::JoinHandle<()> = jod_thread::spawn(move || {
-        collect::run(rx, interval, logs_directory)
-    });
+    run(opts);
+}
+
+/// Bootstraps the two worker threads, preparing the neccessary communication between them
+fn run(opts: ResolvedOpts) -> () {
+    // Used to send container metadata lists from the polling thread to the collection thread
+    let (tx, rx): (
+        Sender<Vec<ContainerMetadata>>,
+        Receiver<Vec<ContainerMetadata>>,
+    ) = mpsc::channel();
+
+    // Handle termination by broadcasting to all worker threads
+    let term_bus_lock = Arc::new(Mutex::new(Bus::new(1)));
+    let mut term_bus = term_bus_lock.lock().unwrap();
+    let update_handle = term_bus.add_rx();
+    let collect_handle = term_bus.add_rx();
+    drop(term_bus);
+
+    ctrlc::set_handler(move || {
+        let mut term_bus = term_bus_lock.lock().unwrap();
+        term_bus.broadcast(());
+    })
+    .expect("Error: could not create SIGINT handler");
+
+    let polling_interval = opts.polling_interval;
+    let interval = opts.interval;
+    let directory = opts.directory;
+
+    // Create both threads
+    let update_thread: thread::JoinHandle<()> =
+        thread::spawn(move || docker::run(tx, update_handle, polling_interval));
+    let collect_thread: thread::JoinHandle<()> =
+        thread::spawn(move || collect::run(rx, collect_handle, interval, directory));
+
+    // Join the threads, which automatically exit upon termination
+    collect_thread
+        .join()
+        .expect("Error: collect thread resulted in panic");
+    update_thread
+        .join()
+        .expect("Error: polling thread resulted in panic");
+    println!("Exiting");
 }

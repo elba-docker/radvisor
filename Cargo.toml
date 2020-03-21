@@ -4,11 +4,9 @@ version = "0.1.0"
 authors = ["Joseph Azevedo <joseph.az@gatech.edu>", "Bhanu Garg <bgarg6@gatech.edu>"]
 edition = "2018"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [dependencies]
-jod-thread = "0.1.0"
 shiplift = "0.6"
 tokio = "0.1"
-eventual = "0.1.7"
+bus = "2.2.3"
 clap = { git = "https://github.com/clap-rs/clap/" }
+ctrlc = { version = "3.0", features = ["termination"] }
