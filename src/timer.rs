@@ -39,8 +39,6 @@ impl Timer {
         let shared_c = Arc::clone(&shared);
         thread::spawn(move || {
             loop {
-                thread::sleep(dur);
-
                 // Check to see if the timer has stopped. If so, exit to free
                 // up thread
                 if shared_c.stopping.load(Ordering::Relaxed) {
@@ -52,6 +50,10 @@ impl Timer {
                 let mut signal = shared_c.lock.lock().unwrap();
                 *signal = true;
                 shared_c.signal_tick.notify_one();
+                // Drop the mutex to prevent deadlock
+                drop(signal);
+
+                thread::sleep(dur);
             }
         });
 
