@@ -19,8 +19,8 @@ lazy_static! {
         "cpu.usage.system",
         "cpu.usage.user",
         "cpu.usage.percpu",
-        "cpuacct.stat.user",
-        "cpuacct.stat.system",
+        "cpu.stat.user",
+        "cpu.stat.system",
         "cpu.throttling.periods",
         "cpu.throttling.throttled",
         "cpu.throttling.throttled_time"

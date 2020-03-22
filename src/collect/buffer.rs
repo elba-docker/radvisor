@@ -40,6 +40,11 @@ impl BufferLike for Buffer {
 
     #[inline]
     fn trim(&self) -> &[u8] {
+        // Prevent underflow later by early terminating
+        if self.len == 0 {
+            return &self.b[0..=0];
+        }
+
         let mut start = 0;
         while start < self.len && util::is_space(self.b[start]) {
             start += 1;
@@ -109,6 +114,10 @@ pub fn content_len_raw(buf: &[u8]) -> usize {
 #[inline]
 pub fn trim_raw(buf: &[u8]) -> &[u8] {
     let len: usize = content_len_raw(buf);
+    // Prevent underflow later by early terminating
+    if len == 0 {
+        return &buf[0..=0];
+    }
 
     let mut start = 0;
     while start < len && util::is_space(buf[start]) {
