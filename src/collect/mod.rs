@@ -1,4 +1,5 @@
 use crate::collect::collector::Collector;
+use crate::collect::container::WorkingBuffers;
 use crate::timer::{Stoppable, Timer};
 use crate::types::ContainerMetadata;
 use std::cell::RefCell;
@@ -12,6 +13,7 @@ use bus::BusReader;
 
 mod collector;
 mod container;
+mod buffer;
 
 /// Synchronization status struct used to handle termination and buffer flushing
 struct CollectStatus {
@@ -62,6 +64,9 @@ pub fn run(
         }
     });
 
+    // Re-use working buffers
+    let mut working_buffers = WorkingBuffers::new();
+
     for _ in timer {
         // Update status
         let mut status = status_mutex.lock().unwrap();
@@ -83,7 +88,7 @@ pub fn run(
         // Loop over active container ids and run collection
         for (id, c) in collectors.iter() {
             let mut collector = c.borrow_mut();
-            match container::collect(&mut collector) {
+            match container::collect(&mut working_buffers, &mut collector) {
                 Ok(_) => (),
                 Err(err) => {
                     eprintln!(

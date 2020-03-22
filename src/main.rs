@@ -14,6 +14,7 @@ mod cli;
 mod timer;
 mod types;
 mod util;
+mod numtoa;
 
 /// Parses CLI args, performs a health check to the docker daemon, and then
 /// spawns two worker threads for:

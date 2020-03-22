@@ -1,10 +1,10 @@
+use crate::collect::container;
 use crate::types::ContainerMetadata;
 use crate::util;
-use crate::collect::container;
 use std::fs;
 use std::fs::{File, OpenOptions};
+use std::io::{Error, ErrorKind, Write};
 use std::path::Path;
-use std::io::{Error, Write, ErrorKind};
 
 use csv::{Writer, WriterBuilder};
 
@@ -21,10 +21,14 @@ pub struct Collector {
 
 /// File handles re-used for each container that read into the /proc VFS
 pub struct ProcFileHandles {
-    /// Current # of processes
     pub current_pids: Option<File>,
-    /// Maximum # of processes
-    pub max_pids: Option<File>
+    pub max_pids: Option<File>,
+    pub cpu_stat: Option<File>,
+    pub cpuacct_stat: Option<File>,
+    pub cpuacct_usage: Option<File>,
+    pub cpuacct_usage_sys: Option<File>,
+    pub cpuacct_usage_user: Option<File>,
+    pub cpuacct_usage_percpu: Option<File>,
 }
 
 impl Collector {
@@ -55,11 +59,11 @@ impl Collector {
         let mut writer = WriterBuilder::new()
             .buffer_capacity(BUFFER_LENGTH)
             .from_writer(file);
-            writer.write_byte_record(container::get_header())?;
+        writer.write_byte_record(container::get_header())?;
         Ok(Collector {
             writer,
             active: true,
-            file_handles: container::initialize_file_handles(&container.id)
+            file_handles: container::initialize_file_handles(&container.id),
         })
     }
 }
