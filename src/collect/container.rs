@@ -158,7 +158,15 @@ fn try_file_to_entry(file: &Option<File>, record: &mut ByteRecord, buffer: &mut 
         };
         let _ = file.seek(SeekFrom::Start(0));
     }
-    record.push_field(buffer.trim());
+
+    let trimmed = buffer.trim();
+    if buffer::content_len_raw(trimmed) == 0 {
+        // Buffer ended up empty; prevent writing NUL bytes
+        record.push_field(&EMPTY_BUFFER[..]);
+    } else {
+        record.push_field(&trimmed);
+    }
+    
     buffer.clear()
 }
 
