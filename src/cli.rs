@@ -7,7 +7,7 @@ const DEFAULT_LOGS_DIRECTORY: &str = "/var/log/docker/stats";
 /// Auto-parsed CLI options for rAdvisor, generated via clap
 #[derive(Clap)]
 #[clap(
-    version = "0.1.0",
+    version = "0.1.1",
     author = "Joseph Azevedo and Bhanu Garg",
     about = "Monitors container resource utilization with high granularity and low overhead"
 )]
