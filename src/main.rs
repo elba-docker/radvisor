@@ -2,6 +2,7 @@ use crate::types::ContainerMetadata;
 use std::sync::mpsc::{self, Receiver, Sender};
 use std::sync::{Arc, Mutex};
 use std::thread;
+use std::time::Duration;
 use std::vec::Vec;
 
 use bus::Bus;
@@ -26,7 +27,7 @@ fn main() {
     if !docker::can_connect() {
         eprintln!("Could not connect to the docker socket. Are you running rAdvisor as root?");
         eprintln!("If running at a non-standard URL, set DOCKER_HOST to the correct URL.");
-        std::process::exit(1)
+        std::process::exit(1);
     }
 
     run(opts);
@@ -50,6 +51,15 @@ fn run(opts: ResolvedOpts) -> () {
     ctrlc::set_handler(move || {
         let mut term_bus = term_bus_lock.lock().unwrap();
         term_bus.broadcast(());
+
+        // Try again to tear down the program
+        thread::sleep(Duration::from_millis(2000));
+        println!("Trying again...");
+        term_bus.broadcast(());
+        
+        thread::sleep(Duration::from_millis(1000));
+        println!("Could not shut down gracefully");
+        std::process::exit(2);
     })
     .expect("Error: could not create SIGINT handler");
 
