@@ -1,4 +1,5 @@
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::mpsc::{self, Receiver, Sender};
 use std::sync::{Arc, Condvar, Mutex};
 use std::thread;
 use std::time::Duration;
@@ -20,6 +21,7 @@ struct SharedTimerState {
     stopping: AtomicBool,
     lock: Mutex<bool>,
     signal_tick: Condvar,
+    tx_stop: Mutex<Sender<()>>
 }
 
 /// Represents a timer or timer-like object that can be stopped
@@ -29,22 +31,18 @@ pub trait Stoppable {
 
 impl Timer {
     pub fn new(dur: Duration) -> (Timer, TimerStopper) {
+        let (tx_stop, rx_stop): (Sender<()>, Receiver<()>) = mpsc::channel();
         let shared = Arc::new(SharedTimerState {
             stopping: AtomicBool::new(false),
             lock: Mutex::new(false),
             signal_tick: Condvar::new(),
+            tx_stop: Mutex::new(tx_stop)
         });
 
-        // Spawn timer thread
+        // Spawn the timer thread
         let shared_c = Arc::clone(&shared);
         thread::spawn(move || {
             loop {
-                // Check to see if the timer has stopped. If so, exit to free
-                // up thread
-                if shared_c.stopping.load(Ordering::Relaxed) {
-                    break;
-                }
-
                 // Signal the receiving thread to wake up and perform the timer
                 // action (without stopping)
                 let mut signal = shared_c.lock.lock().unwrap();
@@ -53,7 +51,12 @@ impl Timer {
                 // Drop the mutex to prevent deadlock
                 drop(signal);
 
-                thread::sleep(dur);
+                // Use recv_timeout as the sleep mechanism to allow for early waking
+                let recv_result = rx_stop.recv_timeout(dur);
+                if recv_result.is_ok() {
+                    // An empty message was sent on rx_stop, so stop the timer immediately
+                    break;
+                }
             }
         });
 
@@ -74,6 +77,14 @@ fn stop_timer(shared: &SharedTimerState) -> () {
     shared.stopping.store(true, Ordering::SeqCst);
     let mut signal = shared.lock.lock().unwrap();
     *signal = true;
+    drop(signal);
+
+    let tx_stop = shared.tx_stop.lock().unwrap();
+    // ignore result: if the channel was closed, then the receiver (timer thread)
+    // must already have exited
+    let _ = tx_stop.send(());
+    drop(tx_stop);
+
     shared.signal_tick.notify_one();
 }
 
@@ -86,17 +97,19 @@ impl Stoppable for Timer {
 }
 
 impl Stoppable for TimerStopper {
-    /// Stops the timer thread when it checks on the next tick and immediately
-    /// stops iteration
+    /// Stops the timer thread and the thread blocked on the iteration immediately
     fn stop(&self) -> () {
         stop_timer(&self.shared);
     }
 }
 
 impl Drop for Timer {
+    /// Stops the timer thread and the thread blocked on the iteration immediately
     fn drop(&mut self) {
-        // Stop the timer thread when it checks on the next tick to let it exit
-        self.stop();
+        // If the stopping mechanisms have already been triggered, then skip
+        if !self.shared.stopping.load(Ordering::SeqCst) {
+            self.stop();
+        }
     }
 }
 

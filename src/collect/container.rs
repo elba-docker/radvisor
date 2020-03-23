@@ -1,10 +1,10 @@
 use crate::collect::buffer::{self, Buffer, BufferLike};
 use crate::collect::collector::{Collector, ProcFileHandles};
-use crate::numtoa::NumToA;
 use crate::util;
 use std::fs::File;
 use std::io::{Read, Seek, SeekFrom};
 
+use numtoa::NumToA;
 use lazy_static::lazy_static;
 
 use csv::{ByteRecord, Error};

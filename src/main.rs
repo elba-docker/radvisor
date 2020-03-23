@@ -1,6 +1,5 @@
 use crate::types::ContainerMetadata;
-use std::sync::mpsc;
-use std::sync::mpsc::{Receiver, Sender};
+use std::sync::mpsc::{self, Receiver, Sender};
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::vec::Vec;
@@ -14,7 +13,6 @@ mod cli;
 mod timer;
 mod types;
 mod util;
-mod numtoa;
 
 /// Parses CLI args, performs a health check to the docker daemon, and then
 /// spawns two worker threads for:
