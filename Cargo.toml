@@ -1,6 +1,6 @@
 [package]
 name = "radvisor"
-version = "0.2.0"
+version = "0.2.1"
 authors = ["Joseph Azevedo <joseph.az@gatech.edu>", "Bhanu Garg <bgarg6@gatech.edu>"]
 edition = "2018"
 
