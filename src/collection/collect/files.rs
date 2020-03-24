@@ -21,7 +21,7 @@ pub struct ProcFileHandles {
 impl ProcFileHandles {
     /// Initializes all file handles to /proc files, utilizing them over the entire timeline of
     /// the container monitoring. If a handle fails to open, the struct field will be None
-    pub fn new(id: &str) -> ProcFileHandles {
+    pub fn new(id: &str) -> Self {
         ProcFileHandles {
             current_pids: open_proc_file(id, "pids", "pids.current"),
             max_pids: open_proc_file(id, "pids", "pids.max"),

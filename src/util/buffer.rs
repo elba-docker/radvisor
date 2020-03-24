@@ -1,8 +1,7 @@
-use crate::util;
+use crate::util::{self};
 
-/// Working buffer used to read proc files in. Can operate both in **managed**
-/// mode (where it keeps track of length) and **unmanaged** mode (where it acts)
-/// as a plain byte buffer.
+/// Working buffer of raw bytes. Can operate both in **managed** mode (where it keeps
+/// track of length) and **unmanaged** mode (where it acts) as a plain byte buffer.
 pub struct Buffer<const SIZE: usize> {
     pub len: usize,
     pub b: [u8; SIZE],
@@ -25,7 +24,7 @@ pub trait BufferLike {
     fn unmanaged_len(&self) -> usize;
 }
 
-impl<const SIZE: usize> BufferLike for Buffer<{ SIZE }> {
+impl<const SIZE: usize> BufferLike for Buffer<SIZE> {
     #[inline]
     fn trim(&self) -> &[u8] {
         // Prevent underflow later by early terminating
@@ -34,12 +33,12 @@ impl<const SIZE: usize> BufferLike for Buffer<{ SIZE }> {
         }
 
         let mut start = 0;
-        while start < self.len && util::is_space(self.b[start]) {
+        while start < self.len && util::is_whitespace(self.b[start]) {
             start += 1;
         }
 
         let mut end = self.len - 1;
-        while end > start && util::is_space(self.b[end]) {
+        while end > start && util::is_whitespace(self.b[end]) {
             end -= 1;
         }
 
@@ -108,12 +107,12 @@ pub fn trim_raw(buf: &[u8]) -> &[u8] {
     }
 
     let mut start = 0;
-    while start < len && util::is_space(buf[start]) {
+    while start < len && util::is_whitespace(buf[start]) {
         start += 1;
     }
 
     let mut end = len - 1;
-    while end > start && util::is_space(buf[end]) {
+    while end > start && util::is_whitespace(buf[end]) {
         end -= 1;
     }
 

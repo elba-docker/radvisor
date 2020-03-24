@@ -30,7 +30,7 @@ pub trait Stoppable {
 }
 
 impl Timer {
-    pub fn new(dur: Duration) -> (Timer, TimerStopper) {
+    pub fn new(dur: Duration) -> (Self, TimerStopper) {
         let (tx_stop, rx_stop): (Sender<()>, Receiver<()>) = mpsc::channel();
         let shared = Arc::new(SharedTimerState {
             stopping: AtomicBool::new(false),

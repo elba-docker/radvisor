@@ -1,5 +1,6 @@
 use crate::collection::collect;
 use crate::collection::collect::files::ProcFileHandles;
+use crate::collection::collect::read::StatFileLayout;
 use crate::shared::ContainerMetadata;
 use crate::util;
 use crate::cli;
@@ -20,6 +21,7 @@ pub struct Collector {
     pub writer: Writer<File>,
     pub file_handles: ProcFileHandles,
     pub active: bool,
+    pub memory_layout: StatFileLayout,
 }
 
 impl Collector {
@@ -51,7 +53,7 @@ impl Collector {
     /// Initializes a new collector given the destination file and container metadata.
     /// Writes the file header and then opens up read file handles for all of the /proc
     /// cgroup virtual files
-    fn new(file: File, container: &ContainerMetadata) -> Result<Collector, Error> {
+    fn new(file: File, container: &ContainerMetadata) -> Result<Self, Error> {
         let mut file = file;
 
         // Write the initial info to the file before initializing the CSV writer
@@ -66,10 +68,12 @@ impl Collector {
         writer.write_byte_record(collect::get_header())?;
 
         let file_handles = ProcFileHandles::new(&container.id);
+        let memory_layout = collect::examine_memory(&file_handles);
         Ok(Collector {
             writer: writer,
             active: true,
             file_handles,
+            memory_layout
         })
     }
 }

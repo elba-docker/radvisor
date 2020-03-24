@@ -1,13 +1,12 @@
-use crate::collection::collect::buffer::{Buffer, BufferLike};
 use crate::collection::collect::files::ProcFileHandles;
 use crate::collection::collector::Collector;
-use crate::util;
+use crate::util::{self, AnonymousSlice};
+use crate::util::buffer::{Buffer, BufferLike};
 
 use csv::{ByteRecord, Error};
 use lazy_static::lazy_static;
 use numtoa::NumToA;
 
-pub mod buffer;
 pub mod files;
 pub mod read;
 
@@ -31,6 +30,22 @@ lazy_static! {
         "memory.limit.hard",
         "memory.limit.soft",
         "memory.failcnt",
+        "memory.hiearchical_limit.memory",
+        "memory.hiearchical_limit.memoryswap",
+        "memory.cache",
+        "memory.rss.all",
+        "memory.rss.huge",
+        "memory.mapped",
+        "memory.swap",
+        "memory.paged.in",
+        "memory.paged.out",
+        "memory.fault.total",
+        "memory.fault.major",
+        "memory.anon.inactive",
+        "memory.anon.active",
+        "memory.file.inactive",
+        "memory.file.active",
+        "memory.unevictable",
     ]);
     /// Length of each row of the collected stats
     static ref ROW_LENGTH: usize = HEADER.len();
@@ -52,22 +67,31 @@ const ROW_BUFFER_SIZE: usize = 1200;
 /// limit for the various virtual files that need to be read
 const WORKING_BUFFER_SIZE: usize = 1024;
 
+/// Length of the buffer used to build up stat file entries as the reader uses pre-examined
+/// layouts to map lines to entries.
+///
+/// **Currently set to the number of entries used for `memory.stat`**
+const SLICES_BUFFER_SIZE: usize = 16;
+
 /// Working buffers used to avoid heap allocations at runtime
 pub struct WorkingBuffers {
     record: ByteRecord,
     buffer: Buffer<WORKING_BUFFER_SIZE>,
+    slices: [AnonymousSlice; SLICES_BUFFER_SIZE],
 }
 
 impl WorkingBuffers {
-    /// Allocates the working buffers on the heap using upper limits to avoid expensive
-    /// heap allocations at runtime
-    pub fn new() -> WorkingBuffers {
-        let record = ByteRecord::with_capacity(ROW_BUFFER_SIZE, *ROW_LENGTH);
-        let buffer = Buffer {
-            len: 0,
-            b: [0u8; WORKING_BUFFER_SIZE],
-        };
-        WorkingBuffers { record: record, buffer: buffer }
+    /// Allocates the working buffers using upper limits to avoid expensive heap allocations
+    /// at runtime
+    pub fn new() -> Self {
+        WorkingBuffers {
+            record: ByteRecord::with_capacity(ROW_BUFFER_SIZE, *ROW_LENGTH),
+            buffer: Buffer {
+                len: 0,
+                b: [0u8; WORKING_BUFFER_SIZE],
+            },
+            slices: [<AnonymousSlice>::default(); SLICES_BUFFER_SIZE],
+        }
     }
 }
 
@@ -77,7 +101,7 @@ pub fn run(collector: &mut Collector, buffers: &mut WorkingBuffers) -> Result<()
     collect_read(buffers);
     collect_pids(buffers, &collector.file_handles);
     collect_cpu(buffers, &collector.file_handles);
-    collect_memory(buffers, &collector.file_handles);
+    collect_memory(buffers, &collector.file_handles, &collector.memory_layout);
     collector.writer.write_byte_record(&buffers.record)?;
     buffers.record.clear();
     Ok(())
@@ -86,7 +110,9 @@ pub fn run(collector: &mut Collector, buffers: &mut WorkingBuffers) -> Result<()
 /// Collects the nanosecond unix timestamp read time
 #[inline]
 fn collect_read(buffers: &mut WorkingBuffers) -> () {
-    buffers.record.push_field(util::nano_ts().numtoa(10, &mut buffers.buffer.b));
+    buffers
+        .record
+        .push_field(util::nano_ts().numtoa(10, &mut buffers.buffer.b));
     // numtoa writes starting at the end of the buffer, so clear backwards
     buffers.buffer.clear_unmanaged_backwards();
 }
@@ -95,8 +121,8 @@ fn collect_read(buffers: &mut WorkingBuffers) -> () {
 /// see https://www.kernel.org/doc/html/latest/admin-guide/cgroup-v1/pids.html
 #[inline]
 fn collect_pids(buffers: &mut WorkingBuffers, handles: &ProcFileHandles) -> () {
-    read::entry(&handles.current_pids, &mut buffers.record, &mut buffers.buffer);
-    read::entry(&handles.max_pids, &mut buffers.record, &mut buffers.buffer);
+    read::entry(&handles.current_pids, buffers);
+    read::entry(&handles.max_pids, buffers);
 }
 
 /// String offsets used for row headers for the cpuacct.stat file
@@ -112,21 +138,52 @@ const CPU_STAT_OFFSETS: [usize; 3] = [
 /// see https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/6/html/resource_management_guide/sec-cpuacct
 #[inline]
 fn collect_cpu(buffers: &mut WorkingBuffers, handles: &ProcFileHandles) -> () {
-    read::entry(&handles.cpuacct_usage, &mut buffers.record, &mut buffers.buffer);
-    read::entry(&handles.cpuacct_usage_sys, &mut buffers.record, &mut buffers.buffer);
-    read::entry(&handles.cpuacct_usage_user, &mut buffers.record, &mut buffers.buffer);
-    read::entry(&handles.cpuacct_usage_percpu, &mut buffers.record, &mut buffers.buffer);
-    read::stat_file(&handles.cpuacct_stat, &CPUACCT_STAT_OFFSETS, &mut buffers.record, &mut buffers.buffer);
-    read::stat_file(&handles.cpu_stat, &CPU_STAT_OFFSETS, &mut buffers.record, &mut buffers.buffer);
+    read::entry(&handles.cpuacct_usage, buffers);
+    read::entry(&handles.cpuacct_usage_sys, buffers);
+    read::entry(&handles.cpuacct_usage_user, buffers);
+    read::entry(&handles.cpuacct_usage_percpu, buffers);
+    read::stat_file(&handles.cpuacct_stat, &CPUACCT_STAT_OFFSETS, buffers);
+    read::stat_file(&handles.cpu_stat, &CPU_STAT_OFFSETS, buffers);
+}
+
+/// Original entries in the memory.stat file that map to columns (in the same order) in the 
+/// final output
+const MEMORY_STAT_ENTRIES: &[&'static [u8]] = &[
+    b"hierarchical_memory_limit",
+    b"hierarchical_memsw_limit",
+    b"total_cache",
+    b"total_rss",
+    b"total_rss_huge",
+    b"total_mapped_file",
+    b"total_swap",
+    b"total_pgpgin",
+    b"total_pgpgout",
+    b"total_pgfault",
+    b"total_pgmajfault",
+    b"total_inactive_anon",
+    b"total_active_anon",
+    b"total_inactive_file",
+    b"total_active_file",
+    b"total_unevictable",
+];
+
+/// Generates a stat file layout struct for `memory.stat`
+pub fn examine_memory(handles: &ProcFileHandles) -> read::StatFileLayout {
+    read::StatFileLayout::new(&handles.memory_stat, &MEMORY_STAT_ENTRIES)
 }
 
 /// Collects all stats for the memory subsystem
 /// see https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/6/html/resource_management_guide/sec-memory
 #[inline]
-fn collect_memory(buffers: &mut WorkingBuffers, handles: &ProcFileHandles) -> () {
-    read::entry(&handles.memory_usage_in_bytes, &mut buffers.record, &mut buffers.buffer);
-    read::entry(&handles.memory_max_usage_in_bytes, &mut buffers.record, &mut buffers.buffer);
-    read::entry(&handles.memory_limit_in_bytes, &mut buffers.record, &mut buffers.buffer);
-    read::entry(&handles.memory_soft_limit_in_bytes, &mut buffers.record, &mut buffers.buffer);
-    read::entry(&handles.memory_failcnt, &mut buffers.record, &mut buffers.buffer);
+fn collect_memory(
+    buffers: &mut WorkingBuffers,
+    handles: &ProcFileHandles,
+    layout: &read::StatFileLayout,
+) -> () {
+    read::entry(&handles.memory_usage_in_bytes, buffers);
+    read::entry(&handles.memory_max_usage_in_bytes, buffers);
+    read::entry(&handles.memory_limit_in_bytes, buffers);
+    read::entry(&handles.memory_soft_limit_in_bytes, buffers);
+    read::entry(&handles.memory_failcnt, buffers);
+    read::with_layout(&handles.memory_stat, layout, buffers)
 }

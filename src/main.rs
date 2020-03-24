@@ -1,4 +1,5 @@
 #![feature(const_generics)]
+#![allow(incomplete_features)]
 
 use crate::shared::ContainerMetadata;
 use crate::polling::docker;
@@ -52,20 +53,8 @@ fn run(opts: ResolvedOpts) -> () {
     let collect_handle = term_bus.add_rx();
     drop(term_bus);
 
-    ctrlc::set_handler(move || {
-        let mut term_bus = term_bus_lock.lock().unwrap();
-        term_bus.broadcast(());
-
-        // Try again to tear down the program
-        thread::sleep(Duration::from_millis(2000));
-        println!("Trying again...");
-        term_bus.broadcast(());
-        
-        thread::sleep(Duration::from_millis(1000));
-        println!("Could not shut down gracefully");
-        std::process::exit(2);
-    })
-    .expect("Error: could not create SIGINT handler");
+    ctrlc::set_handler(move || handle_termination(Arc::clone(&term_bus_lock)))
+        .expect("Error: could not create SIGINT handler");
 
     let polling_interval = opts.polling_interval;
     let interval = opts.interval;
@@ -85,4 +74,20 @@ fn run(opts: ResolvedOpts) -> () {
         .join()
         .expect("Error: polling thread resulted in panic");
     println!("Exiting");
+}
+
+/// Handles program termination by broadcasting an empty message on a special termination
+/// bus that each thread listens to
+fn handle_termination(bus_lock: Arc<Mutex<Bus<()>>>) -> ! {
+    let mut bus = bus_lock.lock().unwrap();
+    bus.broadcast(());
+
+    // Try again to tear down the program
+    thread::sleep(Duration::from_millis(2000));
+    println!("Trying again...");
+    bus.broadcast(());
+    
+    thread::sleep(Duration::from_millis(1000));
+    println!("Could not shut down gracefully");
+    std::process::exit(2);
 }
