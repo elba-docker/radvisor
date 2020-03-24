@@ -4,10 +4,13 @@ const DEFAULT_POLLING_INTERVAL: u64 = 1000;
 const DEFAULT_COLLECT_INTERVAL: u64 = 50;
 const DEFAULT_LOGS_DIRECTORY: &str = "/var/log/docker/stats";
 
+/// CLI version loaded from Cargo, or none if not build with cargo
+pub const VERSION: Option<&'static str> = option_env!("CARGO_PKG_VERSION");
+
 /// Auto-parsed CLI options for rAdvisor, generated via clap
 #[derive(Clap)]
 #[clap(
-    version = "0.2.0",
+    version = VERSION.unwrap_or("unknown"),
     author = "Joseph Azevedo and Bhanu Garg",
     about = "Monitors container resource utilization with high granularity and low overhead"
 )]

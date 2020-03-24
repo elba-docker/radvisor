@@ -1,15 +1,11 @@
 use crate::util;
 
-/// Length of the buffer used to read proc files in with. Designed to be an upper
-/// limit for the various virtual files that need to be read
-const WORKING_BUFFER_SIZE: usize = 768;
-
 /// Working buffer used to read proc files in. Can operate both in **managed**
 /// mode (where it keeps track of length) and **unmanaged** mode (where it acts)
 /// as a plain byte buffer.
-pub struct Buffer {
+pub struct Buffer<const SIZE: usize> {
     pub len: usize,
-    pub b: [u8; WORKING_BUFFER_SIZE],
+    pub b: [u8; SIZE],
 }
 
 pub trait BufferLike {
@@ -27,17 +23,9 @@ pub trait BufferLike {
     /// **(Unmanaged)** Finds the length of the buffer's contents, ended by a 0
     /// terminator
     fn unmanaged_len(&self) -> usize;
-    fn new() -> Self;
 }
 
-impl BufferLike for Buffer {
-    fn new() -> Self {
-        Buffer {
-            len: 0,
-            b: [0u8; WORKING_BUFFER_SIZE],
-        }
-    }
-
+impl<const SIZE: usize> BufferLike for Buffer<{ SIZE }> {
     #[inline]
     fn trim(&self) -> &[u8] {
         // Prevent underflow later by early terminating
@@ -68,7 +56,7 @@ impl BufferLike for Buffer {
 
     #[inline]
     fn clear_unmanaged(&mut self) -> () {
-        for i in 0..self.b.len() {
+        for i in 0..SIZE {
             if self.b[i] == 0 {
                 break;
             } else {
@@ -80,7 +68,7 @@ impl BufferLike for Buffer {
 
     #[inline]
     fn clear_unmanaged_backwards(&mut self) -> () {
-        for i in (0..self.b.len()).rev() {
+        for i in (0..SIZE).rev() {
             if self.b[i] == 0 {
                 break;
             } else {

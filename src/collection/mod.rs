@@ -1,7 +1,7 @@
-use crate::collect::collector::Collector;
-use crate::collect::container::WorkingBuffers;
+use crate::collection::collector::Collector;
+use crate::collection::collect::WorkingBuffers;
 use crate::timer::{Stoppable, Timer};
-use crate::types::ContainerMetadata;
+use crate::shared::ContainerMetadata;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::sync::mpsc::Receiver;
@@ -11,9 +11,8 @@ use std::vec::Vec;
 
 use bus::BusReader;
 
-mod collector;
-mod container;
-mod buffer;
+pub mod collector;
+pub mod collect;
 
 /// Synchronization status struct used to handle termination and buffer flushing
 struct CollectStatus {
@@ -88,7 +87,7 @@ pub fn run(
         // Loop over active container ids and run collection
         for (id, c) in collectors.iter() {
             let mut collector = c.borrow_mut();
-            match container::collect(&mut working_buffers, &mut collector) {
+            match collector.collect(&mut working_buffers) {
                 Ok(_) => (),
                 Err(err) => {
                     eprintln!(
@@ -152,7 +151,7 @@ fn update_collectors(
                 let mut c = collector.borrow_mut();
                 c.active = true;
             }
-            None => match Collector::create(&container, logs_location) {
+            None => match Collector::create(logs_location, &container) {
                 Ok(new_collector) => {
                     collectors.insert(container.id, RefCell::new(new_collector));
                 }

@@ -75,11 +75,10 @@ reports the CPU time (in nanoseconds) consumed on each CPU by all tasks in this 
 
 > **Note**: there are two additional files, `cpuacct.usage_percpu_sys` and `cpuacct.usage_percpu_user` that further break this down into user and kernel modes. However, these have been omitted as they are not needed for the target workload.
 
-
 ##### ex. `/sys/fs/cgroup/cpuacct/docker/.../cpuacct.usage_percpu`
 
 ```
-10988262282 10955397365 11420884004 12532674907 11310602969 12382279847 12193108713 10432778271 
+10988262282 10955397365 11420884004 12532674907 11310602969 12382279847 12193108713 10432778271
 ```
 
 #### `cpuacct.stat`
@@ -105,8 +104,8 @@ system 6839
 Reports CPU time statistics using the following values:
 
 - `nr_periods` — number of period intervals (as specified in cpu.cfs_period_us) that have elapsed. Maps to `cpu.throttling.periods`
-- `nr_throttled` — number of times tasks in a cgroup have been throttled (that is, not allowed to run because they have exhausted all of the available time as specified by their quota). Maps to `cpu.throttling.throttled`
-- `throttled_time` — the total time duration (in nanoseconds) for which tasks in a cgroup have been throttled. Maps to `cpu.throttling.throttled_time`
+- `nr_throttled` — number of times tasks in a cgroup have been throttled (that is, not allowed to run because they have exhausted all of the available time as specified by their quota). Maps to `cpu.throttling.throttled.count`
+- `throttled_time` — the total time duration (in nanoseconds) for which tasks in a cgroup have been throttled. Maps to `cpu.throttling.throttled.time`
 
 Source: [Red Hat Customer Portal](https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/6/html/resource_management_guide/sec-cpu)
 
@@ -118,3 +117,149 @@ nr_throttled 0
 throttled_time 0
 ```
 
+### Memory
+
+The `memory` subsystem includes information on the memory usage and limitations of the processes running in a cgroup.
+
+More information: [Kernel docs](https://www.kernel.org/doc/Documentation/cgroup-v1/memory.txt).
+
+#### `memory.usage_in_bytes`
+
+reports the total current memory usage by processes in the cgroup (in bytes). Maps to `memory.usage.current`
+
+##### ex. `/sys/fs/cgroup/memory/docker/.../memory.usage_in_bytes`
+
+```
+1982464
+```
+
+#### `memory.max_usage_in_bytes`
+
+reports the maximum amount of memory and swap space used by processes in the cgroup (in bytes). Maps to `memory.usage.max`
+
+##### ex. `/sys/fs/cgroup/memory/docker/.../memory.max_usage_in_bytes`
+
+```
+3092480
+```
+
+#### `memory.limit_in_bytes`
+
+maximum amount of user memory (including file cache). Maps to `memory.limit.hard`
+
+##### ex. `/sys/fs/cgroup/memory/docker/.../memory.limit_in_bytes`
+
+```
+9223372036854771712
+```
+
+#### `memory.soft_limit_in_bytes`
+
+enables flexible sharing of memory. Under normal circumstances, control groups are allowed to use as much of the memory as needed, constrained only by their hard limits set with the `memory.limit_in_bytes` parameter. However, when the system detects memory contention or low memory, control groups are forced to restrict their consumption to their _soft limits_. Maps to `memory.limit.soft`
+
+Source: [Red Hat Customer Portal](https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/6/html/resource_management_guide/sec-memory)
+
+##### ex. `/sys/fs/cgroup/memory/docker/.../memory.soft_limit_in_bytes`
+
+```
+9223372036854771712
+```
+
+#### `memory.failcnt`
+
+reports the number of times that the memory limit has reached the value set in `memory.limit_in_bytes`. Maps to `memory.failcnt`
+
+##### ex. `/sys/fs/cgroup/memory/docker/.../memory.failcnt`
+
+```
+0
+```
+
+#### `memory.stat`
+
+reports a wide range of memory statistics, as described in the following table:
+
+| Statistic                   | Description                                                                                          |
+| --------------------------- | ---------------------------------------------------------------------------------------------------- |
+| `cache`                     | page cache, including tmpfs (shmem), in bytes                                                        |
+| `rss`                       | anonymous and swap cache, not including tmpfs (shmem), in bytes                                      |
+| `mapped_file`               | size of memory-mapped mapped files, including tmpfs (shmem), in bytes                                |
+| `pgpgin`                    | number of pages paged into memory                                                                    |
+| `pgpgout`                   | number of pages paged out of memory                                                                  |
+| `swap`                      | swap usage, in bytes                                                                                 |
+| `active_anon`               | anonymous and swap cache on active least-recently-used (LRU) list, including tmpfs (shmem), in bytes |
+| `inactive_anon`             | anonymous and swap cache on inactive LRU list, including tmpfs (shmem), in bytes                     |
+| `active_file`               | file-backed memory on active LRU list, in bytes                                                      |
+| `inactive_file`             | file-backed memory on inactive LRU list, in bytes                                                    |
+| `unevictable`               | memory that cannot be reclaimed, in bytes                                                            |
+| `hierarchical_memory_limit` | memory limit for the hierarchy that contains the memory cgroup, in bytes                             |
+| `hierarchical_memsw_limit`  | memory plus swap limit for the hierarchy that contains the memory cgroup, in bytes                   |
+
+Additionally, each of these files other than `hierarchical_memory_limit` and `hierarchical_memsw_limit` has a counterpart prefixed `total_` that reports not only on the cgroup, but on all its children as well. For example, `swap` reports the swap usage by a cgroup and `total_swap` reports the total swap usage by the cgroup and all its child groups.
+
+> **Note** For these reasons, we use only the total values to give containers the flexibility to utilize cgroups of their own while still being able to monitor all resource utilization.
+
+When you interpret the values reported by memory.stat, note how the various statistics inter-relate:
+
+- `active_anon` + `inactive_anon` = anonymous memory + file cache for `tmpfs` + swap cache
+  Therefore, `active_anon` + `inactive_anon` ≠ `rss`, because `rss` does not include `tmpfs`.
+- `active_file` + `inactive_file` = cache - size of `tmpfs`
+
+##### Mapping Information
+
+| Statistic                   | Mapped To                             |
+| --------------------------- | ------------------------------------- |
+| `hierarchical_memory_limit` | `memory.hiearchical_limit.memory`     |
+| `hierarchical_memsw_limit`  | `memory.hiearchical_limit.memoryswap` |
+| `total_cache`               | `memory.cache`                        |
+| `total_rss`                 | `memory.rss.all`                      |
+| `total_rss_huge`            | `memory.rss.huge`                     |
+| `total_mapped_file`         | `memory.mapped`                       |
+| `total_swap`                | `memory.swap`                         |
+| `total_pgpgin`              | `memory.paged.in`                     |
+| `total_pgpgout`             | `memory.paged.out`                    |
+| `total_pgfault`             | `memory.fault.total`                  |
+| `total_pgmajfault`          | `memory.fault.major`                  |
+| `total_inactive_anon`       | `memory.anon.inactive`                |
+| `total_active_anon`         | `memory.anon.active`                  |
+| `total_inactive_file`       | `memory.file.inactive`                |
+| `total_active_file`         | `memory.file.active`                  |
+| `total_unevictable`         | `memory.unevictable`                  |
+
+##### ex. `/sys/fs/cgroup/memory/docker/.../memory.stat`
+
+```
+cache 192512
+rss 356352
+rss_huge 0
+shmem 0
+mapped_file 114688
+dirty 0
+writeback 0
+pgpgin 2970
+pgpgout 2836
+pgfault 4211
+pgmajfault 3
+inactive_anon 0
+active_anon 356352
+inactive_file 180224
+active_file 12288
+unevictable 0
+hierarchical_memory_limit 9223372036854771712
+total_cache 192512
+total_rss 356352
+total_rss_huge 0
+total_shmem 0
+total_mapped_file 114688
+total_dirty 0
+total_writeback 0
+total_pgpgin 2970
+total_pgpgout 2836
+total_pgfault 4211
+total_pgmajfault 3
+total_inactive_anon 0
+total_active_anon 356352
+total_inactive_file 180224
+total_active_file 12288
+total_unevictable 0
+```

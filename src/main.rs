@@ -1,4 +1,7 @@
-use crate::types::ContainerMetadata;
+#![feature(const_generics)]
+
+use crate::shared::ContainerMetadata;
+use crate::polling::docker;
 use std::sync::mpsc::{self, Receiver, Sender};
 use std::sync::{Arc, Mutex};
 use std::thread;
@@ -8,11 +11,12 @@ use std::vec::Vec;
 use bus::Bus;
 use cli::ResolvedOpts;
 
-mod collect;
-mod docker;
+mod collection;
+mod polling;
+
 mod cli;
 mod timer;
-mod types;
+mod shared;
 mod util;
 
 /// Parses CLI args, performs a health check to the docker daemon, and then
@@ -69,9 +73,9 @@ fn run(opts: ResolvedOpts) -> () {
 
     // Create both threads
     let update_thread: thread::JoinHandle<()> =
-        thread::spawn(move || docker::run(tx, update_handle, polling_interval));
+        thread::spawn(move || polling::run(tx, update_handle, polling_interval));
     let collect_thread: thread::JoinHandle<()> =
-        thread::spawn(move || collect::run(rx, collect_handle, interval, directory));
+        thread::spawn(move || collection::run(rx, collect_handle, interval, directory));
 
     // Join the threads, which automatically exit upon termination
     collect_thread
