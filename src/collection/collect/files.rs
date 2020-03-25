@@ -16,6 +16,14 @@ pub struct ProcFileHandles {
     pub memory_soft_limit_in_bytes: Option<File>,
     pub memory_failcnt: Option<File>,
     pub memory_stat: Option<File>,
+    pub blkio_io_service_bytes: Option<File>,
+    pub blkio_io_serviced: Option<File>,
+    pub blkio_io_service_time: Option<File>,
+    pub blkio_io_queued: Option<File>,
+    pub blkio_io_wait_time: Option<File>,
+    pub blkio_io_merged: Option<File>,
+    pub blkio_time: Option<File>,
+    pub blkio_sectors: Option<File>,
 }
 
 impl ProcFileHandles {
@@ -36,7 +44,15 @@ impl ProcFileHandles {
             memory_limit_in_bytes: open_proc_file(id, "memory", "memory.limit_in_bytes"),
             memory_soft_limit_in_bytes: open_proc_file(id, "memory", "memory.soft_limit_in_bytes"),
             memory_failcnt: open_proc_file(id, "memory", "memory.failcnt"),
-            memory_stat: open_proc_file(id, "memory", "memory.stat")
+            memory_stat: open_proc_file(id, "memory", "memory.stat"),
+            blkio_io_service_bytes: open_proc_file(id, "blkio", "blkio.io_service_bytes_recursive"),
+            blkio_io_serviced: open_proc_file(id, "blkio", "blkio.io_serviced_recursive"),
+            blkio_io_service_time: open_proc_file(id, "blkio", "blkio.io_service_time_recursive"),
+            blkio_io_queued: open_proc_file(id, "blkio", "blkio.io_queued_recursive"),
+            blkio_io_wait_time: open_proc_file(id, "blkio", "blkio.io_wait_time_recursive"),
+            blkio_io_merged: open_proc_file(id, "blkio", "blkio.io_merged_recursive"),
+            blkio_time: open_proc_file(id, "blkio", "blkio.time_recursive"),
+            blkio_sectors: open_proc_file(id, "blkio", "blkio.sectors_recursive"),
         }
     }
 }

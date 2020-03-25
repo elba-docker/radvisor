@@ -1,7 +1,7 @@
 use crate::collection::collect::files::ProcFileHandles;
 use crate::collection::collector::Collector;
-use crate::util::{self, AnonymousSlice};
 use crate::util::buffer::{Buffer, BufferLike};
+use crate::util::{self, AnonymousSlice};
 
 use csv::{ByteRecord, Error};
 use lazy_static::lazy_static;
@@ -46,6 +46,14 @@ lazy_static! {
         "memory.file.inactive",
         "memory.file.active",
         "memory.unevictable",
+        "blkio.service.bytes",
+        "blkio.service.ios",
+        "blkio.service.time",
+        "blkio.queued",
+        "blkio.wait",
+        "blkio.merged",
+        "blkio.time",
+        "blkio.sectors"
     ]);
     /// Length of each row of the collected stats
     static ref ROW_LENGTH: usize = HEADER.len();
@@ -77,6 +85,7 @@ const SLICES_BUFFER_SIZE: usize = 16;
 pub struct WorkingBuffers {
     record: ByteRecord,
     buffer: Buffer<WORKING_BUFFER_SIZE>,
+    copy_buffer: Buffer<WORKING_BUFFER_SIZE>,
     slices: [AnonymousSlice; SLICES_BUFFER_SIZE],
 }
 
@@ -87,6 +96,10 @@ impl WorkingBuffers {
         WorkingBuffers {
             record: ByteRecord::with_capacity(ROW_BUFFER_SIZE, *ROW_LENGTH),
             buffer: Buffer {
+                len: 0,
+                b: [0u8; WORKING_BUFFER_SIZE],
+            },
+            copy_buffer: Buffer {
                 len: 0,
                 b: [0u8; WORKING_BUFFER_SIZE],
             },
@@ -102,6 +115,7 @@ pub fn run(collector: &mut Collector, buffers: &mut WorkingBuffers) -> Result<()
     collect_pids(buffers, &collector.file_handles);
     collect_cpu(buffers, &collector.file_handles);
     collect_memory(buffers, &collector.file_handles, &collector.memory_layout);
+    collect_blkio(buffers, &collector.file_handles);
     collector.writer.write_byte_record(&buffers.record)?;
     buffers.record.clear();
     Ok(())
@@ -146,7 +160,7 @@ fn collect_cpu(buffers: &mut WorkingBuffers, handles: &ProcFileHandles) -> () {
     read::stat_file(&handles.cpu_stat, &CPU_STAT_OFFSETS, buffers);
 }
 
-/// Original entries in the memory.stat file that map to columns (in the same order) in the 
+/// Original entries in the memory.stat file that map to columns (in the same order) in the
 /// final output
 const MEMORY_STAT_ENTRIES: &[&'static [u8]] = &[
     b"hierarchical_memory_limit",
@@ -186,4 +200,18 @@ fn collect_memory(
     read::entry(&handles.memory_soft_limit_in_bytes, buffers);
     read::entry(&handles.memory_failcnt, buffers);
     read::with_layout(&handles.memory_stat, layout, buffers)
+}
+
+/// Collects all stats for the blkio subsystem
+/// see https://www.kernel.org/doc/Documentation/cgroup-v1/blkio-controller.txt
+#[inline]
+fn collect_blkio(buffers: &mut WorkingBuffers, handles: &ProcFileHandles) -> () {
+    read::all(&handles.blkio_io_service_bytes, buffers);
+    read::all(&handles.blkio_io_serviced, buffers);
+    read::all(&handles.blkio_io_service_time, buffers);
+    read::all(&handles.blkio_io_queued, buffers);
+    read::all(&handles.blkio_io_wait_time, buffers);
+    read::all(&handles.blkio_io_merged, buffers);
+    read::all(&handles.blkio_time, buffers);
+    read::all(&handles.blkio_sectors, buffers);
 }

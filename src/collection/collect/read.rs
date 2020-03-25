@@ -1,6 +1,6 @@
 use crate::collection::collect::{AnonymousSlice, WorkingBuffers};
 use crate::util;
-use crate::util::buffer::{self, BufferLike};
+use crate::util::buffer::{self, Buffer, BufferLike};
 use std::fs::File;
 use std::io::{Read, Seek, SeekFrom};
 
@@ -218,5 +218,52 @@ fn read_to_buffer(file: &Option<File>, buffers: &mut WorkingBuffers) -> Option<u
             let _ = file_mut.seek(SeekFrom::Start(0));
             result
         }
+    }
+}
+
+/// Tries to read the entire file, moving each line to a comma-seperated string
+pub fn all(file: &Option<File>, buffers: &mut WorkingBuffers) -> () {
+    // Ignore errors: the buffer will just remain empty
+    read_to_buffer(file, buffers);
+
+    let trimmed = buffers.buffer.trim();
+    if buffer::content_len_raw(trimmed) == 0 {
+        // Buffer ended up empty; prevent writing NUL bytes
+        buffers.record.push_field(&EMPTY_BUFFER[..]);
+    } else {
+        // Copy over to temporary buffer
+        copy_lines_to_commas(&buffers.buffer, &mut buffers.copy_buffer);
+        buffers.record.push_field(&buffers.copy_buffer.b);
+    }
+
+    buffers.buffer.clear();
+    buffers.copy_buffer.clear();
+}
+
+pub static COMMA: u8 = ',' as u8;
+
+/// Copies lines from the incoming buffer to the target buffer
+fn copy_lines_to_commas<const S: usize, const T: usize>(
+    source: &Buffer<S>,
+    target: &mut Buffer<T>,
+) -> () {
+    let mut start = 0;
+    let mut comma_at_end = false;
+    let lines = util::ByteLines::new(&source.b);
+    for (line, _) in lines {
+        let end = start + line.len();
+        if end >= target.b.len() {
+            return;
+        }
+        
+        target.b[start..end].clone_from_slice(&line);
+        target.b[end] = COMMA;
+        start = end + 1;
+        comma_at_end = true;
+    }
+
+    // if last was written to, reset comma to NUL terminator
+    if comma_at_end {
+        target.b[start - 1] = 0u8;
     }
 }
