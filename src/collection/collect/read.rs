@@ -233,7 +233,7 @@ pub fn all(file: &Option<File>, buffers: &mut WorkingBuffers) -> () {
     } else {
         // Copy over to temporary buffer
         copy_lines_to_commas(&buffers.buffer, &mut buffers.copy_buffer);
-        buffers.record.push_field(&buffers.copy_buffer.b);
+        buffers.record.push_field(&buffers.copy_buffer.trim());
     }
 
     buffers.buffer.clear();
