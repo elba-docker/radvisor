@@ -53,13 +53,25 @@ OPTIONS:
 
 ## 🏗️ Building
 
+### 🐋 Using Docker
+
+To build rAdvisor using Docker, run the following command (needs to have `docker` installed and running, and likely needs to be run as root):
+
+```
+$ sudo make
+```
+
+For the Docker build method, the Rust nightly image is used ([rustlang/rust:nightly](https://hub.docker.com/r/rustlang/rust/)) to run a Docker container with the necessary toolchains pre-installed.
+
+### 💽 Directly From Source
+
 To build rAdvisor from source, Rust **nightly** is used. To install Rust nightly, we recommend using [rustup](https://rustup.rs/) to install the Rust toolchain, and then running the following command to switch to nightly:
 
 ```
-rustup default nightly
+$ rustup default nightly
 ```
 
-Now, in the cloned repository root, run `cargo build --release` to generate a release-grade binary at `./target/release/radvisor`. This build process may take up to ten minutes.
+Now, in the cloned repository root, run `make compile` to generate a release-grade binary at `./target/release/radvisor`. This build process may take up to ten minutes.
 
 ```console
 $ cargo build --release
@@ -70,6 +82,6 @@ $ cargo build --release
    Compiling shiplift v0.6.0
    Compiling radvisor v0.4.0 (/home/jazev/dev/radvisor)
     Finished release [optimized] target(s) in 4m 52s
-$ ./target/release/radvisor --version
+$ ./radvisor --version
 radvisor 1.0.0
 ```
