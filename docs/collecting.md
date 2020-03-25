@@ -2,6 +2,10 @@
 
 Runtime statistics for each container are taken from the virtual files for each container's cgroup, located at `/sys/fs/cgroup/<subsystem>/docker/<container id>/file`.
 
+More information is available at the Docker wiki: [Runtime metrics](https://docs.docker.com/config/containers/runmetrics/).
+
+> **Note**: while the base docker daemon collects stats for network transfer amounts, that sort of collection is out of the scope of rAdvisor (at least currently). This is due to network monitoring requiring different and significantly more involved monitoring than the various cgroup subsystems.
+
 ## Subsystems
 
 Each statistic is taken from one of a subset of the cgroup-aware subsystems that run in the Linux kernel. Specifically, statistics are drawn for:
@@ -169,6 +173,8 @@ Source: [Red Hat Customer Portal](https://access.redhat.com/documentation/en-us/
 
 reports the number of times that the memory limit has reached the value set in `memory.limit_in_bytes`. Maps to `memory.failcnt`
 
+Source: [Red Hat Customer Portal](https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/6/html/resource_management_guide/sec-memory)
+
 ##### ex. `/sys/fs/cgroup/memory/docker/.../memory.failcnt`
 
 ```
@@ -196,6 +202,8 @@ reports a wide range of memory statistics, as described in the following table:
 | `hierarchical_memsw_limit`  | memory plus swap limit for the hierarchy that contains the memory cgroup, in bytes                   |
 
 Additionally, each of these files other than `hierarchical_memory_limit` and `hierarchical_memsw_limit` has a counterpart prefixed `total_` that reports not only on the cgroup, but on all its children as well. For example, `swap` reports the swap usage by a cgroup and `total_swap` reports the total swap usage by the cgroup and all its child groups.
+
+Source: [Red Hat Customer Portal](https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/6/html/resource_management_guide/sec-memory)
 
 > **Note** For these reasons, we use only the total values to give containers the flexibility to utilize cgroups of their own while still being able to monitor all resource utilization.
 
@@ -262,4 +270,143 @@ total_active_anon 356352
 total_inactive_file 180224
 total_active_file 12288
 total_unevictable 0
+```
+
+### Block IO
+
+The Block I/O (`blkio`) subsystem controls and monitors access to I/O on block devices by tasks in cgroups. Writing values to some of these pseudofiles limits access or bandwidth, and reading values from some of these pseudofiles provides information on I/O operations.
+
+All files have a `_recursive` version, which includes stats for the processes in the cgroup as well as any children cgroups.
+
+More information: [Kernel docs](https://www.kernel.org/doc/html/latest/admin-guide/cgroup-v1/blkio-controller.html).
+
+#### `blkio.io_service_bytes_recursive`
+
+reports the number of bytes transferred to or from specific devices by a cgroup as seen by the CFQ scheduler. Entries have four fields: *major*, *minor*, *operation*, and *bytes*. *Major* and *minor* are device types and node numbers specified in *Linux Allocated Devices*, *operation* represents the type of operation (`read`, `write`, `sync`, or `async`) and *bytes* is theMajor and minor are device types and node numbers specified in Linux Allocated Devices, operation represents the type of operation (read, write, sync, or async) and 
+
+Source: [Red Hat Customer Portal](https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/6/html/resource_management_guide/ch-subsystems_and_tunable_parameters#sec-blkio)
+
+##### ex. `/sys/fs/cgroup/blkio/docker/.../blkio.io_service_bytes_recursive`
+
+```
+8:0 Read 34787328
+8:0 Write 74403840
+8:0 Sync 37494784
+8:0 Async 71696384
+8:0 Total 109191168
+Total 109191168
+```
+
+#### `blkio.io_serviced_recursive`
+
+reports the number of I/O operations performed on specific devices by a cgroup as seen by the CFQ scheduler. Entries have four fields: *major*, *minor*, *operation*, and *number*. *Major* and *minor* are device types and node numbers specified in *Linux Allocated Devices*, *operation* represents the type of operation (`read`, `write`, `sync`, or `async`) and *number* represents the number of operations.
+
+Source: [Red Hat Customer Portal](https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/6/html/resource_management_guide/ch-subsystems_and_tunable_parameters#sec-blkio)
+
+##### ex. `/sys/fs/cgroup/blkio/docker/.../blkio.io_serviced_recursive`
+
+```
+8:0 Read 1736
+8:0 Write 24054
+8:0 Sync 15904
+8:0 Async 9886
+8:0 Total 25790
+Total 25790
+```
+
+#### `blkio.io_service_time_recursive`
+
+reports the total time between request dispatch and request completion for I/O operations on specific devices by a cgroup as seen by the CFQ scheduler. Entries have four fields: *major*, *minor*, *operation*, and *time*. *Major* and *minor* are device types and node numbers specified in *Linux Allocated Devices*, *operation* represents the type of operation (`read`, `write`, `sync`, or `async`) and *time* is the length of time in nanoseconds (ns). The time is reported in nanoseconds rather than a larger unit so that this report is meaningful even for solid-state devices.
+
+Source: [Red Hat Customer Portal](https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/6/html/resource_management_guide/ch-subsystems_and_tunable_parameters#sec-blkio)
+
+##### ex. `/sys/fs/cgroup/blkio/docker/.../blkio.io_service_time_recursive`
+
+```
+8:0 Read 553729709
+8:0 Write 467872175
+8:0 Sync 569993511
+8:0 Async 451608373
+8:0 Total 1021601884
+Total 1021601884
+```
+
+#### `blkio.io_queued_recursive`
+
+reports the number of requests queued for I/O operations by a cgroup. Entries have two fields: *number* and *operation*. *Number* is the number of requests, and *operation* represents the type of operation (`read`, `write`, `sync`, or `async`).
+
+Source: [Red Hat Customer Portal](https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/6/html/resource_management_guide/ch-subsystems_and_tunable_parameters#sec-blkio)
+
+##### ex. `/sys/fs/cgroup/blkio/docker/.../blkio.io_queued_recursive`
+
+```
+8:0 Read 0
+8:0 Write 0
+8:0 Sync 0
+8:0 Async 0
+8:0 Total 0
+Total 0
+```
+
+#### `blkio.io_wait_time_recursive`
+
+reports the total time I/O operations on specific devices by a cgroup spent waiting for service in the scheduler queues. When you interpret this report, note:
+
+- the time reported can be greater than the total time elapsed, because the time reported is the cumulative total of all I/O operations for the cgroup rather than the time that the cgroup itself spent waiting for I/O operations. To find the time that the group as a whole has spent waiting, use the `blkio.group_wait_time` parameter.
+- if the device has a `queue_depth` > 1, the time reported only includes the time until the request is dispatched to the device, not any time spent waiting for service while the device reorders requests.
+
+Entries have four fields: *major*, *minor*, *operation*, and *time*. *Major* and *minor* are device types and node numbers specified in *Linux Allocated Devices*, *operation* represents the type of operation (`read`, `write`, `sync`, or `async`) and *time* is the length of time in nanoseconds (ns). The time is reported in nanoseconds rather than a larger unit so that this report is meaningful even for solid-state devices.
+
+Source: [Red Hat Customer Portal](https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/6/html/resource_management_guide/ch-subsystems_and_tunable_parameters#sec-blkio)
+
+##### ex. `/sys/fs/cgroup/blkio/docker/.../blkio.io_wait_time_recursive`
+
+```
+8:0 Read 341027463
+8:0 Write 183051407147
+8:0 Sync 710185876
+8:0 Async 182682248734
+8:0 Total 183392434610
+Total 183392434610
+```
+
+#### `blkio.io_merged_recursive`
+
+reports the number of BIOS requests merged into requests for I/O operations by a cgroup. Entries have two fields: *number* and *operation*. *Number* is the number of requests, and *operation* represents the type of operation (`read`, `write`, `sync`, or `async`). 
+
+Source: [Red Hat Customer Portal](https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/6/html/resource_management_guide/ch-subsystems_and_tunable_parameters#sec-blkio)
+
+##### ex. `/sys/fs/cgroup/blkio/docker/.../blkio.io_merged_recursive`
+
+```
+8:0 Read 112
+8:0 Write 5989
+8:0 Sync 112
+8:0 Async 5989
+8:0 Total 6101
+Total 6101
+```
+
+#### `blkio.time_recursive`
+
+reports the time that a cgroup had I/O access to specific devices. Entries have three fields: *major*, *minor*, and *time*. *Major* and *minor* are device types and node numbers specified in *Linux Allocated Devices*, and *time* is the length of time in milliseconds (ms).
+
+Source: [Red Hat Customer Portal](https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/6/html/resource_management_guide/ch-subsystems_and_tunable_parameters#sec-blkio)
+
+##### ex. `/sys/fs/cgroup/blkio/docker/.../blkio.time_recursive`
+
+```
+8:0 1677059003
+```
+
+#### `blkio.sectors_recursive`
+
+reports the number of sectors transferred to or from specific devices by a cgroup. Entries have three fields: *major*, *minor*, and *sectors*. *Major* and *minor* are device types and node numbers specified in *Linux Allocated Devices*, and *sectors* is the number of disk sectors.
+
+Source: [Red Hat Customer Portal](https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/6/html/resource_management_guide/ch-subsystems_and_tunable_parameters#sec-blkio)
+
+##### ex. `/sys/fs/cgroup/blkio/docker/.../blkio.sectors_recursive`
+
+```
+8:0 213264
 ```
