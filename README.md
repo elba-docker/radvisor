@@ -1,6 +1,6 @@
 # ![rAdvisor](https://i.imgur.com/aYdn3MV.png)
 
-> Monitors system resource utilization in [Docker](https://www.docker.com/) containers with high granularity and low overhead, developed in Rust as a custom tool to help detect and analyze millibottlenecks in containerized online systems. Runs by polling the Docker daemon every 1 second (by default) to get a list of active, running containers. From this list, rAdvisor runs a collection thread every 50ms (by default) to get resource utilization data for each active container using Linux [`cgroups`](https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/6/html/resource_management_guide/ch01). These logs are then written in CSV format at `/var/log/docker/stats` (by default).
+> Monitors system resource utilization in [Docker](https://www.docker.com/) containers with **high granularity** and **low overhead**, developed in Rust as a custom tool to help detect and analyze millibottlenecks in containerized online systems. Runs by polling the Docker daemon every 1 second (by default) to get a list of active, running containers. From this list, rAdvisor runs a collection thread every 50ms (by default) to get resource utilization data for each active container using Linux [`cgroups`](https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/6/html/resource_management_guide/ch01). These logs are then written in CSV format at `/var/log/docker/stats` (by default).
 
 ## 🖨️ Example Output
 
