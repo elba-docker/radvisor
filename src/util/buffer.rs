@@ -22,6 +22,8 @@ pub trait BufferLike {
     /// **(Unmanaged)** Finds the length of the buffer's contents, ended by a 0
     /// terminator
     fn unmanaged_len(&self) -> usize;
+    /// **(Unmanaged)** Gets a sub-slice of the buffer that only includes non-NUL characters
+    fn content_unmanaged(&self) -> &[u8];
 }
 
 impl<const SIZE: usize> BufferLike for Buffer<SIZE> {
@@ -29,7 +31,7 @@ impl<const SIZE: usize> BufferLike for Buffer<SIZE> {
     fn trim(&self) -> &[u8] {
         // Prevent underflow later by early terminating
         if self.len == 0 {
-            return &self.b[0..=0];
+            return &self.b[0..0];
         }
 
         let mut start = 0;
@@ -43,6 +45,15 @@ impl<const SIZE: usize> BufferLike for Buffer<SIZE> {
         }
 
         &self.b[start..=end]
+    }
+
+    #[inline]
+    fn content_unmanaged(&self) -> &[u8] {
+        let mut end = 0;
+        while end < self.b.len() && self.b[end] != 0u8 {
+            end += 1;
+        }
+        return &self.b[0..end];
     }
 
     #[inline]
