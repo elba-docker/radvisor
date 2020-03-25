@@ -74,7 +74,11 @@ $ rustup default nightly
 Now, in the cloned repository root, run `make compile` to generate a release-grade binary at `./target/release/radvisor`. This build process may take up to ten minutes.
 
 ```console
-$ cargo build --release
+$ make compile
+cargo build --release --bins \
+-Z unstable-options \
+--out-dir /home/jazev/dev/radvisor \
+--target x86_64-unknown-linux-gnu
    Compiling libc v0.2.68
    Compiling autocfg v1.0.0
    Compiling cfg-if v0.1.10
