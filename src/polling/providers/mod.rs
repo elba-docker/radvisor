@@ -2,6 +2,7 @@ use crate::cli::Mode;
 use crate::shared::ContainerMetadata;
 use std::error;
 use std::fmt;
+use std::marker::Send;
 
 pub mod docker;
 pub mod kubernetes;
@@ -41,7 +42,7 @@ impl error::Error for FetchError {
 }
 
 /// A container metadata provider
-pub trait Provider {
+pub trait Provider: Send {
     /// Performs a connection check to see if the current process can access
     /// the necessary resources to later retrieve lists of container metadata
     fn can_connect(&self) -> bool;
@@ -56,7 +57,6 @@ pub trait Provider {
 pub fn for_mode(mode: Mode) -> Box<dyn Provider> {
     match mode {
         Mode::Docker => docker::Docker::new(),
-        // TODO fix
-        Mode::Kubernetes => docker::Docker::new(),
+        Mode::Kubernetes => kubernetes::Kubernetes::new(),
     }
 }
