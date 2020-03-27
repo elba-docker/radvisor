@@ -29,11 +29,11 @@ fn main() {
     let opts: Opts = cli::load();
 
     // Resolve container metadata provider
-    let provider: Box<dyn Provider> = providers::for_mode(opts.mode);
+    let mut provider: Box<dyn Provider> = providers::for_mode(opts.mode);
 
     // Determine if the current process can connect to the provider source
-    if !provider.can_connect() {
-        eprintln!("{}", provider.connection_error_message());
+    if let Some(err) = provider.try_connect() {
+        eprintln!("{}", err.message);
         std::process::exit(1);
     }
 
