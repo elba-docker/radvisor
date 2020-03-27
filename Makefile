@@ -4,7 +4,7 @@ BUILD_TARGET?=x86_64-unknown-linux-gnu
 OUT_DIR?=$(shell pwd)
 
 check: docker-exists
-docker-exists: ; @which docker_ > /dev/null
+docker-exists: ; @which docker > /dev/null
 
 # Builds the project in a Docker container
 docker: check
