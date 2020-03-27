@@ -1,56 +1,20 @@
-use crate::cli::Mode;
-use crate::shared::ContainerMetadata;
-use std::error;
-use std::fmt;
-use std::marker::Send;
-
 pub mod docker;
 pub mod kubernetes;
+mod errors;
 
-/// An error that occurred during container metadata fetching
-#[derive(Debug)]
-pub struct FetchError {
-    cause: Option<Box<dyn error::Error>>,
-}
+use crate::shared::ContainerMetadata;
+use crate::cli::Mode;
+use std::marker::Send;
 
-impl FetchError {
-    /// Creates a new fetch error, optionally using an error instance
-    pub fn new(cause: Option<Box<dyn error::Error>>) -> Self {
-        FetchError { cause }
-    }
-}
-
-impl fmt::Display for FetchError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self.cause {
-            None => write!(f, "could not successfully fetch container metadata list"),
-            Some(ref e) => {
-                write!(f, "could not successfully fetch container metadata list: ")?;
-                e.fmt(f)
-            }
-        }
-    }
-}
-
-impl error::Error for FetchError {
-    fn source(&self) -> Option<&(dyn error::Error + 'static)> {
-        match &self.cause {
-            None => None,
-            Some(e) => Some(e.as_ref()),
-        }
-    }
-}
+pub use crate::polling::providers::errors::{ConnectionError, FetchError};
 
 /// A container metadata provider
 pub trait Provider: Send {
-    /// Performs a connection check to see if the current process can access
-    /// the necessary resources to later retrieve lists of container metadata
-    fn can_connect(&self) -> bool;
-    /// Gets the message for connection errors at the start of the program before
-    /// it quits
-    fn connection_error_message(&self) -> String;
+    /// Performs initialization/a connection check to see if the current process can
+    /// access the necessary resources to later retrieve lists of container metadata
+    fn try_connect(&mut self) -> Option<ConnectionError>;
     /// Attempts to get a list of containers, returning a FetchError if it failed
-    fn fetch(&self) -> Result<Vec<ContainerMetadata>, FetchError>;
+    fn fetch(&mut self) -> Result<Vec<ContainerMetadata>, FetchError>;
 }
 
 /// Gets the corresponding provider for the CLI polling mode

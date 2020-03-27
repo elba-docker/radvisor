@@ -1,39 +1,40 @@
-use crate::polling::providers::{FetchError, Provider};
+use crate::polling::providers::{FetchError, ConnectionError, Provider};
 use crate::shared::ContainerMetadata;
 use crate::util;
 
 use shiplift::rep::Container;
-use tokio::runtime::Runtime;
+use tokio_compat::runtime::Runtime;
 
 const CONNECTION_ERROR_MESSAGE: &str =
     "Could not connect to the docker socket. Are you running rAdvisor as root?\nIf running at a non-standard URL, set DOCKER_HOST to the correct URL.";
 
 pub struct Docker {
     client: shiplift::Docker,
+    runtime: Runtime
 }
 
 impl Docker {
     pub fn new() -> Box<dyn Provider> {
         Box::new(Docker {
             client: shiplift::Docker::new(),
+            runtime: Runtime::new().unwrap()
         })
     }
 }
 
 impl Provider for Docker {
-    fn can_connect(&self) -> bool {
+    fn try_connect(&mut self) -> Option<ConnectionError> {
         let future = self.client.ping();
-        let result = Runtime::new().unwrap().block_on(future);
-        result.is_ok()
+        let result = self.runtime.block_on(future);
+        match result {
+            Ok(_) => None,
+            Err(_) => Some(ConnectionError::new(CONNECTION_ERROR_MESSAGE)),
+        }
     }
 
-    fn connection_error_message(&self) -> String {
-        CONNECTION_ERROR_MESSAGE.to_owned()
-    }
-
-    fn fetch(&self) -> Result<Vec<ContainerMetadata>, FetchError> {
+    fn fetch(&mut self) -> Result<Vec<ContainerMetadata>, FetchError> {
         let future = self.client.containers().list(&Default::default());
-        match Runtime::new().unwrap().block_on(future) {
+        match self.runtime.block_on(future) {
             Err(e) => Err(FetchError::new(Some(e.into()))),
             Ok(containers) => Ok(containers
                 .into_iter()

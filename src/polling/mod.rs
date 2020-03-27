@@ -21,6 +21,9 @@ pub fn run(tx: Sender<Vec<ContainerMetadata>>, context: IntervalWorkerContext, p
         stop_handle.stop();
         has_stopped_c.store(true, Ordering::SeqCst);
     });
+    
+    // Move to mutable
+    let mut provider = provider;
 
     for _ in timer {
         let containers: Vec<ContainerMetadata> = match provider.fetch() {
