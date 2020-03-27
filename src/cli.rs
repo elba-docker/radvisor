@@ -1,11 +1,45 @@
-use clap::Clap;
+use std::error;
+use std::fmt;
 
-const DEFAULT_POLLING_INTERVAL: u64 = 1000;
-const DEFAULT_COLLECT_INTERVAL: u64 = 50;
-const DEFAULT_LOGS_DIRECTORY: &str = "/var/log/docker/stats";
+use clap::Clap;
 
 /// CLI version loaded from Cargo, or none if not build with cargo
 pub const VERSION: Option<&'static str> = option_env!("CARGO_PKG_VERSION");
+
+#[derive(Clone, Copy)]
+pub enum Mode {
+    Docker,
+    Kubernetes
+}
+
+#[derive(Debug, Clone)]
+pub struct InvalidMode {
+    given: String,
+}
+
+impl fmt::Display for InvalidMode {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "invalid mode: {}", self.given)
+    }
+}
+
+impl error::Error for InvalidMode {
+    fn source(&self) -> Option<&(dyn error::Error + 'static)> {
+        None
+    }
+}
+
+impl std::str::FromStr for Mode {
+    type Err = InvalidMode;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s.to_lowercase().as_str() {
+            "docker" => Ok(Mode::Docker),
+            "kubernetes" => Ok(Mode::Kubernetes),
+            _ => Err(InvalidMode { given: s.to_owned() })
+        }
+    }
+}
 
 /// Auto-parsed CLI options for rAdvisor, generated via clap
 #[derive(Clap)]
@@ -14,53 +48,47 @@ pub const VERSION: Option<&'static str> = option_env!("CARGO_PKG_VERSION");
     author = "Joseph Azevedo and Bhanu Garg",
     about = "Monitors container resource utilization with high granularity and low overhead"
 )]
-struct Opts {
+pub struct Opts {
     /// Collection interval between log entries (ms)
     #[clap(
         short = "i",
         long = "interval",
-        help = "collection interval between log entries (ms)"
+        help = "collection interval between log entries (ms)",
+        default_value = "50"
     )]
-    interval: Option<u64>,
+    pub interval: u64,
 
     /// Interval between requests to docker to get containers (ms)
     #[clap(
         short = "p",
         long = "poll",
-        help = "interval between requests to docker to get containers (ms)"
+        help = "interval between requests to docker to get containers (ms)",
+        default_value = "1000"
     )]
-    polling_interval: Option<u64>,
+    pub polling_interval: u64,
 
     /// Target directory to place log files in ({id}.log)
     #[clap(
         short = "d",
         long = "directory",
-        help = "target directory to place log files in ({id}.log)"
+        help = "target directory to place log files in ({id}.log)",
+        default_value = "/var/log/docker/stats"
     )]
-    directory: Option<String>,
-}
-
-/// Resolved version of Opts, with each value having a default folded in
-pub struct ResolvedOpts {
-    pub interval: u64,
-    pub polling_interval: u64,
     pub directory: String,
+
+    /// Polling provider to use (docker or kubernetes)
+    #[clap(
+        short = "m",
+        long = "mode",
+        help = "source of container lists to poll and collect stats for",
+        default_value = "docker"
+    )]
+    pub mode: Mode
 }
 
 /// Parses and resolves defaults for all CLI arguments. Additionally, handles displaying
 /// help/version text if specified.
-pub fn load() -> ResolvedOpts {
-    // Parse command line arguments
-    let opts: Opts = Opts::parse();
-
-    // Extract arguments or get defaults
-    let interval = opts.interval.unwrap_or(DEFAULT_COLLECT_INTERVAL);
-    let polling_interval = opts.polling_interval.unwrap_or(DEFAULT_POLLING_INTERVAL);
-    let directory = opts.directory.unwrap_or(DEFAULT_LOGS_DIRECTORY.to_owned());
-
-    ResolvedOpts {
-        interval,
-        polling_interval,
-        directory,
-    }
+pub fn load() -> Opts {
+    // Parse command line arguments (let clap fold in defaults)
+    Opts::parse()
 }

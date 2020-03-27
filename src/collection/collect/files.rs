@@ -29,39 +29,38 @@ pub struct ProcFileHandles {
 impl ProcFileHandles {
     /// Initializes all file handles to /proc files, utilizing them over the entire timeline of
     /// the container monitoring. If a handle fails to open, the struct field will be None
-    pub fn new(id: &str) -> Self {
+    pub fn new(cgroup: &str) -> Self {
         ProcFileHandles {
-            current_pids: open_proc_file(id, "pids", "pids.current"),
-            max_pids: open_proc_file(id, "pids", "pids.max"),
-            cpu_stat: open_proc_file(id, "cpu", "cpu.stat"),
-            cpuacct_stat: open_proc_file(id, "cpuacct", "cpuacct.stat"),
-            cpuacct_usage: open_proc_file(id, "cpuacct", "cpuacct.usage"),
-            cpuacct_usage_sys: open_proc_file(id, "cpuacct", "cpuacct.usage_sys"),
-            cpuacct_usage_user: open_proc_file(id, "cpuacct", "cpuacct.usage_user"),
-            cpuacct_usage_percpu: open_proc_file(id, "cpuacct", "cpuacct.usage_percpu"),
-            memory_usage_in_bytes: open_proc_file(id, "memory", "memory.usage_in_bytes"),
-            memory_max_usage_in_bytes: open_proc_file(id, "memory", "memory.max_usage_in_bytes"),
-            memory_limit_in_bytes: open_proc_file(id, "memory", "memory.limit_in_bytes"),
-            memory_soft_limit_in_bytes: open_proc_file(id, "memory", "memory.soft_limit_in_bytes"),
-            memory_failcnt: open_proc_file(id, "memory", "memory.failcnt"),
-            memory_stat: open_proc_file(id, "memory", "memory.stat"),
-            blkio_io_service_bytes: open_proc_file(id, "blkio", "blkio.io_service_bytes_recursive"),
-            blkio_io_serviced: open_proc_file(id, "blkio", "blkio.io_serviced_recursive"),
-            blkio_io_service_time: open_proc_file(id, "blkio", "blkio.io_service_time_recursive"),
-            blkio_io_queued: open_proc_file(id, "blkio", "blkio.io_queued_recursive"),
-            blkio_io_wait_time: open_proc_file(id, "blkio", "blkio.io_wait_time_recursive"),
-            blkio_io_merged: open_proc_file(id, "blkio", "blkio.io_merged_recursive"),
-            blkio_time: open_proc_file(id, "blkio", "blkio.time_recursive"),
-            blkio_sectors: open_proc_file(id, "blkio", "blkio.sectors_recursive"),
+            current_pids: open_proc_file(cgroup, "pids", "pids.current"),
+            max_pids: open_proc_file(cgroup, "pids", "pids.max"),
+            cpu_stat: open_proc_file(cgroup, "cpu", "cpu.stat"),
+            cpuacct_stat: open_proc_file(cgroup, "cpuacct", "cpuacct.stat"),
+            cpuacct_usage: open_proc_file(cgroup, "cpuacct", "cpuacct.usage"),
+            cpuacct_usage_sys: open_proc_file(cgroup, "cpuacct", "cpuacct.usage_sys"),
+            cpuacct_usage_user: open_proc_file(cgroup, "cpuacct", "cpuacct.usage_user"),
+            cpuacct_usage_percpu: open_proc_file(cgroup, "cpuacct", "cpuacct.usage_percpu"),
+            memory_usage_in_bytes: open_proc_file(cgroup, "memory", "memory.usage_in_bytes"),
+            memory_max_usage_in_bytes: open_proc_file(cgroup, "memory", "memory.max_usage_in_bytes"),
+            memory_limit_in_bytes: open_proc_file(cgroup, "memory", "memory.limit_in_bytes"),
+            memory_soft_limit_in_bytes: open_proc_file(cgroup, "memory", "memory.soft_limit_in_bytes"),
+            memory_failcnt: open_proc_file(cgroup, "memory", "memory.failcnt"),
+            memory_stat: open_proc_file(cgroup, "memory", "memory.stat"),
+            blkio_io_service_bytes: open_proc_file(cgroup, "blkio", "blkio.io_service_bytes_recursive"),
+            blkio_io_serviced: open_proc_file(cgroup, "blkio", "blkio.io_serviced_recursive"),
+            blkio_io_service_time: open_proc_file(cgroup, "blkio", "blkio.io_service_time_recursive"),
+            blkio_io_queued: open_proc_file(cgroup, "blkio", "blkio.io_queued_recursive"),
+            blkio_io_wait_time: open_proc_file(cgroup, "blkio", "blkio.io_wait_time_recursive"),
+            blkio_io_merged: open_proc_file(cgroup, "blkio", "blkio.io_merged_recursive"),
+            blkio_time: open_proc_file(cgroup, "blkio", "blkio.time_recursive"),
+            blkio_sectors: open_proc_file(cgroup, "blkio", "blkio.sectors_recursive"),
         }
     }
 }
 
-/// Opens a stats file in /proc for the cgroup corresponding to the given container ID,
-/// in the given subsystem
+/// Opens a stats file in /proc for the cgroup corresponding to the given cgroup in the given subsystem
 fn open_proc_file(id: &str, subsystem: &str, file: &str) -> Option<File> {
     File::open(format!(
-        "/sys/fs/cgroup/{}/docker/{}/{}",
+        "/sys/fs/cgroup/{}/{}/{}",
         subsystem, id, file
     ))
     .ok()

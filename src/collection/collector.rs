@@ -67,7 +67,7 @@ impl Collector {
             .from_writer(file);
         writer.write_byte_record(collect::get_header())?;
 
-        let file_handles = ProcFileHandles::new(&container.id);
+        let file_handles = ProcFileHandles::new(&container.cgroup);
         let memory_layout = collect::examine_memory(&file_handles);
         Ok(Collector {
             writer: writer,

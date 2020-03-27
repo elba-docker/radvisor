@@ -1,18 +1,15 @@
-use crate::collection::collector::Collector;
 use crate::collection::collect::WorkingBuffers;
+use crate::collection::collector::Collector;
+use crate::shared::{ContainerMetadata, IntervalWorkerContext};
 use crate::timer::{Stoppable, Timer};
-use crate::shared::ContainerMetadata;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::sync::mpsc::Receiver;
 use std::sync::{Arc, Mutex};
-use std::time::Duration;
 use std::vec::Vec;
 
-use bus::BusReader;
-
-pub mod collector;
 pub mod collect;
+pub mod collector;
 
 /// Synchronization status struct used to handle termination and buffer flushing
 struct CollectStatus {
@@ -27,11 +24,10 @@ type CollectorMap = Arc<Mutex<HashMap<String, RefCell<Collector>>>>;
 /// if possible
 pub fn run(
     rx: Receiver<Vec<ContainerMetadata>>,
-    term_rx: BusReader<()>,
-    interval: u64,
+    context: IntervalWorkerContext,
     location: String,
 ) -> () {
-    let (timer, stop_handle) = Timer::new(Duration::from_millis(interval));
+    let (timer, stop_handle) = Timer::new(context.interval);
     let collectors: CollectorMap = Arc::new(Mutex::new(HashMap::new()));
 
     // Track when the collector is running and when SIGTERM/SIGINT are being handled
@@ -44,7 +40,7 @@ pub fn run(
     let collectors_c = Arc::clone(&collectors);
     let status_mutex_c = Arc::clone(&status_mutex);
     let stop_handle_c = stop_handle.clone();
-    let mut term_rx = term_rx;
+    let mut term_rx = context.term_rx;
     std::thread::spawn(move || {
         term_rx.recv().unwrap();
         let mut status = status_mutex_c.lock().unwrap();
