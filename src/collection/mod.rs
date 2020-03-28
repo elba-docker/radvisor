@@ -14,14 +14,14 @@ use std::vec::Vec;
 /// Synchronization status struct used to handle termination and buffer flushing
 struct CollectStatus {
     terminating: bool,
-    collecting: bool,
+    collecting:  bool,
 }
 
 /// Mutex-protected map of container ids to collector state
 type CollectorMap = Arc<Mutex<HashMap<String, RefCell<Collector>>>>;
 
-/// Thread function that collects all active containers and updates the active list,
-/// if possible
+/// Thread function that collects all active containers and updates the active
+/// list, if possible
 pub fn run(
     rx: Receiver<Vec<ContainerMetadata>>,
     context: IntervalWorkerContext,
@@ -33,7 +33,7 @@ pub fn run(
     // Track when the collector is running and when SIGTERM/SIGINT are being handled
     let status_mutex = Arc::new(Mutex::new(CollectStatus {
         terminating: false,
-        collecting: false,
+        collecting:  false,
     }));
 
     // Initialize the sigterm/sigint handler
@@ -49,13 +49,13 @@ pub fn run(
                 // Set terminating and let the collector thread flush the buffers
                 // as it ends collection for the current tick
                 status.terminating = true;
-            }
+            },
             false => {
                 // The collection thread is yielding to the sleep; flush the buffers now
                 let collectors = collectors_c.lock().unwrap();
                 flush_buffers(&collectors);
                 stop_handle_c.stop();
-            }
+            },
         }
     });
 
@@ -90,7 +90,7 @@ pub fn run(
                         "Error: could not run collector for container {}: {}",
                         id, err
                     );
-                }
+                },
             };
         }
 
@@ -125,9 +125,9 @@ fn flush_buffers(collectors: &HashMap<String, RefCell<Collector>>) {
     }
 }
 
-/// Applies the collector update algorithm that finds all inactive container collectors
-/// and tears them down. In addition, it will initialize collectors for newly monitored
-/// containers
+/// Applies the collector update algorithm that finds all inactive container
+/// collectors and tears them down. In addition, it will initialize collectors
+/// for newly monitored containers
 fn update_collectors(
     containers: Vec<ContainerMetadata>,
     collectors: &mut HashMap<String, RefCell<Collector>>,
@@ -146,18 +146,18 @@ fn update_collectors(
                 // Already is in collectors map
                 let mut c = collector.borrow_mut();
                 c.active = true;
-            }
+            },
             None => match Collector::create(logs_location, &container) {
                 Ok(new_collector) => {
                     collectors.insert(container.id, RefCell::new(new_collector));
-                }
+                },
                 Err(err) => {
                     // Back off until next iteration if the container is still running
                     eprintln!(
                         "Error: could not initialize collector for cid {}: {}",
                         container.id, err
                     );
-                }
+                },
             },
         }
     }

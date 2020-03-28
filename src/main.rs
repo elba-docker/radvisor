@@ -37,13 +37,15 @@ fn main() {
             }
 
             run(opts, provider);
-        }
+        },
     }
 }
 
-/// Bootstraps the two worker threads, preparing the necessary communication between them
+/// Bootstraps the two worker threads, preparing the necessary communication
+/// between them
 fn run(opts: Opts, provider: Box<dyn Provider>) -> () {
-    // Used to send container metadata lists from the polling thread to the collection thread
+    // Used to send container metadata lists from the polling thread to the
+    // collection thread
     let (tx, rx): (
         Sender<Vec<ContainerMetadata>>,
         Receiver<Vec<ContainerMetadata>>,
@@ -59,11 +61,11 @@ fn run(opts: Opts, provider: Box<dyn Provider>) -> () {
     let mut term_bus_handle = term_bus.lock().unwrap();
     let polling_context = IntervalWorkerContext {
         interval: Duration::from_millis(opts.polling_interval),
-        term_rx: term_bus_handle.add_rx(),
+        term_rx:  term_bus_handle.add_rx(),
     };
     let collection_context = IntervalWorkerContext {
         interval: Duration::from_millis(opts.interval),
-        term_rx: term_bus_handle.add_rx(),
+        term_rx:  term_bus_handle.add_rx(),
     };
     drop(term_bus_handle);
 
@@ -86,8 +88,8 @@ fn run(opts: Opts, provider: Box<dyn Provider>) -> () {
     println!("Exiting");
 }
 
-/// Handles program termination by broadcasting an empty message on a special termination
-/// bus that each thread listens to
+/// Handles program termination by broadcasting an empty message on a special
+/// termination bus that each thread listens to
 fn handle_termination(bus_lock: &Arc<Mutex<Bus<()>>>) -> ! {
     let mut bus = bus_lock.lock().unwrap();
     bus.broadcast(());

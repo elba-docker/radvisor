@@ -7,7 +7,7 @@ use std::time::SystemTime;
 const SEC_TO_NS: u128 = 1000000000;
 pub fn nano_ts() -> u128 {
     let mut tp: timespec = timespec {
-        tv_sec: 0,
+        tv_sec:  0,
         tv_nsec: 0,
     };
     unsafe {
@@ -18,7 +18,7 @@ pub fn nano_ts() -> u128 {
 
 pub fn second_ts() -> u128 {
     let mut tp: timespec = timespec {
-        tv_sec: 0,
+        tv_sec:  0,
         tv_nsec: 0,
     };
     unsafe {

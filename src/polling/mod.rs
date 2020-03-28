@@ -38,7 +38,7 @@ pub fn run(
             Err(err) => {
                 eprintln!("{}", format!("Fetch error: {}", err).red());
                 Vec::with_capacity(0)
-            }
+            },
         };
 
         // Make sure the collection hasn't been stopped

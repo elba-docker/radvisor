@@ -9,9 +9,7 @@ pub struct FetchError {
 
 impl FetchError {
     /// Creates a new fetch error, optionally using an error instance
-    pub fn new(cause: Option<Box<dyn error::Error>>) -> Self {
-        FetchError { cause }
-    }
+    pub fn new(cause: Option<Box<dyn error::Error>>) -> Self { FetchError { cause } }
 }
 
 impl fmt::Display for FetchError {
@@ -21,7 +19,7 @@ impl fmt::Display for FetchError {
             Some(ref e) => {
                 write!(f, "could not successfully fetch container metadata list: ")?;
                 e.fmt(f)
-            }
+            },
         }
     }
 }
@@ -62,7 +60,5 @@ impl fmt::Display for InitializationError {
 }
 
 impl error::Error for InitializationError {
-    fn source(&self) -> Option<&(dyn error::Error + 'static)> {
-        None
-    }
+    fn source(&self) -> Option<&(dyn error::Error + 'static)> { None }
 }

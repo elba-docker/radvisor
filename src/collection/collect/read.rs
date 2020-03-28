@@ -10,7 +10,8 @@ lazy_static! {
     static ref EMPTY_BUFFER: &'static [u8] = &[];
 }
 
-/// Tries to read the given file handle, and directly write the contents as a field to the record
+/// Tries to read the given file handle, and directly write the contents as a
+/// field to the record
 pub fn entry(file: &Option<File>, buffers: &mut WorkingBuffers) -> () {
     // Ignore errors: the buffer will just remain empty
     read_to_buffer(file, buffers);
@@ -26,11 +27,13 @@ pub fn entry(file: &Option<File>, buffers: &mut WorkingBuffers) -> () {
     buffers.buffer.clear()
 }
 
-/// Parses every entry in a stats file, where each entry is a alphabetic key followed by a number,
-/// and then a newline. Attempts to parse offsets.len() entries from the file, using the precomputed
-/// offsets array to skip reading the alphabetic key.
+/// Parses every entry in a stats file, where each entry is a alphabetic key
+/// followed by a number, and then a newline. Attempts to parse offsets.len()
+/// entries from the file, using the precomputed offsets array to skip reading
+/// the alphabetic key.
 pub fn stat_file(file: &Option<File>, offsets: &[usize], buffers: &mut WorkingBuffers) -> () {
-    // Track whether we should keep parsing or if we should fill in the entries with empty buffers
+    // Track whether we should keep parsing or if we should fill in the entries with
+    // empty buffers
     let successful = read_to_buffer(file, buffers).is_some();
 
     let mut success_count = 0;
@@ -51,10 +54,10 @@ pub fn stat_file(file: &Option<File>, offsets: &[usize], buffers: &mut WorkingBu
                     // Set line_start to the start of the next line (after newline)
                     line_start = newline + 1;
                     success_count += 1;
-                }
+                },
                 None => {
                     break;
-                }
+                },
             }
         }
     }
@@ -67,27 +70,30 @@ pub fn stat_file(file: &Option<File>, offsets: &[usize], buffers: &mut WorkingBu
     buffers.buffer.clear();
 }
 
-/// Used to store the results of an initial examination of the layout of a `.stat` cgroup file,
-/// determining how each line maps to the target entries. Used for `.stat` files where the contents
-/// vary depending on the system/configuration, such as `memory.stat` in the `memory` subsystem
+/// Used to store the results of an initial examination of the layout of a
+/// `.stat` cgroup file, determining how each line maps to the target entries.
+/// Used for `.stat` files where the contents vary depending on the
+/// system/configuration, such as `memory.stat` in the `memory` subsystem
 pub struct StatFileLayout {
-    /// Line-to-entry map, where if a line corresponds to an indexed entry, its value will be Some
-    /// and the inner value will be that index, along with the length of the entry. Otherwise, if
-    /// a line doesn't correspond to any indexed entry, its value will be None
+    /// Line-to-entry map, where if a line corresponds to an indexed entry, its
+    /// value will be Some and the inner value will be that index, along
+    /// with the length of the entry. Otherwise, if a line doesn't
+    /// correspond to any indexed entry, its value will be None
     lines: Vec<Option<StatFileLine>>,
 }
 
-/// Represents metadata about a single stat file line that corresponds to an entry in the log output.
+/// Represents metadata about a single stat file line that corresponds to an
+/// entry in the log output.
 pub struct StatFileLine {
     /// Index of the corresponding entry
-    entry: usize,
+    entry:  usize,
     /// Length of the line header to skip when parsing
     offset: usize,
 }
 
 impl StatFileLayout {
-    /// Examines the layout of a stat file, to determine on which lines predetermined entries exist for
-    /// faster processing during collection
+    /// Examines the layout of a stat file, to determine on which lines
+    /// predetermined entries exist for faster processing during collection
     pub fn new(file: &Option<File>, entries: &[&[u8]]) -> Self {
         let mut buffer: Vec<u8> = Vec::new();
         let read_successful = match file {
@@ -97,22 +103,22 @@ impl StatFileLayout {
                 let result = file_mut.read_to_end(&mut buffer);
                 let _ = file_mut.seek(SeekFrom::Start(0));
                 result.is_ok()
-            }
+            },
         };
         if read_successful {
             let mut lines_to_entries: Vec<Option<StatFileLine>> = Vec::new();
             let lines = util::ByteLines::new(&buffer);
             for (line, _) in lines {
                 match util::find_char(&line, 0, util::is_space) {
-                    None => {}
+                    None => {},
                     Some(space_pos) => {
                         let key = buffer::trim_raw(&line[0..space_pos]);
                         let index_option = find_index(entries, key);
                         lines_to_entries.push(index_option.map(|idx| StatFileLine {
-                            entry: idx,
+                            entry:  idx,
                             offset: entries[idx].len(),
                         }));
-                    }
+                    },
                 }
             }
             StatFileLayout {
@@ -126,8 +132,9 @@ impl StatFileLayout {
     }
 }
 
-/// Tries to find the index in the source array of the given target slice, comparing each byte-by-byte
-/// until the target is found. Runs in O(n) time on the length of source
+/// Tries to find the index in the source array of the given target slice,
+/// comparing each byte-by-byte until the target is found. Runs in O(n) time on
+/// the length of source
 fn find_index(source: &[&[u8]], target: &[u8]) -> Option<usize> {
     for i in 0..source.len() {
         if source[i].len() == target.len() {
@@ -146,8 +153,8 @@ fn find_index(source: &[&[u8]], target: &[u8]) -> Option<usize> {
     None
 }
 
-/// Reads and parses a stat file, using a pre-examined layout to quickly read the desired entries
-/// from the file.
+/// Reads and parses a stat file, using a pre-examined layout to quickly read
+/// the desired entries from the file.
 pub fn with_layout(
     file: &Option<File>,
     layout: &StatFileLayout,
@@ -159,15 +166,15 @@ pub fn with_layout(
         let mut i = 0;
         for (line, start) in lines {
             match &layout.lines[i] {
-                None => {}
+                None => {},
                 Some(line_metadata) => {
                     let value_start = start + line_metadata.offset + 1;
                     let value_end = start + line.len();
                     buffers.slices[line_metadata.entry] = AnonymousSlice {
-                        start: value_start,
+                        start:  value_start,
                         length: value_end - value_start,
                     }
-                }
+                },
             }
             i += 1;
         }
@@ -194,9 +201,9 @@ fn clear_slice_buffer(buffers: &mut WorkingBuffers) -> () {
     }
 }
 
-/// Attempts to read the given file into the buffer, if it exists. If successful, returns
-/// Some with the length of the part of the file read. If the file handle wasn't given, or
-/// reading was unsuccessful, returns a None
+/// Attempts to read the given file into the buffer, if it exists. If
+/// successful, returns Some with the length of the part of the file read. If
+/// the file handle wasn't given, or reading was unsuccessful, returns a None
 fn read_to_buffer(file: &Option<File>, buffers: &mut WorkingBuffers) -> Option<usize> {
     match file {
         None => None,
@@ -211,13 +218,14 @@ fn read_to_buffer(file: &Option<File>, buffers: &mut WorkingBuffers) -> Option<u
                     } else {
                         None
                     }
-                }
+                },
             };
-            // Ignore errors: if seeking fails, then the effect next time will be pushing empty
-            // buffers to the CSV rows, which lets the other monitoring continue
+            // Ignore errors: if seeking fails, then the effect next time will be pushing
+            // empty buffers to the CSV rows, which lets the other monitoring
+            // continue
             let _ = file_mut.seek(SeekFrom::Start(0));
             result
-        }
+        },
     }
 }
 

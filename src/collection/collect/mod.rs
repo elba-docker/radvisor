@@ -61,55 +61,53 @@ lazy_static! {
     static ref EMPTY_BUFFER: [u8; 0] = [];
 }
 
-/// Gets an amortized byte record containing the entries for a header row in the stats
-/// CSV log files
-pub fn get_header() -> &'static ByteRecord {
-    &HEADER
-}
+/// Gets an amortized byte record containing the entries for a header row in the
+/// stats CSV log files
+pub fn get_header() -> &'static ByteRecord { &HEADER }
 
-/// Length of the buffer for each row. Designed to be a reasonable upper limit to prevent
-/// expensive re-allocation
+/// Length of the buffer for each row. Designed to be a reasonable upper limit
+/// to prevent expensive re-allocation
 const ROW_BUFFER_SIZE: usize = 1200;
 
-/// Length of the buffer used to read proc files in with. Designed to be an upper
-/// limit for the various virtual files that need to be read
+/// Length of the buffer used to read proc files in with. Designed to be an
+/// upper limit for the various virtual files that need to be read
 const WORKING_BUFFER_SIZE: usize = 1024;
 
-/// Length of the buffer used to build up stat file entries as the reader uses pre-examined
-/// layouts to map lines to entries.
+/// Length of the buffer used to build up stat file entries as the reader uses
+/// pre-examined layouts to map lines to entries.
 ///
 /// **Currently set to the number of entries used for `memory.stat`**
 const SLICES_BUFFER_SIZE: usize = 16;
 
 /// Working buffers used to avoid heap allocations at runtime
 pub struct WorkingBuffers {
-    record: ByteRecord,
-    buffer: Buffer<WORKING_BUFFER_SIZE>,
+    record:      ByteRecord,
+    buffer:      Buffer<WORKING_BUFFER_SIZE>,
     copy_buffer: Buffer<WORKING_BUFFER_SIZE>,
-    slices: [AnonymousSlice; SLICES_BUFFER_SIZE],
+    slices:      [AnonymousSlice; SLICES_BUFFER_SIZE],
 }
 
 impl WorkingBuffers {
-    /// Allocates the working buffers using upper limits to avoid expensive heap allocations
-    /// at runtime
+    /// Allocates the working buffers using upper limits to avoid expensive heap
+    /// allocations at runtime
     pub fn new() -> Self {
         WorkingBuffers {
-            record: ByteRecord::with_capacity(ROW_BUFFER_SIZE, *ROW_LENGTH),
-            buffer: Buffer {
+            record:      ByteRecord::with_capacity(ROW_BUFFER_SIZE, *ROW_LENGTH),
+            buffer:      Buffer {
                 len: 0,
-                b: [0u8; WORKING_BUFFER_SIZE],
+                b:   [0u8; WORKING_BUFFER_SIZE],
             },
             copy_buffer: Buffer {
                 len: 0,
-                b: [0u8; WORKING_BUFFER_SIZE],
+                b:   [0u8; WORKING_BUFFER_SIZE],
             },
-            slices: [<AnonymousSlice>::default(); SLICES_BUFFER_SIZE],
+            slices:      [<AnonymousSlice>::default(); SLICES_BUFFER_SIZE],
         }
     }
 }
 
-/// Collects the current statistics for the given container, writing the CSV entries to
-/// the writer. Utilizes /proc and cgroups (Linux-only)
+/// Collects the current statistics for the given container, writing the CSV
+/// entries to the writer. Utilizes /proc and cgroups (Linux-only)
 pub fn run(collector: &mut Collector, buffers: &mut WorkingBuffers) -> Result<(), Error> {
     collect_read(buffers);
     collect_pids(buffers, &collector.file_handles);
@@ -160,8 +158,8 @@ fn collect_cpu(buffers: &mut WorkingBuffers, handles: &ProcFileHandles) -> () {
     read::stat_file(&handles.cpu_stat, &CPU_STAT_OFFSETS, buffers);
 }
 
-/// Original entries in the memory.stat file that map to columns (in the same order) in the
-/// final output
+/// Original entries in the memory.stat file that map to columns (in the same
+/// order) in the final output
 const MEMORY_STAT_ENTRIES: &[&'static [u8]] = &[
     b"hierarchical_memory_limit",
     b"hierarchical_memsw_limit",

@@ -1,0 +1,9 @@
+enum_discrim_align_threshold = 30
+struct_field_align_threshold = 30
+fn_single_line = true
+format_strings = true
+wrap_comments = true
+imports_indent = "Visual"
+match_block_trailing_comma = true
+overflow_delimited_expr = true
+use_field_init_shorthand = true

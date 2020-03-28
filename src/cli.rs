@@ -18,9 +18,7 @@ impl fmt::Display for InvalidMode {
 }
 
 impl error::Error for InvalidMode {
-    fn source(&self) -> Option<&(dyn error::Error + 'static)> {
-        None
-    }
+    fn source(&self) -> Option<&(dyn error::Error + 'static)> { None }
 }
 
 impl std::str::FromStr for Mode {
@@ -78,12 +76,11 @@ pub struct Opts {
 }
 
 #[derive(Clap)]
+
 pub enum Command {
+    #[clap(about = "runs a collection thread that writes resource statistics to output CSV files")]
     Run {
-        #[clap(
-            subcommand,
-            help = "runs a collection thread that writes resource statistics to output CSV files"
-        )]
+        #[clap(subcommand)]
         mode: Mode,
     },
 }
@@ -91,18 +88,20 @@ pub enum Command {
 #[derive(Clap, Clone, Copy)]
 pub enum Mode {
     #[clap(
-        about = "runs collection using docker as the target backend; collecting stats for each container"
+        about = "runs collection using docker as the target backend; collecting stats for each \
+                 container"
     )]
     Docker,
 
     #[clap(
-        about = "runs collection using kubernetes as the target backend; collecting stats for each pod"
+        about = "runs collection using kubernetes as the target backend; collecting stats for \
+                 each pod"
     )]
     Kubernetes,
 }
 
-/// Parses and resolves defaults for all CLI arguments. Additionally, handles displaying
-/// help/version text if specified.
+/// Parses and resolves defaults for all CLI arguments. Additionally, handles
+/// displaying help/version text if specified.
 pub fn load() -> Opts {
     // Parse command line arguments (let clap fold in defaults)
     Opts::parse()

@@ -15,19 +15,21 @@ use csv::{Writer, WriterBuilder};
 const BUFFER_LENGTH: usize = 64 * 1024;
 
 /// Contains the file handle for the open stats file as well as the file handles
-/// for /proc virtual files used during reading the system stats. `active` is used
-/// during difference resolution to mark inactive collectors for teardown/removal.
+/// for /proc virtual files used during reading the system stats. `active` is
+/// used during difference resolution to mark inactive collectors for
+/// teardown/removal.
 pub struct Collector {
-    pub writer: Writer<File>,
-    pub file_handles: ProcFileHandles,
-    pub active: bool,
+    pub writer:        Writer<File>,
+    pub file_handles:  ProcFileHandles,
+    pub active:        bool,
     pub memory_layout: StatFileLayout,
 }
 
 impl Collector {
-    /// Creates a new collector at the given log file destination, making all intermediate
-    /// directories as necessary. Then, opens up all required read and write file handles
-    /// and writes the file header for the log file.
+    /// Creates a new collector at the given log file destination, making all
+    /// intermediate directories as necessary. Then, opens up all required
+    /// read and write file handles and writes the file header for the log
+    /// file.
     pub fn create(
         logs_location: &String,
         container: &ContainerMetadata,
@@ -44,8 +46,8 @@ impl Collector {
         Ok(collector)
     }
 
-    /// Collects the current statistics for the given container, writing the CSV entries to
-    /// the writer. Utilizes /proc and cgroups (Linux-only)
+    /// Collects the current statistics for the given container, writing the CSV
+    /// entries to the writer. Utilizes /proc and cgroups (Linux-only)
     pub fn collect(
         &mut self,
         working_buffers: &mut collect::WorkingBuffers,
@@ -53,9 +55,9 @@ impl Collector {
         collect::run(self, working_buffers)
     }
 
-    /// Initializes a new collector given the destination file and container metadata.
-    /// Writes the file header and then opens up read file handles for all of the /proc
-    /// cgroup virtual files
+    /// Initializes a new collector given the destination file and container
+    /// metadata. Writes the file header and then opens up read file handles
+    /// for all of the /proc cgroup virtual files
     fn new(file: File, container: &ContainerMetadata) -> Result<Self, Error> {
         let mut file = file;
 
@@ -73,7 +75,7 @@ impl Collector {
         let file_handles = ProcFileHandles::new(&container.cgroup);
         let memory_layout = collect::examine_memory(&file_handles);
         Ok(Collector {
-            writer: writer,
+            writer,
             active: true,
             file_handles,
             memory_layout,

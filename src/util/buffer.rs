@@ -1,28 +1,30 @@
 use crate::util;
 
-/// Working buffer of raw bytes. Can operate both in **managed** mode (where it keeps
-/// track of length) and **unmanaged** mode (where it acts) as a plain byte buffer.
+/// Working buffer of raw bytes. Can operate both in **managed** mode (where it
+/// keeps track of length) and **unmanaged** mode (where it acts) as a plain
+/// byte buffer.
 pub struct Buffer<const SIZE: usize> {
     pub len: usize,
-    pub b: [u8; SIZE],
+    pub b:   [u8; SIZE],
 }
 
 pub trait BufferLike {
-    /// **(Managed)** Clears a buffer by setting each element to 0 until it reaches
-    /// the end of the content
+    /// **(Managed)** Clears a buffer by setting each element to 0 until it
+    /// reaches the end of the content
     fn clear(&mut self) -> ();
-    /// **(Unmanaged)** Clears a buffer by setting each element to 0 until it reaches
-    /// a 0 value, starting from the start of the buffer
+    /// **(Unmanaged)** Clears a buffer by setting each element to 0 until it
+    /// reaches a 0 value, starting from the start of the buffer
     fn clear_unmanaged(&mut self) -> ();
-    /// **(Unmanaged)** clears a buffer by setting each element to 0 until it reaches
-    /// a 0 value, starting from the end of the buffer
+    /// **(Unmanaged)** clears a buffer by setting each element to 0 until it
+    /// reaches a 0 value, starting from the end of the buffer
     fn clear_unmanaged_backwards(&mut self) -> ();
     /// **(Managed)** returns a slice without a trailing newline
     fn trim(&self) -> &[u8];
     /// **(Unmanaged)** Finds the length of the buffer's contents, ended by a 0
     /// terminator
     fn unmanaged_len(&self) -> usize;
-    /// **(Unmanaged)** Gets a sub-slice of the buffer that only includes non-NUL characters
+    /// **(Unmanaged)** Gets a sub-slice of the buffer that only includes
+    /// non-NUL characters
     fn content_unmanaged(&self) -> &[u8];
 }
 
@@ -89,9 +91,7 @@ impl<const SIZE: usize> BufferLike for Buffer<SIZE> {
     }
 
     #[inline]
-    fn unmanaged_len(&self) -> usize {
-        content_len_raw(&self.b)
-    }
+    fn unmanaged_len(&self) -> usize { content_len_raw(&self.b) }
 }
 
 /// Determines the length of the non-zero content in a raw buffer slice

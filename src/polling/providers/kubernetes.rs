@@ -1,4 +1,5 @@
 use crate::cli::Opts;
+use crate::polling::providers::cgroups;
 use crate::polling::providers::{FetchError, InitializationError, Provider};
 use crate::shared::ContainerMetadata;
 use std::cell::RefCell;
@@ -13,8 +14,8 @@ use kube::runtime::Reflector;
 use tokio::runtime::Runtime;
 
 pub struct Kubernetes {
-    runtime: RefCell<Runtime>,
-    client: Option<APIClient>,
+    runtime:    RefCell<Runtime>,
+    client:     Option<APIClient>,
     /// Collection of fields that must be initialized after successful provider
     /// initialization occurs. This condition is invariant
     invariants: Option<InitializationInvariants>,
@@ -27,8 +28,8 @@ pub struct InitializationInvariants {
 impl Kubernetes {
     pub fn new() -> Box<dyn Provider> {
         Box::new(Kubernetes {
-            runtime: RefCell::new(Runtime::new().unwrap()),
-            client: None,
+            runtime:    RefCell::new(Runtime::new().unwrap()),
+            client:     None,
             invariants: None,
         })
     }
@@ -50,17 +51,28 @@ impl Provider for Kubernetes {
         let hostname = match gethostname().into_string() {
             Ok(hostname) => hostname,
             Err(_) => {
-                return Some(InitializationError::new("Could not retrieve hostname to use for node detection: Invalid string returned"));
-            }
+                return Some(InitializationError::new(
+                    "Could not retrieve hostname to use for node detection: Invalid string \
+                     returned",
+                ));
+            },
         };
 
         // Load config
         let config = match self.exec(config::load_kube_config()) {
             Ok(config) => config,
             Err(_) => {
-                return Some(InitializationError::new("Could not load kubernetes config. Make sure the current machine is a part of a\ncluster and has the cluster configuration copied to the config directory."));
-            }
+                return Some(InitializationError::new(
+                    "Could not load kubernetes config. Make sure the current machine is a part of \
+                     a\ncluster and has the cluster configuration copied to the config directory.",
+                ));
+            },
         };
+
+        // Make sure cgroups are mounted properly
+        if !cgroups::cgroups_mounted_properly() {
+            return Some(InitializationError::new(cgroups::INVALID_MOUNT_MESSAGE));
+        }
 
         // Initialize client
         self.client = Some(APIClient::new(config));
@@ -69,7 +81,7 @@ impl Provider for Kubernetes {
             Ok(invariants) => Some(invariants),
             Err(err) => {
                 return Some(err);
-            }
+            },
         };
 
         None
@@ -88,39 +100,40 @@ impl Provider for Kubernetes {
                 // TODO implement
                 // 2. get all IDs from pod metadata, build 3 paths to look at for them
                 // 3. look at filesystem for the cgroup slices, see if 1/3 of them exist
-                //    - cgroup slice: kubepods-{1}.slice/kubepods-{1}-pod{2}.slice
-                //      where 1 in ["besteffort", "burstable", "guaranteed"]
-                //            2 = pod.ID.replace("-", "_")
+                //    - cgroup slice: kubepods-{1}.slice/kubepods-{1}-pod{2}.slice where 1 in
+                //      ["besteffort", "burstable", "guaranteed"] 2 = pod.ID.replace("-", "_")
                 // 4. if the slice exists by using IO call, write metadata info to string,
                 //    store existing cgroup, pass to collection thread
                 Ok(Vec::with_capacity(0))
-            }
+            },
         }
     }
 }
 
 impl Kubernetes {
-    /// Executes a future on the internal runtime, blocking the current thread until
-    /// it completes
+    /// Executes a future on the internal runtime, blocking the current thread
+    /// until it completes
     fn exec<F: Future>(&self, future: F) -> F::Output {
         let mut runtime = self.runtime.borrow_mut();
         runtime.block_on(future)
     }
 
-    /// Creates instances of everything that will be guaranteed to be defined after
-    /// the initialization phase
+    /// Creates instances of everything that will be guaranteed to be defined
+    /// after the initialization phase
     fn build_invariants(
         &self,
         hostname: &str,
     ) -> Result<InitializationInvariants, InitializationError> {
         // Get current node by hostname and store in provider
-        let node_name: String =
-            match self.get_node_by_hostname(&hostname) {
-                Some(node) => Meta::meta(&node).name.as_ref().unwrap().clone(),
-                None => return Err(InitializationError::new(
-                    "Could not get the current node via the Kubernetes API.\nMake sure the current machine is running its own node.",
-                )),
-            };
+        let node_name: String = match self.get_node_by_hostname(&hostname) {
+            Some(node) => Meta::meta(&node).name.as_ref().unwrap().clone(),
+            None => {
+                return Err(InitializationError::new(
+                    "Could not get the current node via the Kubernetes API.\nMake sure the \
+                     current machine is running its own node.",
+                ))
+            },
+        };
 
         // Initialize the pod reflector
         let reflector = self.initialize_pod_reflector(&node_name)?;
@@ -142,14 +155,14 @@ impl Kubernetes {
                         Ok(reflector) => reflector,
                         Err(_) => {
                             return None;
-                        }
+                        },
                     };
 
                 let nodes_iter = match self.exec(reflector.state()) {
                     Ok(state) => state.into_iter(),
                     Err(_) => {
                         return None;
-                    }
+                    },
                 };
 
                 // Try to get a node with the given hostname
@@ -162,7 +175,7 @@ impl Kubernetes {
                         },
                     })
                     .nth(0);
-            }
+            },
         }
     }
 
@@ -182,9 +195,12 @@ impl Kubernetes {
 
                 match self.exec(Reflector::new(client.clone(), lp, resource).init()) {
                     Ok(reflector) => Ok(reflector),
-                    Err(_) => Err(InitializationError::new("Could not get the list of pods running on the current machine.\n Make sure the node can access the API."))
+                    Err(_) => Err(InitializationError::new(
+                        "Could not get the list of pods running on the current machine.\n Make \
+                         sure the node can access the API.",
+                    )),
                 }
-            }
+            },
         }
     }
 
@@ -197,7 +213,7 @@ impl Kubernetes {
             Ok(state) => state.into_iter(),
             Err(_) => {
                 return None;
-            }
+            },
         };
 
         Some(pods_iter.collect::<Vec<_>>())
