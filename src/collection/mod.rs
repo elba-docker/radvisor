@@ -1,3 +1,6 @@
+pub mod collect;
+pub mod collector;
+
 use crate::collection::collect::WorkingBuffers;
 use crate::collection::collector::Collector;
 use crate::shared::{ContainerMetadata, IntervalWorkerContext};
@@ -7,9 +10,6 @@ use std::collections::HashMap;
 use std::sync::mpsc::Receiver;
 use std::sync::{Arc, Mutex};
 use std::vec::Vec;
-
-pub mod collect;
-pub mod collector;
 
 /// Synchronization status struct used to handle termination and buffer flushing
 struct CollectStatus {
@@ -66,7 +66,7 @@ pub fn run(
         // Update status
         let mut status = status_mutex.lock().unwrap();
         if status.terminating {
-            // If already termiating, skip loop iteration
+            // If already terminating, skip loop iteration
             continue;
         }
         status.collecting = true;
@@ -103,7 +103,7 @@ pub fn run(
             stop_handle.stop();
             break;
         } else {
-            // If terminating, then don't signal the end of collecing. Otherwise,
+            // If terminating, then don't signal the end of collecting. Otherwise,
             // end collecting before yielding to the sleep
             status.collecting = false;
         }
@@ -126,7 +126,7 @@ fn flush_buffers(collectors: &HashMap<String, RefCell<Collector>>) {
 }
 
 /// Applies the collector update algorithm that finds all inactive container collectors
-/// and tears them down. In addition, it will intialize collectors for newly monitored
+/// and tears them down. In addition, it will initialize collectors for newly monitored
 /// containers
 fn update_collectors(
     containers: Vec<ContainerMetadata>,

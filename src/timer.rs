@@ -1,3 +1,4 @@
+use std::marker::Send;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::{self, Receiver, Sender};
 use std::sync::{Arc, Condvar, Mutex};
@@ -11,6 +12,8 @@ pub struct Timer {
     shared: Arc<SharedTimerState>,
 }
 
+unsafe impl Send for Timer {}
+
 /// Represents a cloneable handle to stop a timer running its own worker thread
 pub struct TimerStopper {
     shared: Arc<SharedTimerState>,
@@ -21,7 +24,7 @@ struct SharedTimerState {
     stopping: AtomicBool,
     lock: Mutex<bool>,
     signal_tick: Condvar,
-    tx_stop: Mutex<Sender<()>>
+    tx_stop: Mutex<Sender<()>>,
 }
 
 /// Represents a timer or timer-like object that can be stopped
@@ -36,7 +39,7 @@ impl Timer {
             stopping: AtomicBool::new(false),
             lock: Mutex::new(false),
             signal_tick: Condvar::new(),
-            tx_stop: Mutex::new(tx_stop)
+            tx_stop: Mutex::new(tx_stop),
         });
 
         // Spawn the timer thread

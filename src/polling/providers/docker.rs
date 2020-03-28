@@ -1,4 +1,5 @@
-use crate::polling::providers::{FetchError, ConnectionError, Provider};
+use crate::cli::Opts;
+use crate::polling::providers::{FetchError, InitializationError, Provider};
 use crate::shared::ContainerMetadata;
 use crate::util;
 
@@ -10,25 +11,27 @@ const CONNECTION_ERROR_MESSAGE: &str =
 
 pub struct Docker {
     client: shiplift::Docker,
-    runtime: Runtime
+    runtime: Runtime,
 }
 
 impl Docker {
     pub fn new() -> Box<dyn Provider> {
         Box::new(Docker {
             client: shiplift::Docker::new(),
-            runtime: Runtime::new().unwrap()
+            runtime: Runtime::new().unwrap(),
         })
     }
 }
 
 impl Provider for Docker {
-    fn try_connect(&mut self) -> Option<ConnectionError> {
+    fn initialize(&mut self, _: &Opts) -> Option<InitializationError> {
+        println!("Initializing Docker API provider");
+
         let future = self.client.ping();
         let result = self.runtime.block_on(future);
         match result {
             Ok(_) => None,
-            Err(_) => Some(ConnectionError::new(CONNECTION_ERROR_MESSAGE)),
+            Err(_) => Some(InitializationError::new(CONNECTION_ERROR_MESSAGE)),
         }
     }
 

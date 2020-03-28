@@ -40,14 +40,30 @@ impl ProcFileHandles {
             cpuacct_usage_user: open_proc_file(cgroup, "cpuacct", "cpuacct.usage_user"),
             cpuacct_usage_percpu: open_proc_file(cgroup, "cpuacct", "cpuacct.usage_percpu"),
             memory_usage_in_bytes: open_proc_file(cgroup, "memory", "memory.usage_in_bytes"),
-            memory_max_usage_in_bytes: open_proc_file(cgroup, "memory", "memory.max_usage_in_bytes"),
+            memory_max_usage_in_bytes: open_proc_file(
+                cgroup,
+                "memory",
+                "memory.max_usage_in_bytes",
+            ),
             memory_limit_in_bytes: open_proc_file(cgroup, "memory", "memory.limit_in_bytes"),
-            memory_soft_limit_in_bytes: open_proc_file(cgroup, "memory", "memory.soft_limit_in_bytes"),
+            memory_soft_limit_in_bytes: open_proc_file(
+                cgroup,
+                "memory",
+                "memory.soft_limit_in_bytes",
+            ),
             memory_failcnt: open_proc_file(cgroup, "memory", "memory.failcnt"),
             memory_stat: open_proc_file(cgroup, "memory", "memory.stat"),
-            blkio_io_service_bytes: open_proc_file(cgroup, "blkio", "blkio.io_service_bytes_recursive"),
+            blkio_io_service_bytes: open_proc_file(
+                cgroup,
+                "blkio",
+                "blkio.io_service_bytes_recursive",
+            ),
             blkio_io_serviced: open_proc_file(cgroup, "blkio", "blkio.io_serviced_recursive"),
-            blkio_io_service_time: open_proc_file(cgroup, "blkio", "blkio.io_service_time_recursive"),
+            blkio_io_service_time: open_proc_file(
+                cgroup,
+                "blkio",
+                "blkio.io_service_time_recursive",
+            ),
             blkio_io_queued: open_proc_file(cgroup, "blkio", "blkio.io_queued_recursive"),
             blkio_io_wait_time: open_proc_file(cgroup, "blkio", "blkio.io_wait_time_recursive"),
             blkio_io_merged: open_proc_file(cgroup, "blkio", "blkio.io_merged_recursive"),
@@ -59,9 +75,5 @@ impl ProcFileHandles {
 
 /// Opens a stats file in /proc for the cgroup corresponding to the given cgroup in the given subsystem
 fn open_proc_file(id: &str, subsystem: &str, file: &str) -> Option<File> {
-    File::open(format!(
-        "/sys/fs/cgroup/{}/{}/{}",
-        subsystem, id, file
-    ))
-    .ok()
+    File::open(format!("/sys/fs/cgroup/{}/{}/{}", subsystem, id, file)).ok()
 }

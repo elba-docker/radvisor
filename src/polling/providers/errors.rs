@@ -35,29 +35,33 @@ impl error::Error for FetchError {
     }
 }
 
-
-
 /// An error that occurred during provider initialization/connection check,
 /// including a suggestion message printed to stdout
 #[derive(Debug)]
-pub struct ConnectionError {
+pub struct InitializationError {
     pub message: String,
 }
 
-impl ConnectionError {
+impl InitializationError {
     /// Creates a new connection error
     pub fn new(message: &str) -> Self {
-        ConnectionError { message: message.to_owned() }
+        InitializationError {
+            message: message.to_owned(),
+        }
     }
 }
 
-impl fmt::Display for ConnectionError {
+impl fmt::Display for InitializationError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "could not connect to the provider resources: {}", self.message)
+        write!(
+            f,
+            "could not connect to the provider resources: {}",
+            self.message
+        )
     }
 }
 
-impl error::Error for ConnectionError {
+impl error::Error for InitializationError {
     fn source(&self) -> Option<&(dyn error::Error + 'static)> {
         None
     }

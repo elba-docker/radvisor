@@ -27,7 +27,7 @@ pub fn entry(file: &Option<File>, buffers: &mut WorkingBuffers) -> () {
 }
 
 /// Parses every entry in a stats file, where each entry is a alphabetic key followed by a number,
-/// and then a newline. Attmpes to parse offsets.len() entries from the file, using the precomputed
+/// and then a newline. Attempts to parse offsets.len() entries from the file, using the precomputed
 /// offsets array to skip reading the alphabetic key.
 pub fn stat_file(file: &Option<File>, offsets: &[usize], buffers: &mut WorkingBuffers) -> () {
     // Track whether we should keep parsing or if we should fill in the entries with empty buffers
@@ -221,7 +221,7 @@ fn read_to_buffer(file: &Option<File>, buffers: &mut WorkingBuffers) -> Option<u
     }
 }
 
-/// Tries to read the entire file, moving each line to a comma-seperated string
+/// Tries to read the entire file, moving each line to a comma-separated string
 pub fn all(file: &Option<File>, buffers: &mut WorkingBuffers) -> () {
     // Ignore errors: the buffer will just remain empty
     read_to_buffer(file, buffers);
@@ -233,7 +233,9 @@ pub fn all(file: &Option<File>, buffers: &mut WorkingBuffers) -> () {
     } else {
         // Copy over to temporary buffer
         copy_lines_to_commas(&buffers.buffer, &mut buffers.copy_buffer);
-        buffers.record.push_field(&buffers.copy_buffer.content_unmanaged());
+        buffers
+            .record
+            .push_field(&buffers.copy_buffer.content_unmanaged());
     }
 
     buffers.buffer.clear();
@@ -255,7 +257,7 @@ fn copy_lines_to_commas<const S: usize, const T: usize>(
         if end >= target.b.len() {
             return;
         }
-        
+
         target.b[start..end].clone_from_slice(&line);
         target.b[end] = COMMA;
         start = end + 1;

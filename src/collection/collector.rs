@@ -1,9 +1,9 @@
+use crate::cli;
 use crate::collection::collect;
 use crate::collection::collect::files::ProcFileHandles;
 use crate::collection::collect::read::StatFileLayout;
 use crate::shared::ContainerMetadata;
 use crate::util;
-use crate::cli;
 use std::fs;
 use std::fs::{File, OpenOptions};
 use std::io::{Error, ErrorKind, Write};
@@ -26,8 +26,8 @@ pub struct Collector {
 
 impl Collector {
     /// Creates a new collector at the given log file destination, making all intermediate
-    /// directories as neccessary. Then, opens up all required read and write file handles
-    /// and writes the file header for the log file. 
+    /// directories as necessary. Then, opens up all required read and write file handles
+    /// and writes the file header for the log file.
     pub fn create(
         logs_location: &String,
         container: &ContainerMetadata,
@@ -46,7 +46,10 @@ impl Collector {
 
     /// Collects the current statistics for the given container, writing the CSV entries to
     /// the writer. Utilizes /proc and cgroups (Linux-only)
-    pub fn collect(&mut self, working_buffers: &mut collect::WorkingBuffers) -> Result<(), csv::Error> {
+    pub fn collect(
+        &mut self,
+        working_buffers: &mut collect::WorkingBuffers,
+    ) -> Result<(), csv::Error> {
         collect::run(self, working_buffers)
     }
 
@@ -73,7 +76,7 @@ impl Collector {
             writer: writer,
             active: true,
             file_handles,
-            memory_layout
+            memory_layout,
         })
     }
 }

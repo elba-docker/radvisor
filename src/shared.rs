@@ -1,4 +1,5 @@
 use std::time::Duration;
+
 use bus::BusReader;
 
 /// Container metadata published to the collection thread

@@ -1,6 +1,6 @@
 use criterion::{criterion_group, criterion_main, Criterion};
-use std::time::{SystemTime};
-use libc::{timespec, clock_gettime, CLOCK_REALTIME};
+use libc::{clock_gettime, timespec, CLOCK_REALTIME};
+use std::time::SystemTime;
 
 // Designed to verify the fastest way of getting the read time
 
@@ -8,18 +8,22 @@ const SEC_TO_NS: u128 = 1000000000;
 pub fn nano_ts() -> u128 {
     let mut tp: timespec = timespec {
         tv_sec: 0,
-        tv_nsec: 0
+        tv_nsec: 0,
     };
-    unsafe { clock_gettime(CLOCK_REALTIME, &mut tp); }
+    unsafe {
+        clock_gettime(CLOCK_REALTIME, &mut tp);
+    }
     (tp.tv_nsec as u128) + ((tp.tv_sec as u128) * SEC_TO_NS)
 }
 
 pub fn second_ts() -> u128 {
     let mut tp: timespec = timespec {
         tv_sec: 0,
-        tv_nsec: 0
+        tv_nsec: 0,
     };
-    unsafe { clock_gettime(CLOCK_REALTIME, &mut tp); }
+    unsafe {
+        clock_gettime(CLOCK_REALTIME, &mut tp);
+    }
     tp.tv_sec as u128
 }
 
@@ -46,4 +50,3 @@ fn criterion_benchmark(c: &mut Criterion) {
 
 criterion_group!(benches, criterion_benchmark);
 criterion_main!(benches);
-

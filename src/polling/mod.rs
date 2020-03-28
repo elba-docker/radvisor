@@ -1,14 +1,22 @@
+pub mod providers;
+
 use crate::polling::providers::Provider;
-use crate::timer::{Stoppable, Timer};
 use crate::shared::{ContainerMetadata, IntervalWorkerContext};
+use crate::timer::{Stoppable, Timer};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::Sender;
 use std::sync::Arc;
 
-pub mod providers;
+use colored::*;
 
 /// Thread function that updates the container list each second by default
-pub fn run(tx: Sender<Vec<ContainerMetadata>>, context: IntervalWorkerContext, provider: Box<dyn Provider>) -> () {
+pub fn run(
+    tx: Sender<Vec<ContainerMetadata>>,
+    context: IntervalWorkerContext,
+    provider: Box<dyn Provider>,
+) -> () {
+    println!("Beginning statistics collection");
+
     let (timer, stop_handle) = Timer::new(context.interval);
     let has_stopped = Arc::new(AtomicBool::new(false));
 
@@ -21,7 +29,6 @@ pub fn run(tx: Sender<Vec<ContainerMetadata>>, context: IntervalWorkerContext, p
         stop_handle.stop();
         has_stopped_c.store(true, Ordering::SeqCst);
     });
-    
     // Move to mutable
     let mut provider = provider;
 
@@ -29,7 +36,7 @@ pub fn run(tx: Sender<Vec<ContainerMetadata>>, context: IntervalWorkerContext, p
         let containers: Vec<ContainerMetadata> = match provider.fetch() {
             Ok(vec) => vec,
             Err(err) => {
-                eprintln!("Error: {:?}", err);
+                eprintln!("{}", format!("Fetch error: {}", err).red());
                 Vec::with_capacity(0)
             }
         };
@@ -39,8 +46,12 @@ pub fn run(tx: Sender<Vec<ContainerMetadata>>, context: IntervalWorkerContext, p
             // If sending fails, then stop the collection thread
             if let Err(err) = tx.send(containers) {
                 eprintln!(
-                    "Error: could not send polled docker data to collector thread: {}",
-                    err
+                    "{}",
+                    format!(
+                        "Error: could not send polled docker data to collector thread: {}",
+                        err
+                    )
+                    .red()
                 );
                 break;
             }

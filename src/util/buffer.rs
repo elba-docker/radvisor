@@ -1,4 +1,4 @@
-use crate::util::{self};
+use crate::util;
 
 /// Working buffer of raw bytes. Can operate both in **managed** mode (where it keeps
 /// track of length) and **unmanaged** mode (where it acts) as a plain byte buffer.

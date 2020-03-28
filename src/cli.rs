@@ -6,12 +6,6 @@ use clap::Clap;
 /// CLI version loaded from Cargo, or none if not build with cargo
 pub const VERSION: Option<&'static str> = option_env!("CARGO_PKG_VERSION");
 
-#[derive(Clone, Copy)]
-pub enum Mode {
-    Docker,
-    Kubernetes
-}
-
 #[derive(Debug, Clone)]
 pub struct InvalidMode {
     given: String,
@@ -36,7 +30,9 @@ impl std::str::FromStr for Mode {
         match s.to_lowercase().as_str() {
             "docker" => Ok(Mode::Docker),
             "kubernetes" => Ok(Mode::Kubernetes),
-            _ => Err(InvalidMode { given: s.to_owned() })
+            _ => Err(InvalidMode {
+                given: s.to_owned(),
+            }),
         }
     }
 }
@@ -77,13 +73,32 @@ pub struct Opts {
     pub directory: String,
 
     /// Polling provider to use (docker or kubernetes)
+    #[clap(subcommand)]
+    pub command: Command,
+}
+
+#[derive(Clap)]
+pub enum Command {
+    Run {
+        #[clap(
+            subcommand,
+            help = "runs a collection thread that writes resource statistics to output CSV files"
+        )]
+        mode: Mode,
+    },
+}
+
+#[derive(Clap, Clone, Copy)]
+pub enum Mode {
     #[clap(
-        short = "m",
-        long = "mode",
-        help = "source of container lists to poll and collect stats for",
-        default_value = "docker"
+        about = "runs collection using docker as the target backend; collecting stats for each container"
     )]
-    pub mode: Mode
+    Docker,
+
+    #[clap(
+        about = "runs collection using kubernetes as the target backend; collecting stats for each pod"
+    )]
+    Kubernetes,
 }
 
 /// Parses and resolves defaults for all CLI arguments. Additionally, handles displaying

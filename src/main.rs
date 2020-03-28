@@ -1,6 +1,14 @@
 #![feature(const_generics)]
 #![allow(incomplete_features)]
 
+mod cli;
+mod collection;
+mod polling;
+mod shared;
+mod timer;
+mod util;
+
+use crate::cli::{Command, Opts};
 use crate::polling::providers::{self, Provider};
 use crate::shared::{ContainerMetadata, IntervalWorkerContext};
 use std::sync::mpsc::{self, Receiver, Sender};
@@ -10,37 +18,30 @@ use std::time::Duration;
 use std::vec::Vec;
 
 use bus::Bus;
-use cli::Opts;
+use colored::*;
 
-mod collection;
-mod polling;
-
-mod cli;
-mod shared;
-mod timer;
-mod util;
-
-/// Parses CLI args, performs a health check to the docker daemon, and then
-/// spawns two worker threads for:
-///   a. polling the docker daemon and
-///   b. collecting data on all active containers
+/// Parses CLI args and runs the correct procedure depending on the subcommand
 fn main() {
     // Parse command line arguments
     let opts: Opts = cli::load();
 
-    // Resolve container metadata provider
-    let mut provider: Box<dyn Provider> = providers::for_mode(opts.mode);
+    match opts.command {
+        Command::Run { mode } => {
+            // Resolve container metadata provider
+            let mut provider: Box<dyn Provider> = providers::for_mode(mode);
 
-    // Determine if the current process can connect to the provider source
-    if let Some(err) = provider.try_connect() {
-        eprintln!("{}", err.message);
-        std::process::exit(1);
+            // Determine if the current process can connect to the provider source
+            if let Some(err) = provider.initialize(&opts) {
+                eprintln!("{}", err.message.red().bold());
+                std::process::exit(1);
+            }
+
+            run(opts, provider);
+        }
     }
-
-    run(opts, provider);
 }
 
-/// Bootstraps the two worker threads, preparing the neccessary communication between them
+/// Bootstraps the two worker threads, preparing the necessary communication between them
 fn run(opts: Opts, provider: Box<dyn Provider>) -> () {
     // Used to send container metadata lists from the polling thread to the collection thread
     let (tx, rx): (

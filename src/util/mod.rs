@@ -1,6 +1,6 @@
-use libc::{clock_gettime, timespec, CLOCK_REALTIME};
-
 pub mod buffer;
+
+use libc::{clock_gettime, timespec, CLOCK_REALTIME};
 
 pub static N: u8 = '\n' as u8;
 pub static R: u8 = '\r' as u8;
@@ -136,7 +136,10 @@ impl<'a> Iterator for ByteLines<'a> {
                 // Attempt to return the remaining content on the last line
                 let remaining_len = buffer::content_len_raw(&self.buffer[self.position..]);
                 if remaining_len > 0 {
-                    Some((&self.buffer[self.position..(self.position + remaining_len)], self.position))
+                    Some((
+                        &self.buffer[self.position..(self.position + remaining_len)],
+                        self.position,
+                    ))
                 } else {
                     None
                 }

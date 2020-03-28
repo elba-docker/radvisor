@@ -1,18 +1,20 @@
+mod cgroups;
 pub mod docker;
-pub mod kubernetes;
 mod errors;
+pub mod kubernetes;
 
+use crate::cli::{Mode, Opts};
 use crate::shared::ContainerMetadata;
-use crate::cli::Mode;
 use std::marker::Send;
 
-pub use crate::polling::providers::errors::{ConnectionError, FetchError};
+// Re-export error types
+pub use crate::polling::providers::errors::{FetchError, InitializationError};
 
 /// A container metadata provider
 pub trait Provider: Send {
     /// Performs initialization/a connection check to see if the current process can
     /// access the necessary resources to later retrieve lists of container metadata
-    fn try_connect(&mut self) -> Option<ConnectionError>;
+    fn initialize(&mut self, opts: &Opts) -> Option<InitializationError>;
     /// Attempts to get a list of containers, returning a FetchError if it failed
     fn fetch(&mut self) -> Result<Vec<ContainerMetadata>, FetchError>;
 }
