@@ -326,6 +326,7 @@ impl Kubernetes {
 
 /// Pod info struct that gets included with each log file
 #[derive(Clone, Debug, PartialEq, Serialize)]
+#[serde(rename_all = "PascalCase")]
 struct PodInfo<'a> {
     uid:        &'a Option<String>,
     name:       &'a Option<String>,
