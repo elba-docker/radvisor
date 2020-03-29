@@ -225,7 +225,7 @@ impl Kubernetes {
             .and_then(|node| Meta::meta(&node).name.as_ref().map(|s| s.clone()));
 
         let node_name: String = match node_name_option {
-            Some(name) => name.clone(),
+            Some(name) => name,
             None => {
                 return Err(InitializationError::new(
                     "Could not get the current node via the Kubernetes API.\nMake sure the \
