@@ -2,9 +2,11 @@ use std::time::Duration;
 
 use bus::BusReader;
 
-/// Container metadata published to the collection thread
-pub struct ContainerMetadata {
+/// Target metadata published to the collection thread
+pub struct TargetMetadata {
+    /// Absolute cgroup path, relative to the cgroup root
     pub cgroup: String,
+    /// Yaml-formatted target info
     pub info:   String,
     pub id:     String,
 }

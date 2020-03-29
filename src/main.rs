@@ -1,4 +1,5 @@
 #![feature(const_generics)]
+#![feature(core_intrinsics)]
 #![allow(incomplete_features)]
 
 mod cli;
@@ -10,7 +11,7 @@ mod util;
 
 use crate::cli::{Command, Opts};
 use crate::polling::providers::{self, Provider};
-use crate::shared::{ContainerMetadata, IntervalWorkerContext};
+use crate::shared::{IntervalWorkerContext, TargetMetadata};
 use std::sync::mpsc::{self, Receiver, Sender};
 use std::sync::{Arc, Mutex};
 use std::thread;
@@ -46,10 +47,7 @@ fn main() {
 fn run(opts: Opts, provider: Box<dyn Provider>) -> () {
     // Used to send container metadata lists from the polling thread to the
     // collection thread
-    let (tx, rx): (
-        Sender<Vec<ContainerMetadata>>,
-        Receiver<Vec<ContainerMetadata>>,
-    ) = mpsc::channel();
+    let (tx, rx): (Sender<Vec<TargetMetadata>>, Receiver<Vec<TargetMetadata>>) = mpsc::channel();
 
     // Handle termination by broadcasting to all worker threads
     let term_bus = Arc::new(Mutex::new(Bus::new(1)));

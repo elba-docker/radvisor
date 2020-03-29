@@ -1,6 +1,6 @@
 use std::fs::File;
 
-/// File handles re-used for each container that read into the /proc VFS
+/// File handles re-used for each target that read into the /proc VFS
 pub struct ProcFileHandles {
     pub current_pids:               Option<File>,
     pub max_pids:                   Option<File>,
@@ -28,7 +28,7 @@ pub struct ProcFileHandles {
 
 impl ProcFileHandles {
     /// Initializes all file handles to /proc files, utilizing them over the
-    /// entire timeline of the container monitoring. If a handle fails to
+    /// entire timeline of the target monitoring. If a handle fails to
     /// open, the struct field will be None
     pub fn new(cgroup: &str) -> Self {
         ProcFileHandles {
@@ -90,8 +90,8 @@ impl ProcFileHandles {
     }
 }
 
-/// Opens a stats file in /proc for the cgroup corresponding to the given cgroup
-/// in the given subsystem
+/// Opens a stats file in /proc for the cgroup corresponding to the given
+/// absolute cgroup in the given subsystem
 fn open_proc_file(id: &str, subsystem: &str, file: &str) -> Option<File> {
-    File::open(format!("/sys/fs/cgroup/{}/{}/{}", subsystem, id, file)).ok()
+    File::open(format!("/sys/fs/cgroup/{}{}/{}", subsystem, id, file)).ok()
 }

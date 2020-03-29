@@ -106,7 +106,7 @@ impl WorkingBuffers {
     }
 }
 
-/// Collects the current statistics for the given container, writing the CSV
+/// Collects the current statistics for the given target, writing the CSV
 /// entries to the writer. Utilizes /proc and cgroups (Linux-only)
 pub fn run(collector: &mut Collector, buffers: &mut WorkingBuffers) -> Result<(), Error> {
     collect_read(buffers);

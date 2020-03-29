@@ -2,7 +2,7 @@ use crate::cli;
 use crate::collection::collect;
 use crate::collection::collect::files::ProcFileHandles;
 use crate::collection::collect::read::StatFileLayout;
-use crate::shared::ContainerMetadata;
+use crate::shared::TargetMetadata;
 use crate::util;
 use std::fs;
 use std::fs::{File, OpenOptions};
@@ -30,23 +30,20 @@ impl Collector {
     /// intermediate directories as necessary. Then, opens up all required
     /// read and write file handles and writes the file header for the log
     /// file.
-    pub fn create(
-        logs_location: &String,
-        container: &ContainerMetadata,
-    ) -> Result<Collector, Error> {
+    pub fn create(logs_location: &String, target: &TargetMetadata) -> Result<Collector, Error> {
         // Ensure directories exist before creating the collector
         fs::create_dir_all(logs_location)?;
-        let path = construct_log_path(&container.id, logs_location)?;
+        let path = construct_log_path(&target.id, logs_location)?;
         let file = OpenOptions::new()
             .write(true)
             .create(true)
             .append(true)
             .open(path)?;
-        let collector = Collector::new(file, &container)?;
+        let collector = Collector::new(file, &target)?;
         Ok(collector)
     }
 
-    /// Collects the current statistics for the given container, writing the CSV
+    /// Collects the current statistics for the given target, writing the CSV
     /// entries to the writer. Utilizes /proc and cgroups (Linux-only)
     pub fn collect(
         &mut self,
@@ -55,16 +52,16 @@ impl Collector {
         collect::run(self, working_buffers)
     }
 
-    /// Initializes a new collector given the destination file and container
+    /// Initializes a new collector given the destination file and target
     /// metadata. Writes the file header and then opens up read file handles
     /// for all of the /proc cgroup virtual files
-    fn new(file: File, container: &ContainerMetadata) -> Result<Self, Error> {
-        let mut file = file;
-
-        // Write the initial info to the file before initializing the CSV writer
-        file.write(format!("# Version: {}\n", cli::VERSION.unwrap_or("unknown")).as_bytes())?;
-        file.write(container.info.as_bytes())?;
-        file.write(format!("# Initialized at: {}\n", util::nano_ts()).as_bytes())?;
+    fn new(file: File, target: &TargetMetadata) -> Result<Self, Error> {
+        // Write the YAML header to the file before initializing the CSV writer
+        writeln!(&file, "---")?;
+        writeln!(&file, "Version: {}", cli::VERSION.unwrap_or("unknown"))?;
+        write!(&file, "{}", target.info)?;
+        writeln!(&file, "InitializedAt: {}", util::nano_ts())?;
+        writeln!(&file, "---")?;
 
         // Initialize the CSV writer and then write the header row
         let mut writer = WriterBuilder::new()
@@ -72,7 +69,7 @@ impl Collector {
             .from_writer(file);
         writer.write_byte_record(collect::get_header())?;
 
-        let file_handles = ProcFileHandles::new(&container.cgroup);
+        let file_handles = ProcFileHandles::new(&target.cgroup);
         let memory_layout = collect::examine_memory(&file_handles);
         Ok(Collector {
             writer,
@@ -83,7 +80,7 @@ impl Collector {
     }
 }
 
-/// Constructs the log filepath for the given container id
+/// Constructs the log filepath for the given target id
 fn construct_log_path(id: &str, logs_location: &str) -> Result<String, Error> {
     // Construct filename
     let filename = format!("{}_{}.log", id.to_string(), util::second_ts().to_string());

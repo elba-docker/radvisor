@@ -1,7 +1,7 @@
 pub mod providers;
 
 use crate::polling::providers::Provider;
-use crate::shared::{ContainerMetadata, IntervalWorkerContext};
+use crate::shared::{IntervalWorkerContext, TargetMetadata};
 use crate::timer::{Stoppable, Timer};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::Sender;
@@ -9,9 +9,9 @@ use std::sync::Arc;
 
 use colored::*;
 
-/// Thread function that updates the container list each second by default
+/// Thread function that updates the target list each second by default
 pub fn run(
-    tx: Sender<Vec<ContainerMetadata>>,
+    tx: Sender<Vec<TargetMetadata>>,
     context: IntervalWorkerContext,
     provider: Box<dyn Provider>,
 ) -> () {
@@ -33,7 +33,7 @@ pub fn run(
     let mut provider = provider;
 
     for _ in timer {
-        let containers: Vec<ContainerMetadata> = match provider.fetch() {
+        let targets: Vec<TargetMetadata> = match provider.fetch() {
             Ok(vec) => vec,
             Err(err) => {
                 eprintln!("{}", format!("Fetch error: {}", err).red());
@@ -44,11 +44,11 @@ pub fn run(
         // Make sure the collection hasn't been stopped
         if !has_stopped.load(Ordering::SeqCst) {
             // If sending fails, then stop the collection thread
-            if let Err(err) = tx.send(containers) {
+            if let Err(err) = tx.send(targets) {
                 eprintln!(
                     "{}",
                     format!(
-                        "Error: could not send polled docker data to collector thread: {}",
+                        "Error: could not send polled target data to collector thread: {}",
                         err
                     )
                     .red()

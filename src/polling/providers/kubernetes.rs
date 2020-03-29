@@ -1,36 +1,55 @@
 use crate::cli::Opts;
-use crate::polling::providers::cgroups;
+use crate::polling::providers::cgroups::{self, CgroupManager};
 use crate::polling::providers::{FetchError, InitializationError, Provider};
-use crate::shared::ContainerMetadata;
+use crate::shared::TargetMetadata;
+use crate::util;
 use std::cell::RefCell;
+use std::collections::BTreeMap;
+use std::fmt::Debug;
 use std::future::Future;
+use std::time::Duration;
 
+use colored::*;
 use gethostname::gethostname;
 use k8s_openapi::api::core::v1::{Node, Pod};
+use k8s_openapi::apimachinery::pkg::apis::meta::v1::Time;
 use kube::api::{ListParams, Meta, Resource};
 use kube::client::APIClient;
 use kube::config;
 use kube::runtime::Reflector;
+use lru_time_cache::LruCache;
+use serde::Serialize;
+use serde_yaml;
 use tokio::runtime::Runtime;
 
+/// Number of polling blocks that need to elapse before container info strings
+/// are evicted from the time-based LRU cache
+const POLLING_BLOCK_EXPIRY: u64 = 5;
+
+/// Root cgroup for kubernetes pods to fall under
+const ROOT_CGROUP: &str = "kubepods";
+
 pub struct Kubernetes {
-    runtime:    RefCell<Runtime>,
-    client:     Option<APIClient>,
+    runtime:        RefCell<Runtime>,
+    client:         Option<APIClient>,
+    cgroup_manager: CgroupManager,
     /// Collection of fields that must be initialized after successful provider
     /// initialization occurs. This condition is invariant
-    invariants: Option<InitializationInvariants>,
+    invariants:     Option<InitializationInvariants>,
 }
 
 pub struct InitializationInvariants {
     pod_reflector: Reflector<Pod>,
+    info_cache:    RefCell<LruCache<String, String>>,
 }
 
 impl Kubernetes {
     pub fn new() -> Box<dyn Provider> {
         Box::new(Kubernetes {
-            runtime:    RefCell::new(Runtime::new().unwrap()),
-            client:     None,
-            invariants: None,
+            runtime:        RefCell::new(Runtime::new().unwrap()),
+            client:         None,
+            invariants:     None,
+            cgroup_manager: CgroupManager::new(),
         })
     }
 
@@ -43,8 +62,42 @@ impl Kubernetes {
     }
 }
 
+/// Quality of service classes for pods. For more information, see
+/// [the Kubernetes docs](https://kubernetes.io/docs/tasks/configure-pod-container/quality-service-pod/#qos-classes)
+enum QualityOfService {
+    BestEffort,
+    Guaranteed,
+    Burstable,
+}
+
+impl QualityOfService {
+    /// Attempts to extract the quality of service value from a pod's status
+    fn from_pod(pod: &Pod) -> Option<Self> {
+        let qos_class: Option<&String> = match &pod.status {
+            Some(status) => status.qos_class.as_ref(),
+            None => None,
+        };
+
+        qos_class.and_then(|raw_str| match &raw_str.to_lowercase()[..] {
+            "besteffort" => Some(QualityOfService::BestEffort),
+            "guaranteed" => Some(QualityOfService::Guaranteed),
+            "burstable" => Some(QualityOfService::Burstable),
+            _ => None,
+        })
+    }
+
+    /// Converts the quality of service to its cgroup slice representation
+    fn to_cgroup(&self) -> String {
+        String::from(match self {
+            QualityOfService::BestEffort => "besteffort",
+            QualityOfService::Guaranteed => "guaranteed",
+            QualityOfService::Burstable => "burstable",
+        })
+    }
+}
+
 impl Provider for Kubernetes {
-    fn initialize(&mut self, _opts: &Opts) -> Option<InitializationError> {
+    fn initialize(&mut self, opts: &Opts) -> Option<InitializationError> {
         println!("Initializing Kubernetes API provider");
 
         // Get hostname to try to identify node name
@@ -77,7 +130,7 @@ impl Provider for Kubernetes {
         // Initialize client
         self.client = Some(APIClient::new(config));
 
-        self.invariants = match self.build_invariants(&hostname) {
+        self.invariants = match self.build_invariants(&hostname, opts) {
             Ok(invariants) => Some(invariants),
             Err(err) => {
                 return Some(err);
@@ -87,7 +140,7 @@ impl Provider for Kubernetes {
         None
     }
 
-    fn fetch(&mut self) -> Result<Vec<ContainerMetadata>, FetchError> {
+    fn fetch(&mut self) -> Result<Vec<TargetMetadata>, FetchError> {
         let invariants = self.unwrap();
         let reflector = &invariants.pod_reflector;
 
@@ -97,14 +150,39 @@ impl Provider for Kubernetes {
         match self.get_pods() {
             None => Err(FetchError::new(None)),
             Some(pods) => {
-                // TODO implement
-                // 2. get all IDs from pod metadata, build 3 paths to look at for them
-                // 3. look at filesystem for the cgroup slices, see if 1/3 of them exist
-                //    - cgroup slice: kubepods-{1}.slice/kubepods-{1}-pod{2}.slice where 1 in
-                //      ["besteffort", "burstable", "guaranteed"] 2 = pod.ID.replace("-", "_")
-                // 4. if the slice exists by using IO call, write metadata info to string,
-                //    store existing cgroup, pass to collection thread
-                Ok(Vec::with_capacity(0))
+                Ok(pods
+                    .into_iter()
+                    .filter_map(|pod| {
+                        let meta = Meta::meta(&pod);
+                        let uid: &str = match &meta.uid {
+                            None => return None,
+                            Some(uid) => &uid,
+                        };
+
+                        let pod_slice = String::from("pod") + &uid;
+                        let qos_class: QualityOfService = match QualityOfService::from_pod(&pod) {
+                            None => return None,
+                            Some(qos_class) => qos_class,
+                        };
+
+                        // Construct the cgroup path from the UID and QoS class
+                        // from the metadata, and make sure it exists/is mounted
+                        let cgroup_option: Option<String> = self.cgroup_manager.get_cgroup(&[
+                            ROOT_CGROUP,
+                            &qos_class.to_cgroup(),
+                            &pod_slice,
+                        ]);
+
+                        match cgroup_option {
+                            None => None,
+                            Some(cgroup) => Some(TargetMetadata {
+                                id: String::from(uid),
+                                info: self.get_info(&pod, &cgroup),
+                                cgroup,
+                            }),
+                        }
+                    })
+                    .collect::<Vec<_>>())
             },
         }
     }
@@ -118,15 +196,36 @@ impl Kubernetes {
         runtime.block_on(future)
     }
 
+    /// Try to get info from LRU cache before re-serializing it
+    fn get_info(&mut self, pod: &Pod, cgroup: &str) -> String {
+        let meta = Meta::meta(pod);
+        let uid_default = String::from("");
+        let uid: &String = meta.uid.as_ref().unwrap_or(&uid_default);
+        let mut info_cache = self.unwrap().info_cache.borrow_mut();
+        match info_cache.get(uid) {
+            Some(info) => info.clone(),
+            None => {
+                let info = format_info(&pod, &cgroup);
+                info_cache.insert(uid.clone(), info.clone());
+                info
+            },
+        }
+    }
+
     /// Creates instances of everything that will be guaranteed to be defined
     /// after the initialization phase
     fn build_invariants(
         &self,
         hostname: &str,
+        opts: &Opts,
     ) -> Result<InitializationInvariants, InitializationError> {
         // Get current node by hostname and store in provider
-        let node_name: String = match self.get_node_by_hostname(&hostname) {
-            Some(node) => Meta::meta(&node).name.as_ref().unwrap().clone(),
+        let node_name_option: Option<String> = self
+            .get_node_by_hostname(&hostname)
+            .and_then(|node| Meta::meta(&node).name.as_ref().map(|s| s.clone()));
+
+        let node_name: String = match node_name_option {
+            Some(name) => name.clone(),
             None => {
                 return Err(InitializationError::new(
                     "Could not get the current node via the Kubernetes API.\nMake sure the \
@@ -140,6 +239,9 @@ impl Kubernetes {
 
         Ok(InitializationInvariants {
             pod_reflector: reflector,
+            info_cache:    RefCell::new(LruCache::with_expiry_duration(Duration::from_millis(
+                opts.polling_interval * POLLING_BLOCK_EXPIRY,
+            ))),
         })
     }
 
@@ -179,6 +281,8 @@ impl Kubernetes {
         }
     }
 
+    /// Initializes the pod reflector and gets its initial state from the
+    /// Kubernetes API
     fn initialize_pod_reflector(
         &self,
         node_name: &str,
@@ -217,5 +321,90 @@ impl Kubernetes {
         };
 
         Some(pods_iter.collect::<Vec<_>>())
+    }
+}
+
+/// Pod info struct that gets included with each log file
+#[derive(Clone, Debug, PartialEq, Serialize)]
+struct PodInfo<'a> {
+    uid:        &'a Option<String>,
+    name:       &'a Option<String>,
+    created_at: &'a Option<Time>,
+    labels:     &'a Option<BTreeMap<String, String>>,
+    namespace:  &'a Option<String>,
+    node_name:  &'a Option<String>,
+    host_ip:    &'a Option<String>,
+    phase:      &'a Option<String>,
+    pod_ip:     &'a Option<String>,
+    qos_class:  &'a Option<String>,
+    started_at: &'a Option<Time>,
+    cgroup:     &'a str,
+    polled_at:  u128,
+}
+
+impl<'a> PodInfo<'a> {
+    /// Attempts to extract all state/metadata from the given pod, and collects
+    /// it in a single pod info struct
+    fn new(p: &'a Pod, cgroup: &'a str) -> Self {
+        let meta = Meta::meta(p);
+        let (uid, name, created_at, labels, namespace) = (
+            &meta.uid,
+            &meta.name,
+            &meta.creation_timestamp,
+            &meta.labels,
+            &meta.namespace,
+        );
+
+        let node_name = match p.spec.as_ref() {
+            None => &None,
+            Some(spec) => &spec.node_name,
+        };
+
+        let (host_ip, phase, pod_ip, qos_class, started_at) = match p.status.as_ref() {
+            None => (&None, &None, &None, &None, &None),
+            Some(status) => (
+                &status.host_ip,
+                &status.phase,
+                &status.pod_ip,
+                &status.qos_class,
+                &status.start_time,
+            ),
+        };
+
+        PodInfo {
+            uid,
+            name,
+            created_at,
+            labels,
+            namespace,
+            node_name,
+            host_ip,
+            phase,
+            pod_ip,
+            qos_class,
+            started_at,
+            cgroup,
+            polled_at: util::nano_ts(),
+        }
+    }
+}
+
+/// Formats pod info headers to YAML for display at the top of each CSV file.
+/// Uses serde-yaml to serialize the PodInfo struct to YAML
+fn format_info(pod: &Pod, cgroup: &str) -> String {
+    let pod_info = PodInfo::new(pod, cgroup);
+    match serde_yaml::to_string(&pod_info) {
+        // Remove top ---
+        Ok(yaml) => String::from(yaml.trim_start_matches("---\n")) + "\n",
+        Err(err) => {
+            let uid_default = String::from("");
+            let uid: &String = Meta::meta(pod).uid.as_ref().unwrap_or(&uid_default);
+            eprintln!(
+                "Could not serialize pod info for pod {}:\n{}",
+                uid.red(),
+                format!("{:?}", err).red()
+            );
+            String::from("")
+        },
     }
 }

@@ -3,7 +3,7 @@ pub mod collector;
 
 use crate::collection::collect::WorkingBuffers;
 use crate::collection::collector::Collector;
-use crate::shared::{ContainerMetadata, IntervalWorkerContext};
+use crate::shared::{IntervalWorkerContext, TargetMetadata};
 use crate::timer::{Stoppable, Timer};
 use std::cell::RefCell;
 use std::collections::HashMap;
@@ -17,13 +17,13 @@ struct CollectStatus {
     collecting:  bool,
 }
 
-/// Mutex-protected map of container ids to collector state
+/// Mutex-protected map of target ids to collector state
 type CollectorMap = Arc<Mutex<HashMap<String, RefCell<Collector>>>>;
 
-/// Thread function that collects all active containers and updates the active
+/// Thread function that collects all active targets and updates the active
 /// list, if possible
 pub fn run(
-    rx: Receiver<Vec<ContainerMetadata>>,
+    rx: Receiver<Vec<TargetMetadata>>,
     context: IntervalWorkerContext,
     location: String,
 ) -> () {
@@ -76,20 +76,17 @@ pub fn run(
         let mut collectors = collectors.lock().unwrap();
 
         // Check to see if update thread has any new ids
-        if let Some(new_containers) = rx.try_iter().last() {
-            update_collectors(new_containers, &mut *collectors, &location);
+        if let Some(new_targets) = rx.try_iter().last() {
+            update_collectors(new_targets, &mut *collectors, &location);
         }
 
-        // Loop over active container ids and run collection
+        // Loop over active target ids and run collection
         for (id, c) in collectors.iter() {
             let mut collector = c.borrow_mut();
             match collector.collect(&mut working_buffers) {
                 Ok(_) => (),
                 Err(err) => {
-                    eprintln!(
-                        "Error: could not run collector for container {}: {}",
-                        id, err
-                    );
+                    eprintln!("Error: could not run collector for target {}: {}", id, err);
                 },
             };
         }
@@ -118,18 +115,18 @@ fn flush_buffers(collectors: &HashMap<String, RefCell<Collector>>) {
         let mut collector = c.borrow_mut();
         if let Err(err) = collector.writer.flush() {
             eprintln!(
-                "Error: could not flush buffer on termination for container {}: {}",
+                "Error: could not flush buffer on termination for target {}: {}",
                 id, err
             );
         }
     }
 }
 
-/// Applies the collector update algorithm that finds all inactive container
+/// Applies the collector update algorithm that finds all inactive target
 /// collectors and tears them down. In addition, it will initialize collectors
-/// for newly monitored containers
+/// for newly monitored targets
 fn update_collectors(
-    containers: Vec<ContainerMetadata>,
+    targets: Vec<TargetMetadata>,
     collectors: &mut HashMap<String, RefCell<Collector>>,
     logs_location: &String,
 ) -> () {
@@ -140,22 +137,22 @@ fn update_collectors(
     }
 
     // Set active to true on all entries with id in list
-    for container in containers {
-        match collectors.get(&container.id) {
+    for target in targets {
+        match collectors.get(&target.id) {
             Some(collector) => {
                 // Already is in collectors map
                 let mut c = collector.borrow_mut();
                 c.active = true;
             },
-            None => match Collector::create(logs_location, &container) {
+            None => match Collector::create(logs_location, &target) {
                 Ok(new_collector) => {
-                    collectors.insert(container.id, RefCell::new(new_collector));
+                    collectors.insert(target.id, RefCell::new(new_collector));
                 },
                 Err(err) => {
-                    // Back off until next iteration if the container is still running
+                    // Back off until next iteration if the target is still running
                     eprintln!(
-                        "Error: could not initialize collector for cid {}: {}",
-                        container.id, err
+                        "Error: could not initialize collector for target id {}: {}",
+                        target.id, err
                     );
                 },
             },

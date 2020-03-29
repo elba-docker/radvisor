@@ -26,7 +26,7 @@ impl CgroupManager {
     /// existence check is also performed if the current driver is known; if the
     /// cgroup was constructed and exists, returns Some(constructed path), else
     /// None
-    pub fn make_cgroup(&mut self, slices: &[&str]) -> Option<String> {
+    pub fn get_cgroup(&mut self, slices: &[&str]) -> Option<String> {
         match self.driver {
             Some(driver) => {
                 let path = make(driver, slices);
@@ -61,9 +61,9 @@ impl CgroupManager {
     /// cgroup was constructed and exists, returns `Some(path)`, else
     /// `None`
     ///
-    /// Differs from `make_cgroup` in that it allows for different slices to be
+    /// Differs from `get_cgroup` in that it allows for different slices to be
     /// specified for each driver
-    pub fn make_cgroup_divided(
+    pub fn get_cgroup_divided(
         &mut self,
         systemd_slices: &[&str],
         cgroupfs_slices: &[&str],
@@ -114,7 +114,7 @@ impl CgroupManager {
 /// given driver
 pub fn make(driver: CgroupDriver, slices: &[&str]) -> String {
     match driver {
-        CgroupDriver::Cgroupfs => make_cgroupfs(slices),
+        CgroupDriver::Cgroupfs => get_cgroupfs(slices),
         CgroupDriver::Systemd => make_systemd(slices),
     }
 }
@@ -160,7 +160,7 @@ pub fn escape_systemd(slice: &str) -> String { slice.replace("-", "_") }
 /// "pod1234-5678"] into a systemd-style cgroup path such as "/kubepods/
 /// burstable/pod1234_5678"
 /// see [`kubernetes/kubelet/cm/cgroup_manager_linux.go:ToCgroupfs()`](https://github.com/kubernetes/kubernetes/blob/bb5ed1b79709c865d9aa86008048f19331530041/pkg/kubelet/cm/cgroup_manager_linux.go#L116-L118)
-fn make_cgroupfs(slices: &[&str]) -> String { "/".to_owned() + &slices.join("/") }
+fn get_cgroupfs(slices: &[&str]) -> String { "/".to_owned() + &slices.join("/") }
 
 pub const INVALID_MOUNT_MESSAGE: &str = "rAdvisor expects cgroups to be mounted in \
                                          /sys/fs/cgroup. If this is\nthe case, make sure that the \
