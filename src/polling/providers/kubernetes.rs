@@ -6,6 +6,7 @@ use crate::util;
 use std::cell::RefCell;
 use std::collections::BTreeMap;
 use std::fmt::Debug;
+use std::fmt::Write;
 use std::future::Future;
 use std::time::Duration;
 
@@ -408,7 +409,7 @@ fn format_info(pod: &Pod, cgroup: &str) -> String {
 
 /// Attempts to format pod info, potentially failing to do so
 fn try_format_info(pod: &Pod, cgroup: &str) -> Result<String, Box<dyn std::error::Error>> {
-    let serde_output = serde_yaml::to_string(c)?;
+    let serde_output = serde_yaml::to_string(pod)?;
     // Remove top ---
     let mut yaml = String::from(serde_output.trim_start_matches("---\n")) + "\n";
     writeln!(&mut yaml, "Driver: kubernetes")?;
