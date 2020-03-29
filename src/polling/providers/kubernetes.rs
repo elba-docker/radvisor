@@ -336,7 +336,6 @@ struct PodInfo<'a> {
     node_name:  &'a Option<String>,
     host_ip:    &'a Option<String>,
     phase:      &'a Option<String>,
-    pod_ip:     &'a Option<String>,
     qos_class:  &'a Option<String>,
     started_at: &'a Option<Time>,
     cgroup:     &'a str,
@@ -361,12 +360,11 @@ impl<'a> PodInfo<'a> {
             Some(spec) => &spec.node_name,
         };
 
-        let (host_ip, phase, pod_ip, qos_class, started_at) = match p.status.as_ref() {
-            None => (&None, &None, &None, &None, &None),
+        let (host_ip, phase, qos_class, started_at) = match p.status.as_ref() {
+            None => (&None, &None, &None, &None),
             Some(status) => (
                 &status.host_ip,
                 &status.phase,
-                &status.pod_ip,
                 &status.qos_class,
                 &status.start_time,
             ),
@@ -381,7 +379,6 @@ impl<'a> PodInfo<'a> {
             node_name,
             host_ip,
             phase,
-            pod_ip,
             qos_class,
             started_at,
             cgroup,
