@@ -52,21 +52,21 @@ pub struct Opts {
     )]
     pub interval: u64,
 
-    /// Interval between requests to docker to get containers (ms)
+    /// Interval between requests to providers to get targets (ms)
     #[clap(
         short = "p",
         long = "poll",
-        help = "interval between requests to docker to get containers (ms)",
+        help = "interval between requests to providers to get targets (ms)",
         default_value = "1000"
     )]
     pub polling_interval: u64,
 
-    /// Target directory to place log files in ({id}.log)
+    /// Target directory to place log files in ({id}_{timestamp}.log)
     #[clap(
         short = "d",
         long = "directory",
-        help = "target directory to place log files in ({id}.log)",
-        default_value = "/var/log/docker/stats"
+        help = "target directory to place log files in ({id}_{timestamp}.log)",
+        default_value = "/var/log/radvisor/stats"
     )]
     pub directory: String,
 
