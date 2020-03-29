@@ -391,9 +391,8 @@ impl<'a> PodInfo<'a> {
 /// Uses serde-yaml to serialize the PodInfo struct to YAML
 fn format_info(pod: &Pod, cgroup: &str) -> String {
     let pod_info = PodInfo::new(pod, cgroup);
-    match serde_yaml::to_string(&pod_info) {
-        // Remove top ---
-        Ok(yaml) => String::from(yaml.trim_start_matches("---\n")) + "\n",
+    match try_format_info(pod, cgroup) {
+        Ok(yaml) => yaml,
         Err(err) => {
             let uid_default = String::from("");
             let uid: &String = Meta::meta(pod).uid.as_ref().unwrap_or(&uid_default);
@@ -405,4 +404,13 @@ fn format_info(pod: &Pod, cgroup: &str) -> String {
             String::from("")
         },
     }
+}
+
+/// Attempts to format pod info, potentially failing to do so
+fn try_format_info(pod: &Pod, cgroup: &str) -> Result<String, Box<dyn std::error::Error>> {
+    let serde_output = serde_yaml::to_string(c)?;
+    // Remove top ---
+    let mut yaml = String::from(serde_output.trim_start_matches("---\n")) + "\n";
+    writeln!(&mut yaml, "Driver: kubernetes")?;
+    Ok(yaml)
 }

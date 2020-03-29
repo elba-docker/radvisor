@@ -158,5 +158,6 @@ fn try_format_info(c: &Container, cgroup: &str) -> Result<String, Box<dyn std::e
     let mut yaml = String::from(serde_output.trim_start_matches("---\n")) + "\n";
     writeln!(&mut yaml, "PollTime: {}", util::nano_ts())?;
     writeln!(&mut yaml, "Cgroup: {}", cgroup)?;
+    writeln!(&mut yaml, "Driver: docker")?;
     Ok(yaml)
 }
