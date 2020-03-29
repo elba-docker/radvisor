@@ -391,7 +391,6 @@ impl<'a> PodInfo<'a> {
 /// Formats pod info headers to YAML for display at the top of each CSV file.
 /// Uses serde-yaml to serialize the PodInfo struct to YAML
 fn format_info(pod: &Pod, cgroup: &str) -> String {
-    let pod_info = PodInfo::new(pod, cgroup);
     match try_format_info(pod, cgroup) {
         Ok(yaml) => yaml,
         Err(err) => {
@@ -409,7 +408,8 @@ fn format_info(pod: &Pod, cgroup: &str) -> String {
 
 /// Attempts to format pod info, potentially failing to do so
 fn try_format_info(pod: &Pod, cgroup: &str) -> Result<String, Box<dyn std::error::Error>> {
-    let serde_output = serde_yaml::to_string(pod)?;
+    let pod_info = PodInfo::new(pod, cgroup);
+    let serde_output = serde_yaml::to_string(pod_info)?;
     // Remove top ---
     let mut yaml = String::from(serde_output.trim_start_matches("---\n")) + "\n";
     writeln!(&mut yaml, "Driver: kubernetes")?;
