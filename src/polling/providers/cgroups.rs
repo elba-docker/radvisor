@@ -1,3 +1,4 @@
+use std::fmt;
 use std::fs;
 
 /// Docker cgroup driver used to orchestrate moving containers in and out of
@@ -8,10 +9,26 @@ pub enum CgroupDriver {
     Cgroupfs,
 }
 
+impl fmt::Display for CgroupDriver {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            CgroupDriver::Systemd => write!(f, "systemd"),
+            CgroupDriver::Cgroupfs => write!(f, "cgroupfs"),
+        }
+    }
+}
+
 /// Encapsulated behavior for lazy-resolution of Docker cgroup driver (systemd
 /// or cgroupfs). Works for cgroups v1
 pub struct CgroupManager {
     driver: Option<CgroupDriver>,
+}
+
+/// Resolved and existing cgroup path constructed from the construction methods
+/// on `CgroupManager`
+pub struct CgroupPath {
+    pub path:   String,
+    pub driver: CgroupDriver,
 }
 
 impl CgroupManager {
@@ -26,29 +43,18 @@ impl CgroupManager {
     /// existence check is also performed if the current driver is known; if the
     /// cgroup was constructed and exists, returns Some(constructed path), else
     /// None
-    pub fn get_cgroup(&mut self, slices: &[&str]) -> Option<String> {
+    pub fn get_cgroup(&mut self, slices: &[&str]) -> Option<CgroupPath> {
         match self.driver {
             Some(driver) => {
                 let path = make(driver, slices);
                 match cgroup_exists(&path) {
-                    true => Some(path),
+                    true => Some(CgroupPath { path, driver }),
                     false => None,
                 }
             },
-            None => {
-                // Try each driver
-                if let Some(path) = self.try_resolve(CgroupDriver::Systemd, slices) {
-                    println!("Identified systemd as cgroup driver");
-                    return Some(path);
-                }
-
-                if let Some(path) = self.try_resolve(CgroupDriver::Cgroupfs, slices) {
-                    println!("Identified cgroupfs as cgroup driver");
-                    return Some(path);
-                }
-
-                None
-            },
+            None => self
+                .try_resolve(CgroupDriver::Systemd, slices)
+                .or_else(|| self.try_resolve(CgroupDriver::Cgroupfs, slices)),
         }
     }
 
@@ -67,7 +73,7 @@ impl CgroupManager {
         &mut self,
         systemd_slices: &[&str],
         cgroupfs_slices: &[&str],
-    ) -> Option<String> {
+    ) -> Option<CgroupPath> {
         match self.driver {
             Some(driver) => {
                 let path = match driver {
@@ -75,37 +81,27 @@ impl CgroupManager {
                     CgroupDriver::Cgroupfs => make(driver, cgroupfs_slices),
                 };
                 match cgroup_exists(&path) {
-                    true => Some(path),
+                    true => Some(CgroupPath { path, driver }),
                     false => None,
                 }
             },
-            None => {
-                // Try each driver
-                if let Some(path) = self.try_resolve(CgroupDriver::Systemd, systemd_slices) {
-                    println!("Identified systemd as cgroup driver");
-                    return Some(path);
-                }
-
-                if let Some(path) = self.try_resolve(CgroupDriver::Cgroupfs, cgroupfs_slices) {
-                    println!("Identified cgroupfs as cgroup driver");
-                    return Some(path);
-                }
-
-                None
-            },
+            None => self
+                .try_resolve(CgroupDriver::Systemd, systemd_slices)
+                .or_else(|| self.try_resolve(CgroupDriver::Cgroupfs, cgroupfs_slices)),
         }
     }
 
     /// Attempts to resolve the cgroup driver, by making the cgroup path for the
     /// given driver and then testing whether it exists
-    fn try_resolve(&mut self, driver: CgroupDriver, slices: &[&str]) -> Option<String> {
+    fn try_resolve(&mut self, driver: CgroupDriver, slices: &[&str]) -> Option<CgroupPath> {
         let path = make(driver, slices);
         match cgroup_exists(&path) {
+            false => None,
             true => {
                 self.driver = Some(driver);
-                Some(path)
+                println!("Identified {} as cgroup driver", driver);
+                Some(CgroupPath { path, driver })
             },
-            false => None,
         }
     }
 }

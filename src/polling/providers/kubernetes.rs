@@ -1,12 +1,11 @@
 use crate::cli::Opts;
-use crate::polling::providers::cgroups::{self, CgroupManager};
+use crate::polling::providers::cgroups::{self, CgroupManager, CgroupPath};
 use crate::polling::providers::{FetchError, InitializationError, Provider};
 use crate::shared::TargetMetadata;
 use crate::util;
 use std::cell::RefCell;
 use std::collections::BTreeMap;
 use std::fmt::Debug;
-use std::fmt::Write;
 use std::future::Future;
 use std::time::Duration;
 
@@ -29,6 +28,8 @@ const POLLING_BLOCK_EXPIRY: u64 = 5;
 
 /// Root cgroup for kubernetes pods to fall under
 const ROOT_CGROUP: &str = "kubepods";
+
+const PROVIDER_TYPE: &str = "kubernetes";
 
 pub struct Kubernetes {
     runtime:        RefCell<Runtime>,
@@ -168,7 +169,7 @@ impl Provider for Kubernetes {
 
                         // Construct the cgroup path from the UID and QoS class
                         // from the metadata, and make sure it exists/is mounted
-                        let cgroup_option: Option<String> = self.cgroup_manager.get_cgroup(&[
+                        let cgroup_option: Option<CgroupPath> = self.cgroup_manager.get_cgroup(&[
                             ROOT_CGROUP,
                             &qos_class.to_cgroup(),
                             &pod_slice,
@@ -178,8 +179,9 @@ impl Provider for Kubernetes {
                             None => None,
                             Some(cgroup) => Some(TargetMetadata {
                                 id: String::from(uid),
-                                info: self.get_info(&pod, &cgroup),
+                                info: self.get_info(&pod),
                                 cgroup,
+                                provider_type: PROVIDER_TYPE,
                             }),
                         }
                     })
@@ -198,7 +200,7 @@ impl Kubernetes {
     }
 
     /// Try to get info from LRU cache before re-serializing it
-    fn get_info(&mut self, pod: &Pod, cgroup: &str) -> String {
+    fn get_info(&mut self, pod: &Pod) -> String {
         let meta = Meta::meta(pod);
         let uid_default = String::from("");
         let uid: &String = meta.uid.as_ref().unwrap_or(&uid_default);
@@ -206,7 +208,7 @@ impl Kubernetes {
         match info_cache.get(uid) {
             Some(info) => info.clone(),
             None => {
-                let info = format_info(&pod, &cgroup);
+                let info = format_info(&pod);
                 info_cache.insert(uid.clone(), info.clone());
                 info
             },
@@ -339,14 +341,13 @@ struct PodInfo<'a> {
     phase:      &'a Option<String>,
     qos_class:  &'a Option<String>,
     started_at: &'a Option<Time>,
-    cgroup:     &'a str,
     polled_at:  u128,
 }
 
 impl<'a> PodInfo<'a> {
     /// Attempts to extract all state/metadata from the given pod, and collects
     /// it in a single pod info struct
-    fn new(p: &'a Pod, cgroup: &'a str) -> Self {
+    fn new(p: &'a Pod) -> Self {
         let meta = Meta::meta(p);
         let (uid, name, created_at, labels, namespace) = (
             &meta.uid,
@@ -382,7 +383,6 @@ impl<'a> PodInfo<'a> {
             phase,
             qos_class,
             started_at,
-            cgroup,
             polled_at: util::nano_ts(),
         }
     }
@@ -390,8 +390,8 @@ impl<'a> PodInfo<'a> {
 
 /// Formats pod info headers to YAML for display at the top of each CSV file.
 /// Uses serde-yaml to serialize the PodInfo struct to YAML
-fn format_info(pod: &Pod, cgroup: &str) -> String {
-    match try_format_info(pod, cgroup) {
+fn format_info(pod: &Pod) -> String {
+    match try_format_info(pod) {
         Ok(yaml) => yaml,
         Err(err) => {
             let uid_default = String::from("");
@@ -407,11 +407,9 @@ fn format_info(pod: &Pod, cgroup: &str) -> String {
 }
 
 /// Attempts to format pod info, potentially failing to do so
-fn try_format_info(pod: &Pod, cgroup: &str) -> Result<String, Box<dyn std::error::Error>> {
-    let pod_info = PodInfo::new(pod, cgroup);
+fn try_format_info(pod: &Pod) -> Result<String, Box<dyn std::error::Error>> {
+    let pod_info = PodInfo::new(pod);
     let serde_output = serde_yaml::to_string(&pod_info)?;
     // Remove top ---
-    let mut yaml = String::from(serde_output.trim_start_matches("---\n")) + "\n";
-    writeln!(&mut yaml, "Driver: kubernetes")?;
-    Ok(yaml)
+    Ok(String::from(serde_output.trim_start_matches("---\n")) + "\n")
 }

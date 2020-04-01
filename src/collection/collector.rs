@@ -59,7 +59,10 @@ impl Collector {
         // Write the YAML header to the file before initializing the CSV writer
         writeln!(&file, "---")?;
         writeln!(&file, "Version: {}", cli::VERSION.unwrap_or("unknown"))?;
+        writeln!(&file, "Provider: {}", target.provider_type)?;
         write!(&file, "{}", target.info)?;
+        writeln!(&file, "Cgroup: {}", target.cgroup.path)?;
+        writeln!(&file, "CgroupDriver: {}", target.cgroup.driver)?;
         writeln!(&file, "InitializedAt: {}", util::nano_ts())?;
         writeln!(&file, "---")?;
 
@@ -69,7 +72,7 @@ impl Collector {
             .from_writer(file);
         writer.write_byte_record(collect::get_header())?;
 
-        let file_handles = ProcFileHandles::new(&target.cgroup);
+        let file_handles = ProcFileHandles::new(&target.cgroup.path);
         let memory_layout = collect::examine_memory(&file_handles);
         Ok(Collector {
             writer,

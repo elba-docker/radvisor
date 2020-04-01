@@ -16,6 +16,8 @@ const CONNECTION_ERROR_MESSAGE: &str = "Could not connect to the docker socket. 
                                         rAdvisor as root?\nIf running at a non-standard URL, set \
                                         DOCKER_HOST to the correct URL.";
 
+const PROVIDER_TYPE: &str = "docker";
+
 /// Number of polling blocks that need to elapse before container info strings
 /// are evicted from the time-based LRU cache
 const POLLING_BLOCK_EXPIRY: u64 = 5;
@@ -57,7 +59,7 @@ impl Docker {
     }
 
     /// Try to get info from LRU cache before re-serializing it
-    fn get_info(&mut self, c: &Container, cgroup: &str) -> String {
+    fn get_info(&mut self, c: &Container) -> String {
         let info_cache = self
             .info_cache
             .as_mut()
@@ -65,8 +67,7 @@ impl Docker {
         match info_cache.get(&c.id) {
             Some(info) => info.clone(),
             None => {
-                let info = format_info(&c, &cgroup);
-                println!("{}", info);
+                let info = format_info(&c);
                 info_cache.insert(c.id.clone(), info.clone());
                 info
             },
@@ -88,8 +89,9 @@ impl Docker {
             None => None,
             Some(cgroup) => Some(TargetMetadata {
                 id: c.id.clone(),
-                info: self.get_info(c, &cgroup),
+                info: self.get_info(c),
                 cgroup,
+                provider_type: PROVIDER_TYPE,
             }),
         }
     }
@@ -136,9 +138,9 @@ fn should_collect_stats(_c: &Container) -> bool { true }
 
 /// Formats container info headers to YAML for display at the top of each CSV
 /// file. Uses serde-yaml to serialize the Container struct to YAML, before
-/// adding a couple extra fields in `PollTime` and `Cgroup`
-fn format_info(c: &Container, cgroup: &str) -> String {
-    match try_format_info(c, cgroup) {
+/// adding an extra field in `PolledAt`
+fn format_info(c: &Container) -> String {
+    match try_format_info(c) {
         Ok(yaml) => yaml,
         Err(err) => {
             eprintln!(
@@ -152,12 +154,10 @@ fn format_info(c: &Container, cgroup: &str) -> String {
 }
 
 /// Attempts to format container info, potentially failing to do so
-fn try_format_info(c: &Container, cgroup: &str) -> Result<String, Box<dyn std::error::Error>> {
+fn try_format_info(c: &Container) -> Result<String, Box<dyn std::error::Error>> {
     let serde_output = serde_yaml::to_string(c)?;
     // Remove top ---
     let mut yaml = String::from(serde_output.trim_start_matches("---\n")) + "\n";
-    writeln!(&mut yaml, "PollTime: {}", util::nano_ts())?;
-    writeln!(&mut yaml, "Cgroup: {}", cgroup)?;
-    writeln!(&mut yaml, "Driver: docker")?;
+    writeln!(&mut yaml, "PolledAt: {}", util::nano_ts())?;
     Ok(yaml)
 }
