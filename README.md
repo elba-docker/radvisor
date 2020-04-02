@@ -97,7 +97,7 @@ SUBCOMMANDS:
     run     runs a collection thread that writes resource statistics to output CSV files
 ```
 
-### 🧮 Subcommands
+### 📇 Subcommands
 
 #### `radvisor run`
 
