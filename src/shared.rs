@@ -5,7 +5,7 @@ use bus::BusReader;
 
 /// Target metadata published to the collection thread
 pub struct TargetMetadata {
-    /// Structure with absolute cgroup path (relative to the cgroup root)
+    /// Structure with relative cgroup path (relative to the cgroup root)
     pub cgroup:        CgroupPath,
     /// Yaml-formatted target info
     pub info:          String,

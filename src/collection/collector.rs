@@ -4,10 +4,9 @@ use crate::collection::collect::files::ProcFileHandles;
 use crate::collection::collect::read::StatFileLayout;
 use crate::shared::TargetMetadata;
 use crate::util;
-use std::fs;
-use std::fs::{File, OpenOptions};
+use std::fs::{self, File, OpenOptions};
 use std::io::{Error, ErrorKind, Write};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use csv::{Writer, WriterBuilder};
 
@@ -30,7 +29,7 @@ impl Collector {
     /// intermediate directories as necessary. Then, opens up all required
     /// read and write file handles and writes the file header for the log
     /// file.
-    pub fn create(logs_location: &String, target: &TargetMetadata) -> Result<Collector, Error> {
+    pub fn create(logs_location: &PathBuf, target: &TargetMetadata) -> Result<Collector, Error> {
         // Ensure directories exist before creating the collector
         fs::create_dir_all(logs_location)?;
         let path = construct_log_path(&target.id, logs_location)?;
@@ -61,7 +60,7 @@ impl Collector {
         writeln!(&file, "Version: {}", cli::VERSION.unwrap_or("unknown"))?;
         writeln!(&file, "Provider: {}", target.provider_type)?;
         write!(&file, "{}", target.info)?;
-        writeln!(&file, "Cgroup: {}", target.cgroup.path)?;
+        writeln!(&file, "Cgroup: {}", target.cgroup.path.display())?;
         writeln!(&file, "CgroupDriver: {}", target.cgroup.driver)?;
         writeln!(&file, "InitializedAt: {}", util::nano_ts())?;
         writeln!(&file, "---")?;
@@ -84,7 +83,7 @@ impl Collector {
 }
 
 /// Constructs the log filepath for the given target id
-fn construct_log_path(id: &str, logs_location: &str) -> Result<String, Error> {
+fn construct_log_path(id: &str, logs_location: &PathBuf) -> Result<String, Error> {
     // Construct filename
     let filename = format!("{}_{}.log", id.to_string(), util::second_ts().to_string());
 
@@ -95,7 +94,7 @@ fn construct_log_path(id: &str, logs_location: &str) -> Result<String, Error> {
         Ok(path) => Ok(path),
         Err(_) => Err(Error::new(
             ErrorKind::InvalidInput,
-            format!("could not create log path in {}", logs_location),
+            format!("could not create log path in {:?}", logs_location),
         )),
     }
 }

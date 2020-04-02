@@ -4,13 +4,12 @@ use crate::util::buffer::{Buffer, BufferLike};
 use crate::util::{self, AnonymousSlice};
 
 use csv::{ByteRecord, Error};
-use lazy_static::lazy_static;
 use numtoa::NumToA;
 
 pub mod files;
 pub mod read;
 
-lazy_static! {
+lazy_static::lazy_static! {
     /// CSV header for the stats collector
     static ref HEADER: ByteRecord = ByteRecord::from(vec![
         "read",
@@ -55,10 +54,9 @@ lazy_static! {
         "blkio.time",
         "blkio.sectors"
     ]);
+
     /// Length of each row of the collected stats
     static ref ROW_LENGTH: usize = HEADER.len();
-    /// Empty buffer
-    static ref EMPTY_BUFFER: [u8; 0] = [];
 }
 
 /// Gets an amortized byte record containing the entries for a header row in the

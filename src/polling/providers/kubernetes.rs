@@ -7,7 +7,6 @@ use std::cell::RefCell;
 use std::collections::BTreeMap;
 use std::fmt::Debug;
 use std::future::Future;
-use std::time::Duration;
 
 use colored::*;
 use gethostname::gethostname;
@@ -24,7 +23,7 @@ use tokio::runtime::Runtime;
 
 /// Number of polling blocks that need to elapse before container info strings
 /// are evicted from the time-based LRU cache
-const POLLING_BLOCK_EXPIRY: u64 = 5;
+const POLLING_BLOCK_EXPIRY: u32 = 5u32;
 
 /// Root cgroup for kubernetes pods to fall under
 const ROOT_CGROUP: &str = "kubepods";
@@ -242,9 +241,9 @@ impl Kubernetes {
 
         Ok(InitializationInvariants {
             pod_reflector: reflector,
-            info_cache:    RefCell::new(LruCache::with_expiry_duration(Duration::from_millis(
+            info_cache:    RefCell::new(LruCache::with_expiry_duration(
                 opts.polling_interval * POLLING_BLOCK_EXPIRY,
-            ))),
+            )),
         })
     }
 

@@ -7,6 +7,7 @@ use crate::shared::{IntervalWorkerContext, TargetMetadata};
 use crate::timer::{Stoppable, Timer};
 use std::cell::RefCell;
 use std::collections::HashMap;
+use std::path::PathBuf;
 use std::sync::mpsc::Receiver;
 use std::sync::{Arc, Mutex};
 use std::vec::Vec;
@@ -25,7 +26,7 @@ type CollectorMap = Arc<Mutex<HashMap<String, RefCell<Collector>>>>;
 pub fn run(
     rx: Receiver<Vec<TargetMetadata>>,
     context: IntervalWorkerContext,
-    location: String,
+    location: PathBuf,
 ) -> () {
     let (timer, stop_handle) = Timer::new(context.interval);
     let collectors: CollectorMap = Arc::new(Mutex::new(HashMap::new()));
@@ -128,7 +129,7 @@ fn flush_buffers(collectors: &HashMap<String, RefCell<Collector>>) {
 fn update_collectors(
     targets: Vec<TargetMetadata>,
     collectors: &mut HashMap<String, RefCell<Collector>>,
-    logs_location: &String,
+    logs_location: &PathBuf,
 ) -> () {
     // Set active to false on all entries
     for c in collectors.values() {

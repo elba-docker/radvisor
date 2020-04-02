@@ -4,11 +4,7 @@ use crate::util::buffer::{self, Buffer, BufferLike};
 use std::fs::File;
 use std::io::{Read, Seek, SeekFrom};
 
-use lazy_static::lazy_static;
-
-lazy_static! {
-    static ref EMPTY_BUFFER: &'static [u8] = &[];
-}
+const EMPTY_BUFFER: &'static [u8] = &[];
 
 /// Tries to read the given file handle, and directly write the contents as a
 /// field to the record

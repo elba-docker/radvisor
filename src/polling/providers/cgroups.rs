@@ -1,5 +1,6 @@
 use std::fmt;
 use std::fs;
+use std::path::{Path, PathBuf};
 
 /// Docker cgroup driver used to orchestrate moving containers in and out of
 /// cgroups
@@ -27,7 +28,7 @@ pub struct CgroupManager {
 /// Resolved and existing cgroup path constructed from the construction methods
 /// on `CgroupManager`
 pub struct CgroupPath {
-    pub path:   String,
+    pub path:   PathBuf,
     pub driver: CgroupDriver,
 }
 
@@ -108,9 +109,9 @@ impl CgroupManager {
 
 /// Constructs a cgroup absolute path according to the style expected by the
 /// given driver
-pub fn make(driver: CgroupDriver, slices: &[&str]) -> String {
+pub fn make(driver: CgroupDriver, slices: &[&str]) -> PathBuf {
     match driver {
-        CgroupDriver::Cgroupfs => get_cgroupfs(slices),
+        CgroupDriver::Cgroupfs => make_cgroupfs(slices),
         CgroupDriver::Systemd => make_systemd(slices),
     }
 }
@@ -121,24 +122,27 @@ const SYSTEMD_SLICE_SUFFIX: &str = ".slice";
 /// "pod1234-5678"] into a systemd-style cgroup path such as "/kubepods.slice/
 /// kubepods-burstable.slice/kubepods-burstable-pod1234_5678.slice"
 /// see [`kubernetes/kubelet/cm/cgroup_manager_linux.go:ToSystemd()`](https://github.com/kubernetes/kubernetes/blob/bb5ed1b79709c865d9aa86008048f19331530041/pkg/kubelet/cm/cgroup_manager_linux.go#L87-L103)
-fn make_systemd(slices: &[&str]) -> String {
+fn make_systemd(slices: &[&str]) -> PathBuf {
     if slices.len() == 0 || slices.len() == 1 && slices[0].len() == 0 {
-        return String::from("/");
+        return PathBuf::from("");
     }
 
     // First, escape systemd slices
     let escaped = slices.iter().map(|&s| escape_systemd(s));
 
     // Aggregate each slice with all previous to build final path
-    let mut path: String = String::new();
+    let mut path: PathBuf = PathBuf::new();
     // Previously accumulated slices like "kubepods-burstable-"
     let mut accumulator: String = String::new();
+    // Re-usable working buffer
+    let mut working: String = String::new();
     for slice in escaped {
         // Add the current slice to the path
-        path += "/";
-        path += &accumulator;
-        path += &slice;
-        path += SYSTEMD_SLICE_SUFFIX;
+        working += &accumulator;
+        working += &slice;
+        working += &SYSTEMD_SLICE_SUFFIX;
+        path.push(&working);
+        working.clear();
 
         // Add the current slice to the accumulator
         accumulator += &slice;
@@ -156,7 +160,7 @@ pub fn escape_systemd(slice: &str) -> String { slice.replace("-", "_") }
 /// "pod1234-5678"] into a systemd-style cgroup path such as "/kubepods/
 /// burstable/pod1234_5678"
 /// see [`kubernetes/kubelet/cm/cgroup_manager_linux.go:ToCgroupfs()`](https://github.com/kubernetes/kubernetes/blob/bb5ed1b79709c865d9aa86008048f19331530041/pkg/kubelet/cm/cgroup_manager_linux.go#L116-L118)
-fn get_cgroupfs(slices: &[&str]) -> String { "/".to_owned() + &slices.join("/") }
+fn make_cgroupfs(slices: &[&str]) -> PathBuf { slices.iter().collect() }
 
 pub const INVALID_MOUNT_MESSAGE: &str = "rAdvisor expects cgroups to be mounted in \
                                          /sys/fs/cgroup. If this is\nthe case, make sure that the \
@@ -170,13 +174,14 @@ pub fn cgroups_mounted_properly() -> bool {
     cgroup_exists("")
 }
 
-const LINUX_CGROUP_ROOT: &str = "/sys/fs/cgroup";
+pub const LINUX_CGROUP_ROOT: &str = "/sys/fs/cgroup";
 
 /// Determines whether the given (absolute) cgroup exists in the virtual
 /// filesystem **Note**: fails if cgroups aren't mounted in /sys/fs/cgroup or if
 /// the cpuacct subsystem isn't enabled.
-fn cgroup_exists(path: &str) -> bool {
-    let full_path: String = format!("{}/cpuacct{}", LINUX_CGROUP_ROOT, path);
+fn cgroup_exists<C: AsRef<Path>>(path: C) -> bool {
+    let mut full_path: PathBuf = [LINUX_CGROUP_ROOT, "cpuacct"].iter().collect();
+    full_path.push(path);
     match fs::metadata(full_path) {
         Err(_) => false,
         // As long as it exists and is a directory, assume all is good

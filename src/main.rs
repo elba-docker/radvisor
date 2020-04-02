@@ -23,6 +23,14 @@ use colored::*;
 
 /// Parses CLI args and runs the correct procedure depending on the subcommand
 fn main() {
+    // Setup human-readable panic handler
+    human_panic::setup_panic!(human_panic::Metadata {
+        name:     env!("CARGO_PKG_NAME").into(),
+        version:  env!("CARGO_PKG_VERSION").into(),
+        authors:  env!("CARGO_PKG_AUTHORS").into(),
+        homepage: "https://github.com/elba-kubernetes/radvisor/issues/new".into(),
+    });
+
     // Parse command line arguments
     let opts: Opts = cli::load();
 
@@ -49,20 +57,15 @@ fn run(opts: Opts, provider: Box<dyn Provider>) -> () {
     // collection thread
     let (tx, rx): (Sender<Vec<TargetMetadata>>, Receiver<Vec<TargetMetadata>>) = mpsc::channel();
 
-    // Handle termination by broadcasting to all worker threads
-    let term_bus = Arc::new(Mutex::new(Bus::new(1)));
-    let term_bus_c = Arc::clone(&term_bus);
-    ctrlc::set_handler(move || handle_termination(&term_bus_c))
-        .expect("Error: could not create SIGINT handler");
-
     // Create the thread worker contexts using the term bus lock
+    let term_bus = initialize_term_handler();
     let mut term_bus_handle = term_bus.lock().unwrap();
     let polling_context = IntervalWorkerContext {
-        interval: Duration::from_millis(opts.polling_interval),
+        interval: opts.polling_interval,
         term_rx:  term_bus_handle.add_rx(),
     };
     let collection_context = IntervalWorkerContext {
-        interval: Duration::from_millis(opts.interval),
+        interval: opts.interval,
         term_rx:  term_bus_handle.add_rx(),
     };
     drop(term_bus_handle);
@@ -84,6 +87,17 @@ fn run(opts: Opts, provider: Box<dyn Provider>) -> () {
         .join()
         .expect("Error: polling thread resulted in panic");
     println!("Exiting");
+}
+
+/// Initializes a bus that handles termination by broadcasting an empty message
+/// to all worker threads
+fn initialize_term_handler() -> Arc<Mutex<Bus<()>>> {
+    let term_bus = Arc::new(Mutex::new(Bus::new(1)));
+    let term_bus_c = Arc::clone(&term_bus);
+    ctrlc::set_handler(move || handle_termination(&term_bus_c))
+        .expect("Error: could not create SIGINT handler");
+
+    term_bus
 }
 
 /// Handles program termination by broadcasting an empty message on a special

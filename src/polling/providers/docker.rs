@@ -4,7 +4,6 @@ use crate::polling::providers::{FetchError, InitializationError, Provider};
 use crate::shared::TargetMetadata;
 use crate::util;
 use std::fmt::Write;
-use std::time::Duration;
 
 use colored::*;
 use lru_time_cache::LruCache;
@@ -20,7 +19,7 @@ const PROVIDER_TYPE: &str = "docker";
 
 /// Number of polling blocks that need to elapse before container info strings
 /// are evicted from the time-based LRU cache
-const POLLING_BLOCK_EXPIRY: u64 = 5;
+const POLLING_BLOCK_EXPIRY: u32 = 5u32;
 
 pub struct Docker {
     client:         shiplift::Docker,
@@ -82,10 +81,10 @@ impl Docker {
         // according to https://docs.docker.com/engine/reference/commandline/dockerd/#default-cgroup-parent ,
         // "[container cgroups are mounted at] `/docker` for fs cgroup driver and
         // `system.slice` for systemd cgroup driver." The .slice is omitted
-        match self
+        let cgroup_option = self
             .cgroup_manager
-            .get_cgroup_divided(&["system", &c.id], &["docker", &c.id])
-        {
+            .get_cgroup_divided(&["system", &c.id], &["docker", &c.id]);
+        match cgroup_option {
             None => None,
             Some(cgroup) => Some(TargetMetadata {
                 id: c.id.clone(),
@@ -114,9 +113,9 @@ impl Provider for Docker {
             return Some(InitializationError::new(cgroups::INVALID_MOUNT_MESSAGE));
         }
 
-        self.info_cache = Some(LruCache::with_expiry_duration(Duration::from_millis(
+        self.info_cache = Some(LruCache::with_expiry_duration(
             opts.polling_interval * POLLING_BLOCK_EXPIRY,
-        )));
+        ));
 
         None
     }

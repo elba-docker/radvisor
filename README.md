@@ -76,7 +76,7 @@ Many of the specific details of collection can be controlled via the command lin
 
 ```console
 $ radvisor --help
-radvisor 1.1.0
+radvisor 1.1.2
 Joseph Azevedo and Bhanu Garg
 Monitors container resource utilization with high granularity and low overhead
 
@@ -88,9 +88,9 @@ FLAGS:
     -V, --version    Prints version information
 
 OPTIONS:
-    -d, --directory <directory>      target directory to place log files in ({id}.log) [default: /var/log/docker/stats]
-    -i, --interval <interval>        collection interval between log entries (ms) [default: 50]
-    -p, --poll <polling-interval>    interval between requests to docker to get containers (ms) [default: 1000]
+    -d, --directory <directory>      target directory to place log files in ({id}_{timestamp}.log) [default: /var/log/radvisor/stats]
+    -i, --interval <interval>        collection interval between log entries [default: 50ms]
+    -p, --poll <polling-interval>    interval between requests to providers to get targets [default: 1000ms]
 
 SUBCOMMANDS:
     help    Prints this message or the help of the given subcommand(s)
@@ -108,7 +108,7 @@ $ radvisor run <provider>
 The main subcommand of rAdvisor is `run`, which additionally requires the target provider (Docker or Kubernetes) to use to discover collection targets. For example, to run rAdvisor and collect resource utilization statistics on Docker containers each 40ms, the following command would be used:
 
 ```console
-$ radvisor run docker -i 40
+$ radvisor run docker -i 40ms
 Initializing Docker API provider
 Beginning statistics collection
 Identified cgroupfs as cgroup driver
@@ -147,8 +147,8 @@ cargo build --release --bins \
    Compiling cfg-if v0.1.10
    ...
    Compiling shiplift v0.6.0
-   Compiling radvisor v0.4.0 (/home/jazev/dev/radvisor)
+   Compiling radvisor v1.1.2 (/home/jazev/dev/radvisor)
     Finished release [optimized] target(s) in 4m 52s
 $ ./radvisor --version
-radvisor 1.0.0
+radvisor 1.1.2
 ```

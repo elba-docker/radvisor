@@ -1,5 +1,7 @@
 use std::error;
 use std::fmt;
+use std::path::PathBuf;
+use std::time::Duration;
 
 use clap::Clap;
 
@@ -43,32 +45,35 @@ impl std::str::FromStr for Mode {
     about = "Monitors container resource utilization with high granularity and low overhead"
 )]
 pub struct Opts {
-    /// Collection interval between log entries (ms)
+    /// Collection interval between log entries
     #[clap(
+        parse(try_from_str = parse_duration::parse),
         short = "i",
         long = "interval",
-        help = "collection interval between log entries (ms)",
-        default_value = "50"
+        help = "collection interval between log entries",
+        default_value = "50ms"
     )]
-    pub interval: u64,
+    pub interval: Duration,
 
-    /// Interval between requests to providers to get targets (ms)
+    /// Interval between requests to providers to get targets
     #[clap(
+        parse(try_from_str = parse_duration::parse),
         short = "p",
         long = "poll",
-        help = "interval between requests to providers to get targets (ms)",
-        default_value = "1000"
+        help = "interval between requests to providers to get targets",
+        default_value = "1000ms"
     )]
-    pub polling_interval: u64,
+    pub polling_interval: Duration,
 
     /// Target directory to place log files in ({id}_{timestamp}.log)
     #[clap(
+        parse(from_os_str),
         short = "d",
         long = "directory",
         help = "target directory to place log files in ({id}_{timestamp}.log)",
         default_value = "/var/log/radvisor/stats"
     )]
-    pub directory: String,
+    pub directory: PathBuf,
 
     /// Polling provider to use (docker or kubernetes)
     #[clap(subcommand)]
