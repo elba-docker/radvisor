@@ -2,6 +2,7 @@ use crate::cli::Opts;
 use crate::polling::providers::cgroups::{self, CgroupManager};
 use crate::polling::providers::{FetchError, InitializationError, Provider};
 use crate::shared::TargetMetadata;
+use crate::shell::Shell;
 use crate::util;
 use std::fmt::Write;
 
@@ -97,8 +98,8 @@ impl Docker {
 }
 
 impl Provider for Docker {
-    fn initialize(&mut self, opts: &Opts) -> Option<InitializationError> {
-        println!("Initializing Docker API provider");
+    fn initialize(&mut self, opts: &Opts, shell: &mut Shell) -> Option<InitializationError> {
+        shell.status("Initializing", "Docker API provider");
 
         // Ping the Docker API to make sure the current process can connect
         let future = self.client.ping();

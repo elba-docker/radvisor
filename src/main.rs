@@ -6,12 +6,14 @@ mod cli;
 mod collection;
 mod polling;
 mod shared;
+mod shell;
 mod timer;
 mod util;
 
 use crate::cli::{Command, Opts};
 use crate::polling::providers::{self, Provider};
 use crate::shared::{IntervalWorkerContext, TargetMetadata};
+use crate::shell::Shell;
 use std::sync::mpsc::{self, Receiver, Sender};
 use std::sync::{Arc, Mutex};
 use std::thread;
@@ -19,7 +21,6 @@ use std::time::Duration;
 use std::vec::Vec;
 
 use bus::Bus;
-use colored::*;
 
 /// Parses CLI args and runs the correct procedure depending on the subcommand
 fn main() {
@@ -33,6 +34,7 @@ fn main() {
 
     // Parse command line arguments
     let opts: Opts = cli::load();
+    let mut shell = shell::Shell::new(&opts);
 
     match opts.command {
         Command::Run { mode } => {
@@ -40,22 +42,25 @@ fn main() {
             let mut provider: Box<dyn Provider> = providers::for_mode(mode);
 
             // Determine if the current process can connect to the provider source
-            if let Some(err) = provider.initialize(&opts) {
-                eprintln!("{}", err.message.red().bold());
+            if let Some(err) = provider.initialize(&opts, &mut shell) {
+                shell.error(err.message);
                 std::process::exit(1);
             }
 
-            run(opts, provider);
+            run(opts, provider, shell);
         },
     }
 }
 
 /// Bootstraps the two worker threads, preparing the necessary communication
 /// between them
-fn run(opts: Opts, provider: Box<dyn Provider>) -> () {
+fn run(opts: Opts, provider: Box<dyn Provider>, shell: Shell) -> () {
     // Used to send container metadata lists from the polling thread to the
     // collection thread
     let (tx, rx): (Sender<Vec<TargetMetadata>>, Receiver<Vec<TargetMetadata>>) = mpsc::channel();
+
+    // Wrap the shell in an Arc so that it can be sent across threads
+    let shell_arc = Arc::new(shell);
 
     // Create the thread worker contexts using the term bus lock
     let term_bus = initialize_term_handler();
@@ -63,10 +68,12 @@ fn run(opts: Opts, provider: Box<dyn Provider>) -> () {
     let polling_context = IntervalWorkerContext {
         interval: opts.polling_interval,
         term_rx:  term_bus_handle.add_rx(),
+        shell:    Arc::clone(&shell_arc),
     };
     let collection_context = IntervalWorkerContext {
         interval: opts.interval,
         term_rx:  term_bus_handle.add_rx(),
+        shell:    Arc::clone(&shell_arc),
     };
     drop(term_bus_handle);
 

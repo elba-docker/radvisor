@@ -1,3 +1,4 @@
+use crate::shell::ColorMode;
 use std::error;
 use std::fmt;
 use std::path::PathBuf;
@@ -9,28 +10,36 @@ use clap::Clap;
 pub const VERSION: Option<&'static str> = option_env!("CARGO_PKG_VERSION");
 
 #[derive(Debug, Clone)]
-pub struct InvalidMode {
+pub struct ParseFailure {
+    field: String,
     given: String,
 }
 
-impl fmt::Display for InvalidMode {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "invalid mode: {}", self.given)
+impl ParseFailure {
+    pub fn new(field: String, given: String) -> Self {
+        ParseFailure { field, given }
     }
 }
 
-impl error::Error for InvalidMode {
+impl fmt::Display for ParseFailure {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "invalid {}: {}", self.field, self.given)
+    }
+}
+
+impl error::Error for ParseFailure {
     fn source(&self) -> Option<&(dyn error::Error + 'static)> { None }
 }
 
 impl std::str::FromStr for Mode {
-    type Err = InvalidMode;
+    type Err = ParseFailure;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s.to_lowercase().as_str() {
             "docker" => Ok(Mode::Docker),
             "kubernetes" => Ok(Mode::Kubernetes),
-            _ => Err(InvalidMode {
+            _ => Err(ParseFailure {
+                field: "mode".to_owned(),
                 given: s.to_owned(),
             }),
         }
@@ -78,6 +87,29 @@ pub struct Opts {
     /// Polling provider to use (docker or kubernetes)
     #[clap(subcommand)]
     pub command: Command,
+
+    #[clap(
+        short = "q",
+        long = "quiet",
+        help = "whether to run in quiet mode (minimal output)"
+    )]
+    pub quiet: bool,
+
+    #[clap(
+        short = "v",
+        long = "verbose",
+        help = "whether to run in verbose mode (maximum output)"
+    )]
+    pub verbose: bool,
+
+    /// Mode of the color output of the process
+    #[clap(
+        short = "c",
+        long = "color",
+        help = "color display mode for stdout/stderr output",
+        default_value = "auto"
+    )]
+    pub color_mode: ColorMode,
 }
 
 #[derive(Clap)]

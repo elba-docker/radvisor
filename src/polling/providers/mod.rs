@@ -4,6 +4,7 @@ mod errors;
 pub mod kubernetes;
 
 use crate::cli::{Mode, Opts};
+use crate::shell::Shell;
 use crate::shared::TargetMetadata;
 use std::marker::Send;
 
@@ -15,7 +16,7 @@ pub trait Provider: Send {
     /// Performs initialization/a connection check to see if the current process
     /// can access the necessary resources to later retrieve lists of
     /// container metadata
-    fn initialize(&mut self, opts: &Opts) -> Option<InitializationError>;
+    fn initialize(&mut self, opts: &Opts, shell: &mut Shell) -> Option<InitializationError>;
     /// Attempts to get a list of collection targets, returning a FetchError if
     /// it failed
     fn fetch(&mut self) -> Result<Vec<TargetMetadata>, FetchError>;

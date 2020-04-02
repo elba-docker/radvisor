@@ -27,6 +27,9 @@ serde_yaml = "0.8"
 human-panic = "1.0.3"
 parse_duration = "2.1.0"
 k8s-openapi = { version = "0.7.1", default-features = false, features = ["v1_15"] }
+textwrap = "0.11"
+termcolor = "1.1.0"
+atty = "0.2.14"
 
 [dev-dependencies]
 criterion = "0.3.1"

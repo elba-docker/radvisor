@@ -2,6 +2,7 @@ use crate::cli::Opts;
 use crate::polling::providers::cgroups::{self, CgroupManager, CgroupPath};
 use crate::polling::providers::{FetchError, InitializationError, Provider};
 use crate::shared::TargetMetadata;
+use crate::shell::Shell;
 use crate::util;
 use std::cell::RefCell;
 use std::collections::BTreeMap;
@@ -98,8 +99,8 @@ impl QualityOfService {
 }
 
 impl Provider for Kubernetes {
-    fn initialize(&mut self, opts: &Opts) -> Option<InitializationError> {
-        println!("Initializing Kubernetes API provider");
+    fn initialize(&mut self, opts: &Opts, shell: &mut Shell) -> Option<InitializationError> {
+        shell.status("Initializing", "Kubernetes API provider");
 
         // Get hostname to try to identify node name
         let hostname = match gethostname().into_string() {
@@ -118,7 +119,7 @@ impl Provider for Kubernetes {
             Err(_) => {
                 return Some(InitializationError::new(
                     "Could not load kubernetes config. Make sure the current machine is a part of \
-                     a\ncluster and has the cluster configuration copied to the config directory.",
+                     a cluster and has the cluster configuration copied to the config directory.",
                 ));
             },
         };
@@ -230,8 +231,8 @@ impl Kubernetes {
             Some(name) => name,
             None => {
                 return Err(InitializationError::new(
-                    "Could not get the current node via the Kubernetes API.\nMake sure the \
-                     current machine is running its own node.",
+                    "Could not get the current node via the Kubernetes API. Make sure the current \
+                     machine is running its own node.",
                 ))
             },
         };
@@ -302,8 +303,8 @@ impl Kubernetes {
                 match self.exec(Reflector::new(client.clone(), lp, resource).init()) {
                     Ok(reflector) => Ok(reflector),
                     Err(_) => Err(InitializationError::new(
-                        "Could not get the list of pods running on the current machine.\n Make \
-                         sure the node can access the API.",
+                        "Could not get the list of pods running on the current machine. Make sure \
+                         the node can access the API.",
                     )),
                 }
             },
