@@ -71,7 +71,7 @@ impl ColorMode {
     }
 }
 
-/// Thread-safe handle to formatted stderr/stdout output
+/// Thread-safe handle to formatted stderr/stdout output (implements `Sync`)
 pub struct Shell {
     verbosity: Verbosity,
     out:       Mutex<OutSink>,
@@ -115,28 +115,29 @@ impl Shell {
     }
 
     /// Shortcut to right-align and color green a status message.
-    pub fn status<T, U>(&mut self, status: T, message: U) -> ()
+    pub fn status<T, U>(&self, status: T, message: U) -> ()
     where
         T: fmt::Display,
         U: fmt::Display,
     {
-        self.print(&status, Some(&message), Color::Green, true);
+        self.print(&status, Some(&message), Color::Green, None, true);
     }
 
-    pub fn status_header<T>(&mut self, status: T) -> ()
+    pub fn status_header<T>(&self, status: T) -> ()
     where
         T: fmt::Display,
     {
-        self.print(&status, None, Color::Cyan, true);
+        self.print(&status, None, Color::Cyan, None, true);
     }
 
     /// Prints a message, where the status will have `color` color, and can be
     /// justified. The messages follows without color.
     fn print(
-        &mut self,
+        &self,
         status: &dyn fmt::Display,
         message: Option<&dyn fmt::Display>,
-        color: Color,
+        status_color: Color,
+        text_color: Option<Color>,
         justified: bool,
     ) -> () {
         match self.verbosity {
@@ -146,31 +147,37 @@ impl Shell {
                     .out
                     .lock()
                     .expect("Could not unwrap stdout lock: mutex poisoned");
-                let _ = out.print(status, message, color, justified);
+                let _ = out.print(status, message, status_color, text_color, justified);
             },
         }
     }
 
     /// Prints a red 'error' message.
-    pub fn error<T: fmt::Display>(&mut self, message: T) -> () {
+    pub fn error<T: fmt::Display>(&self, message: T) -> () {
         let mut err = self
             .err
             .lock()
             .expect("Could not unwrap stderr lock: mutex poisoned");
-        let _ = err.print(&"(error)", Some(&message), Color::Red, true);
+        let _ = err.print(
+            &"(error)",
+            Some(&message),
+            Color::Red,
+            Some(Color::Red),
+            true,
+        );
     }
 
     /// Prints an amber 'warning' message.
-    pub fn warn<T: fmt::Display>(&mut self, message: T) -> () {
+    pub fn warn<T: fmt::Display>(&self, message: T) -> () {
         match self.verbosity {
             Verbosity::Quiet => (),
-            _ => self.print(&"(warning)", Some(&message), Color::Yellow, true),
+            _ => self.print(&"(warning)", Some(&message), Color::Yellow, None, true),
         };
     }
 
-    /// Prints a cyan 'note' message.
-    pub fn note<T: fmt::Display>(&mut self, message: T) -> () {
-        self.print(&"(note)", Some(&message), Color::Cyan, true);
+    /// Prints a cyan 'info' message.
+    pub fn info<T: fmt::Display>(&self, message: T) -> () {
+        self.print(&"(info)", Some(&message), Color::Cyan, None, true);
     }
 
     /// Gets the current color mode.
@@ -199,6 +206,18 @@ impl Shell {
             OutSink::Stream { stream, .. } => stream.supports_color(),
         }
     }
+
+    /// Executes the given callback with a reference to the shell object handle
+    /// if the shell is in verbose mode
+    pub fn verbose<F>(&self, callback: F) -> ()
+    where
+        F: Fn(&Shell) -> (),
+    {
+        match self.verbosity {
+            Verbosity::Verbose => callback(self),
+            _ => {},
+        }
+    }
 }
 
 enum OutSink {
@@ -219,14 +238,19 @@ impl OutSink {
         &mut self,
         status: &dyn fmt::Display,
         message: Option<&dyn fmt::Display>,
-        color: Color,
+        status_color: Color,
+        text_color: Option<Color>,
         justified: bool,
     ) -> io::Result<()> {
         let width: Option<usize> = self.width();
         match *self {
-            OutSink::Stream { ref mut stream, is_tty,.. } => {
+            OutSink::Stream {
+                ref mut stream,
+                is_tty,
+                ..
+            } => {
                 stream.reset()?;
-                stream.set_color(ColorSpec::new().set_bold(true).set_fg(Some(color)))?;
+                stream.set_color(ColorSpec::new().set_bold(true).set_fg(Some(status_color)))?;
 
                 // Calculate the offset based on the line header
                 let offset = if justified && is_tty {
@@ -241,6 +265,10 @@ impl OutSink {
                 };
 
                 stream.reset()?;
+                if let Some(color) = text_color {
+                    stream.set_color(ColorSpec::new().set_fg(Some(color)))?;
+                }
+
                 match message {
                     None => write!(stream, " ")?,
                     Some(message) => {
@@ -264,6 +292,8 @@ impl OutSink {
                         }
                     },
                 }
+
+                stream.reset()?;
             },
             OutSink::Write(ref mut w) => {
                 if justified {

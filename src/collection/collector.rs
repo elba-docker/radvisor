@@ -22,6 +22,8 @@ pub struct Collector {
     pub file_handles:  ProcFileHandles,
     pub active:        bool,
     pub memory_layout: StatFileLayout,
+    pub id:            String,
+    pub provider_type: &'static str,
 }
 
 impl Collector {
@@ -78,6 +80,8 @@ impl Collector {
             active: true,
             file_handles,
             memory_layout,
+            id: target.id.clone(),
+            provider_type: target.provider_type,
         })
     }
 }

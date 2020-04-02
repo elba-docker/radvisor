@@ -12,7 +12,7 @@
 
 ```yaml
 ---
-Version: 1.1.2
+Version: 1.1.3
 Provider: docker
 Created: "2020-03-24T07:27:49Z"
 Command: "bash -c 'while true; do sleep 2; done'"
@@ -44,7 +44,7 @@ More information about what each column represents can be found in the [docs pag
 
 ```yaml
 ---
-Version: 1.1.2
+Version: 1.1.3
 Provider: kubernetes
 Uid: 9f0b1893-15e7-442a-966a-b0d19a35fc1c
 Name: kube-proxy-hsplg
@@ -72,23 +72,27 @@ read,pids.current,pids.max,cpu.usage.total,cpu.usage.system,cpu.usage.user,cpu.u
 
 ## 📜 Runtime Options
 
-Many of the specific details of collection can be controlled via the command line interface. At the moment, this includes collection/polling intervals and output directory. To view information on the available CLI options, run `radvisor --help`:
+Many of the specific details of collection can be controlled via the command line interface. At the moment, this includes collection/polling intervals and output directory. To view information on the available CLI options, run `radvisor help`:
 
 ```console
-$ radvisor --help
+$ radvisor help
 radvisor 1.1.2
 Joseph Azevedo and Bhanu Garg
 Monitors container resource utilization with high granularity and low overhead
 
 USAGE:
-    radvisor [OPTIONS] <SUBCOMMAND>
+    radvisor [FLAGS] [OPTIONS] <SUBCOMMAND>
 
 FLAGS:
     -h, --help       Prints help information
+    -q, --quiet      whether to run in quiet mode (minimal output)
+    -v, --verbose    whether to run in verbose mode (maximum output)
     -V, --version    Prints version information
 
 OPTIONS:
-    -d, --directory <directory>      target directory to place log files in ({id}_{timestamp}.log) [default: /var/log/radvisor/stats]
+    -c, --color <color-mode>         color display mode for stdout/stderr output [default: auto]
+    -d, --directory <directory>      target directory to place log files in ({id}_{timestamp}.log) [default:
+                                     /var/log/radvisor/stats]
     -i, --interval <interval>        collection interval between log entries [default: 50ms]
     -p, --poll <polling-interval>    interval between requests to providers to get targets [default: 1000ms]
 
@@ -147,8 +151,8 @@ cargo build --release --bins \
    Compiling cfg-if v0.1.10
    ...
    Compiling shiplift v0.6.0
-   Compiling radvisor v1.1.2 (/home/jazev/dev/radvisor)
+   Compiling radvisor v1.1.3 (/home/jazev/dev/radvisor)
     Finished release [optimized] target(s) in 4m 52s
 $ ./radvisor --version
-radvisor 1.1.2
+radvisor 1.1.3
 ```

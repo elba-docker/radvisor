@@ -100,11 +100,13 @@ impl CgroupManager {
             false => None,
             true => {
                 self.driver = Some(driver);
-                println!("Identified {} as cgroup driver", driver);
                 Some(CgroupPath { path, driver })
             },
         }
     }
+
+    /// Gets the current resolved driver for the manager
+    pub fn driver(&self) -> Option<CgroupDriver> { self.driver }
 }
 
 /// Constructs a cgroup absolute path according to the style expected by the

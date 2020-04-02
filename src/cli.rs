@@ -2,6 +2,7 @@ use crate::shell::ColorMode;
 use std::error;
 use std::fmt;
 use std::path::PathBuf;
+use std::str::FromStr;
 use std::time::Duration;
 
 use clap::Clap;
@@ -16,9 +17,7 @@ pub struct ParseFailure {
 }
 
 impl ParseFailure {
-    pub fn new(field: String, given: String) -> Self {
-        ParseFailure { field, given }
-    }
+    pub fn new(field: String, given: String) -> Self { ParseFailure { field, given } }
 }
 
 impl fmt::Display for ParseFailure {
@@ -46,6 +45,10 @@ impl std::str::FromStr for Mode {
     }
 }
 
+fn parse_duration(raw: &str) -> Result<Duration, humantime::DurationError> {
+    humantime::Duration::from_str(raw).map(|d| d.into())
+}
+
 /// Auto-parsed CLI options for rAdvisor, generated via clap
 #[derive(Clap)]
 #[clap(
@@ -56,7 +59,7 @@ impl std::str::FromStr for Mode {
 pub struct Opts {
     /// Collection interval between log entries
     #[clap(
-        parse(try_from_str = parse_duration::parse),
+        parse(try_from_str = parse_duration),
         short = "i",
         long = "interval",
         help = "collection interval between log entries",
@@ -66,7 +69,7 @@ pub struct Opts {
 
     /// Interval between requests to providers to get targets
     #[clap(
-        parse(try_from_str = parse_duration::parse),
+        parse(try_from_str = parse_duration),
         short = "p",
         long = "poll",
         help = "interval between requests to providers to get targets",
