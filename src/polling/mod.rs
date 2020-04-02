@@ -7,15 +7,19 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::Sender;
 use std::sync::Arc;
 
-use colored::*;
-
 /// Thread function that updates the target list each second by default
 pub fn run(
     tx: Sender<Vec<TargetMetadata>>,
     context: IntervalWorkerContext,
     provider: Box<dyn Provider>,
 ) -> () {
-    println!("Beginning statistics collection");
+    context.shell.status(
+        "Beginning",
+        format!(
+            "provider polling with {} interval",
+            humantime::Duration::from(context.interval)
+        ),
+    );
 
     let (timer, stop_handle) = Timer::new(context.interval);
     let has_stopped = Arc::new(AtomicBool::new(false));
@@ -23,9 +27,10 @@ pub fn run(
     // Handle SIGINT/SIGTERMs by stopping the timer
     let mut term_rx = context.term_rx;
     let has_stopped_c = Arc::clone(&has_stopped);
+    let shell_c = Arc::clone(&context.shell);
     std::thread::spawn(move || {
         term_rx.recv().unwrap();
-        println!("Stopping polling");
+        shell_c.status("Stopping", "polling");
         stop_handle.stop();
         has_stopped_c.store(true, Ordering::SeqCst);
     });
@@ -36,7 +41,9 @@ pub fn run(
         let targets: Vec<TargetMetadata> = match provider.fetch() {
             Ok(vec) => vec,
             Err(err) => {
-                eprintln!("{}", format!("Fetch error: {}", err).red());
+                context
+                    .shell
+                    .error(format!("Could not fetch target metadata: {}", err));
                 Vec::with_capacity(0)
             },
         };
@@ -45,14 +52,10 @@ pub fn run(
         if !has_stopped.load(Ordering::SeqCst) {
             // If sending fails, then stop the collection thread
             if let Err(err) = tx.send(targets) {
-                eprintln!(
-                    "{}",
-                    format!(
-                        "Error: could not send polled target data to collector thread: {}",
-                        err
-                    )
-                    .red()
-                );
+                context.shell.error(format!(
+                    "Could not send polled target data to collector thread: {}",
+                    err
+                ));
                 break;
             }
         }

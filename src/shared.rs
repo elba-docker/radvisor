@@ -1,4 +1,6 @@
 use crate::polling::providers::cgroups::CgroupPath;
+use crate::shell::Shell;
+use std::sync::Arc;
 use std::time::Duration;
 
 use bus::BusReader;
@@ -18,4 +20,5 @@ pub struct TargetMetadata {
 pub struct IntervalWorkerContext {
     pub term_rx:  BusReader<()>,
     pub interval: Duration,
+    pub shell:    Arc<Shell>,
 }

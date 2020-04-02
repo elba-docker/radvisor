@@ -6,12 +6,14 @@ mod cli;
 mod collection;
 mod polling;
 mod shared;
+mod shell;
 mod timer;
 mod util;
 
 use crate::cli::{Command, Opts};
 use crate::polling::providers::{self, Provider};
 use crate::shared::{IntervalWorkerContext, TargetMetadata};
+use crate::shell::Shell;
 use std::sync::mpsc::{self, Receiver, Sender};
 use std::sync::{Arc, Mutex};
 use std::thread;
@@ -19,7 +21,6 @@ use std::time::Duration;
 use std::vec::Vec;
 
 use bus::Bus;
-use colored::*;
 
 /// Parses CLI args and runs the correct procedure depending on the subcommand
 fn main() {
@@ -33,6 +34,8 @@ fn main() {
 
     // Parse command line arguments
     let opts: Opts = cli::load();
+    // Wrap the shell in an Arc so that it can be sent across threads
+    let shell = Arc::new(shell::Shell::new(&opts));
 
     match opts.command {
         Command::Run { mode } => {
@@ -40,33 +43,35 @@ fn main() {
             let mut provider: Box<dyn Provider> = providers::for_mode(mode);
 
             // Determine if the current process can connect to the provider source
-            if let Some(err) = provider.initialize(&opts) {
-                eprintln!("{}", err.message.red().bold());
+            if let Some(err) = provider.initialize(&opts, Arc::clone(&shell)) {
+                shell.error(err.message);
                 std::process::exit(1);
             }
 
-            run(opts, provider);
+            run(opts, provider, shell);
         },
     }
 }
 
 /// Bootstraps the two worker threads, preparing the necessary communication
 /// between them
-fn run(opts: Opts, provider: Box<dyn Provider>) -> () {
+fn run(opts: Opts, provider: Box<dyn Provider>, shell: Arc<Shell>) -> () {
     // Used to send container metadata lists from the polling thread to the
     // collection thread
     let (tx, rx): (Sender<Vec<TargetMetadata>>, Receiver<Vec<TargetMetadata>>) = mpsc::channel();
 
     // Create the thread worker contexts using the term bus lock
-    let term_bus = initialize_term_handler();
+    let term_bus = initialize_term_handler(Arc::clone(&shell));
     let mut term_bus_handle = term_bus.lock().unwrap();
     let polling_context = IntervalWorkerContext {
         interval: opts.polling_interval,
         term_rx:  term_bus_handle.add_rx(),
+        shell:    Arc::clone(&shell),
     };
     let collection_context = IntervalWorkerContext {
         interval: opts.interval,
         term_rx:  term_bus_handle.add_rx(),
+        shell:    Arc::clone(&shell),
     };
     drop(term_bus_handle);
 
@@ -86,15 +91,15 @@ fn run(opts: Opts, provider: Box<dyn Provider>) -> () {
     polling_thread
         .join()
         .expect("Error: polling thread resulted in panic");
-    println!("Exiting");
+    shell.status("Exiting", "rAdvisor");
 }
 
 /// Initializes a bus that handles termination by broadcasting an empty message
 /// to all worker threads
-fn initialize_term_handler() -> Arc<Mutex<Bus<()>>> {
+fn initialize_term_handler(shell: Arc<Shell>) -> Arc<Mutex<Bus<()>>> {
     let term_bus = Arc::new(Mutex::new(Bus::new(1)));
     let term_bus_c = Arc::clone(&term_bus);
-    ctrlc::set_handler(move || handle_termination(&term_bus_c))
+    ctrlc::set_handler(move || handle_termination(&term_bus_c, Arc::clone(&shell)))
         .expect("Error: could not create SIGINT handler");
 
     term_bus
@@ -102,15 +107,15 @@ fn initialize_term_handler() -> Arc<Mutex<Bus<()>>> {
 
 /// Handles program termination by broadcasting an empty message on a special
 /// termination bus that each thread listens to
-fn handle_termination(bus_lock: &Arc<Mutex<Bus<()>>>) -> ! {
+fn handle_termination(bus_lock: &Arc<Mutex<Bus<()>>>, shell: Arc<Shell>) -> ! {
     let mut bus = bus_lock.lock().unwrap();
     bus.broadcast(());
 
     // Try again to tear down the program
     thread::sleep(Duration::from_millis(2000));
-    println!("Trying again...");
+    shell.warn("Could not shutdown gracefully on the first try. Trying again...");
     bus.broadcast(());
     thread::sleep(Duration::from_millis(1000));
-    println!("Could not shut down gracefully");
+    shell.warn("Forcibly closing; buffers may not be flushed.");
     std::process::exit(2);
 }

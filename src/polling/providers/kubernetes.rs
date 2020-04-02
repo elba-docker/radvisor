@@ -2,13 +2,14 @@ use crate::cli::Opts;
 use crate::polling::providers::cgroups::{self, CgroupManager, CgroupPath};
 use crate::polling::providers::{FetchError, InitializationError, Provider};
 use crate::shared::TargetMetadata;
+use crate::shell::Shell;
 use crate::util;
 use std::cell::RefCell;
 use std::collections::BTreeMap;
 use std::fmt::Debug;
 use std::future::Future;
+use std::sync::Arc;
 
-use colored::*;
 use gethostname::gethostname;
 use k8s_openapi::api::core::v1::{Node, Pod};
 use k8s_openapi::apimachinery::pkg::apis::meta::v1::Time;
@@ -24,6 +25,9 @@ use tokio::runtime::Runtime;
 /// Number of polling blocks that need to elapse before container info strings
 /// are evicted from the time-based LRU cache
 const POLLING_BLOCK_EXPIRY: u32 = 5u32;
+
+/// String representation for "None"
+const NONE_STR: &'static str = "~";
 
 /// Root cgroup for kubernetes pods to fall under
 const ROOT_CGROUP: &str = "kubepods";
@@ -42,6 +46,7 @@ pub struct Kubernetes {
 pub struct InitializationInvariants {
     pod_reflector: Reflector<Pod>,
     info_cache:    RefCell<LruCache<String, String>>,
+    shell:         Arc<Shell>,
 }
 
 impl Kubernetes {
@@ -98,8 +103,8 @@ impl QualityOfService {
 }
 
 impl Provider for Kubernetes {
-    fn initialize(&mut self, opts: &Opts) -> Option<InitializationError> {
-        println!("Initializing Kubernetes API provider");
+    fn initialize(&mut self, opts: &Opts, shell: Arc<Shell>) -> Option<InitializationError> {
+        shell.status("Initializing", "Kubernetes API provider");
 
         // Get hostname to try to identify node name
         let hostname = match gethostname().into_string() {
@@ -118,7 +123,7 @@ impl Provider for Kubernetes {
             Err(_) => {
                 return Some(InitializationError::new(
                     "Could not load kubernetes config. Make sure the current machine is a part of \
-                     a\ncluster and has the cluster configuration copied to the config directory.",
+                     a cluster and has the cluster configuration copied to the config directory.",
                 ));
             },
         };
@@ -131,7 +136,7 @@ impl Provider for Kubernetes {
         // Initialize client
         self.client = Some(APIClient::new(config));
 
-        self.invariants = match self.build_invariants(&hostname, opts) {
+        self.invariants = match self.build_invariants(&hostname, opts, shell) {
             Ok(invariants) => Some(invariants),
             Err(err) => {
                 return Some(err);
@@ -149,30 +154,44 @@ impl Provider for Kubernetes {
         let _ = self.exec(reflector.poll());
 
         match self.get_pods() {
-            None => Err(FetchError::new(None)),
-            Some(pods) => {
-                Ok(pods
+            Err(e) => Err(e),
+            Ok(pods) => {
+                let original_num = pods.len();
+                let processed = pods
                     .into_iter()
                     .filter_map(|pod| {
                         let meta = Meta::meta(&pod);
                         let uid: &str = match &meta.uid {
-                            None => return None,
                             Some(uid) => &uid,
+                            None => {
+                                self.shell().verbose(|sh| {
+                                    sh.warn("Could not get uid for node! This shouldn't happen")
+                                });
+                                return None;
+                            },
                         };
 
-                        let pod_slice = String::from("pod") + &uid;
                         let qos_class: QualityOfService = match QualityOfService::from_pod(&pod) {
-                            None => return None,
                             Some(qos_class) => qos_class,
+                            None => {
+                                self.shell().verbose(|sh| {
+                                    sh.warn(format!(
+                                        "Could not parse quality of service class for pod {}: \
+                                         invalid value '{}'",
+                                        name(&pod),
+                                        pod.status
+                                            .as_ref()
+                                            .and_then(|s| s.qos_class.as_deref())
+                                            .unwrap_or(NONE_STR)
+                                    ))
+                                });
+                                return None;
+                            },
                         };
 
                         // Construct the cgroup path from the UID and QoS class
                         // from the metadata, and make sure it exists/is mounted
-                        let cgroup_option: Option<CgroupPath> = self.cgroup_manager.get_cgroup(&[
-                            ROOT_CGROUP,
-                            &qos_class.to_cgroup(),
-                            &pod_slice,
-                        ]);
+                        let cgroup_option = self.get_cgroup(&uid, qos_class);
 
                         match cgroup_option {
                             None => None,
@@ -184,7 +203,17 @@ impl Provider for Kubernetes {
                             }),
                         }
                     })
-                    .collect::<Vec<_>>())
+                    .collect::<Vec<_>>();
+
+                self.shell().verbose(|sh| {
+                    sh.info(format!(
+                        "Received {} -> {} containers from the Kubernetes API",
+                        original_num,
+                        processed.len()
+                    ))
+                });
+
+                Ok(processed)
             },
         }
     }
@@ -200,15 +229,13 @@ impl Kubernetes {
 
     /// Try to get info from LRU cache before re-serializing it
     fn get_info(&mut self, pod: &Pod) -> String {
-        let meta = Meta::meta(pod);
-        let uid_default = String::from("");
-        let uid: &String = meta.uid.as_ref().unwrap_or(&uid_default);
+        let uid: String = String::from(uid(pod));
         let mut info_cache = self.unwrap().info_cache.borrow_mut();
-        match info_cache.get(uid) {
+        match info_cache.get(&uid) {
             Some(info) => info.clone(),
             None => {
-                let info = format_info(&pod);
-                info_cache.insert(uid.clone(), info.clone());
+                let info = self.format_info(&pod);
+                info_cache.insert(uid, info.clone());
                 info
             },
         }
@@ -220,6 +247,7 @@ impl Kubernetes {
         &self,
         hostname: &str,
         opts: &Opts,
+        shell: Arc<Shell>,
     ) -> Result<InitializationInvariants, InitializationError> {
         // Get current node by hostname and store in provider
         let node_name_option: Option<String> = self
@@ -230,8 +258,8 @@ impl Kubernetes {
             Some(name) => name,
             None => {
                 return Err(InitializationError::new(
-                    "Could not get the current node via the Kubernetes API.\nMake sure the \
-                     current machine is running its own node.",
+                    "Could not get the current node via the Kubernetes API. Make sure the current \
+                     machine is running its own node.",
                 ))
             },
         };
@@ -240,8 +268,9 @@ impl Kubernetes {
         let reflector = self.initialize_pod_reflector(&node_name)?;
 
         Ok(InitializationInvariants {
+            shell,
             pod_reflector: reflector,
-            info_cache:    RefCell::new(LruCache::with_expiry_duration(
+            info_cache: RefCell::new(LruCache::with_expiry_duration(
                 opts.polling_interval * POLLING_BLOCK_EXPIRY,
             )),
         })
@@ -257,25 +286,42 @@ impl Kubernetes {
                 let reflector: Reflector<Node> =
                     match self.exec(Reflector::new(client.clone(), lp, resource).init()) {
                         Ok(reflector) => reflector,
-                        Err(_) => {
+                        Err(err) => {
+                            self.shell().warn(format!(
+                                "Could not fetch list of nodes in the Kubernetes cluster: {}",
+                                err
+                            ));
                             return None;
                         },
                     };
 
                 let nodes_iter = match self.exec(reflector.state()) {
                     Ok(state) => state.into_iter(),
-                    Err(_) => {
+                    Err(err) => {
+                        self.shell().warn(format!(
+                            "Could not get list of nodes in the Kubernetes cluster: {}",
+                            err
+                        ));
                         return None;
                     },
                 };
 
                 // Try to get a node with the given hostname
+                let shell = self.shell();
                 return nodes_iter
-                    .filter(|o| match &Meta::meta(o).labels {
+                    .filter(|node| match &Meta::meta(node).labels {
                         None => false,
                         Some(labels) => match labels.get("kubernetes.io/hostname") {
-                            None => false,
                             Some(hostname) => hostname == target_hostname,
+                            None => {
+                                shell.verbose(|sh| {
+                                    sh.warn(format!(
+                                        "Node lacks 'kubernetes.io/hostname' label: {}",
+                                        name(node)
+                                    ))
+                                });
+                                false
+                            },
                         },
                     })
                     .nth(0);
@@ -302,8 +348,8 @@ impl Kubernetes {
                 match self.exec(Reflector::new(client.clone(), lp, resource).init()) {
                     Ok(reflector) => Ok(reflector),
                     Err(_) => Err(InitializationError::new(
-                        "Could not get the list of pods running on the current machine.\n Make \
-                         sure the node can access the API.",
+                        "Could not get the list of pods running on the current machine. Make sure \
+                         the node can access the API.",
                     )),
                 }
             },
@@ -311,19 +357,55 @@ impl Kubernetes {
     }
 
     /// Tries to get all pods that are running on the current node
-    fn get_pods(&self) -> Option<Vec<Pod>> {
+    fn get_pods(&self) -> Result<Vec<Pod>, FetchError> {
         let invariants = self.unwrap();
         let pod_reflector = &invariants.pod_reflector;
 
-        let pods_iter = match self.exec(pod_reflector.state()) {
-            Ok(state) => state.into_iter(),
-            Err(_) => {
-                return None;
-            },
-        };
-
-        Some(pods_iter.collect::<Vec<_>>())
+        match self.exec(pod_reflector.state()) {
+            Ok(state) => Ok(state.into_iter().collect::<Vec<_>>()),
+            Err(err) => Err(FetchError::new(Some(Box::new(err)))),
+        }
     }
+
+    /// Gets the group path for the given UID and QoS class, printing out a
+    /// message upon the first successful cgroup resolution
+    fn get_cgroup(&mut self, uid: &str, qos_class: QualityOfService) -> Option<CgroupPath> {
+        let pod_slice = String::from("pod") + &uid;
+        // Determine if the manager had a resolved group beforehand
+        let had_driver = self.cgroup_manager.driver().is_some();
+
+        let cgroup_option: Option<CgroupPath> =
+            self.cgroup_manager
+                .get_cgroup(&[ROOT_CGROUP, &qos_class.to_cgroup(), &pod_slice]);
+
+        if !had_driver {
+            if let Some(driver) = self.cgroup_manager.driver() {
+                self.shell()
+                    .info(format!("Identified {} as cgroup driver", driver));
+            }
+        }
+
+        cgroup_option
+    }
+
+    /// Formats pod info headers to YAML for display at the top of each CSV
+    /// file. Uses serde-yaml to serialize the PodInfo struct to YAML
+    fn format_info(&self, pod: &Pod) -> String {
+        match try_format_info(pod) {
+            Ok(yaml) => yaml,
+            Err(err) => {
+                self.shell().error(format!(
+                    "Could not serialize pod info for pod {}: {}",
+                    uid(pod),
+                    err
+                ));
+                String::from("")
+            },
+        }
+    }
+
+    /// Gets a reference to the current shell
+    fn shell(&self) -> &Shell { &self.unwrap().shell }
 }
 
 /// Pod info struct that gets included with each log file
@@ -387,24 +469,6 @@ impl<'a> PodInfo<'a> {
     }
 }
 
-/// Formats pod info headers to YAML for display at the top of each CSV file.
-/// Uses serde-yaml to serialize the PodInfo struct to YAML
-fn format_info(pod: &Pod) -> String {
-    match try_format_info(pod) {
-        Ok(yaml) => yaml,
-        Err(err) => {
-            let uid_default = String::from("");
-            let uid: &String = Meta::meta(pod).uid.as_ref().unwrap_or(&uid_default);
-            eprintln!(
-                "Could not serialize pod info for pod {}:\n{}",
-                uid.red(),
-                format!("{:?}", err).red()
-            );
-            String::from("")
-        },
-    }
-}
-
 /// Attempts to format pod info, potentially failing to do so
 fn try_format_info(pod: &Pod) -> Result<String, Box<dyn std::error::Error>> {
     let pod_info = PodInfo::new(pod);
@@ -412,3 +476,7 @@ fn try_format_info(pod: &Pod) -> Result<String, Box<dyn std::error::Error>> {
     // Remove top ---
     Ok(String::from(serde_output.trim_start_matches("---\n")) + "\n")
 }
+
+fn name<'a, O: Meta>(obj: &'a O) -> &'a str { Meta::meta(obj).name.as_deref().unwrap_or(NONE_STR) }
+
+fn uid<'a, O: Meta>(obj: &'a O) -> &'a str { Meta::meta(obj).uid.as_deref().unwrap_or(NONE_STR) }
