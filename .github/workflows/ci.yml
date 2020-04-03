@@ -13,6 +13,24 @@ jobs:
           profile: minimal
           toolchain: nightly
           override: true
+
+      # Cache cargo dependencies
+      - name: Cache cargo registry
+        uses: actions/cache@v1
+        with:
+          path: ~/.cargo/registry
+          key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+      - name: Cache cargo index
+        uses: actions/cache@v1
+        with:
+          path: ~/.cargo/git
+          key: ${{ runner.os }}-cargo-index-${{ hashFiles('**/Cargo.lock') }}
+      - name: Cache cargo build
+        uses: actions/cache@v1
+        with:
+          path: target
+          key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
+
       - uses: actions-rs/cargo@v1
         with:
           command: check
@@ -43,10 +61,10 @@ jobs:
       # Either upgrade or install open SSL
       - name: Install open-ssl
         if: steps.cache-vcpkg.outputs.cache-hit != 'true'
-        run: .\vcpkg\vcpkg install openssl:x64-windows
+        run: .\vcpkg\vcpkg install openssl:x64-windows-static
       - name: Update open-ssl
         if: steps.cache-vcpkg.outputs.cache-hit == 'true'
-        run: .\vcpkg\vcpkg upgrade --no-dry-run openssl:x64-windows
+        run: .\vcpkg\vcpkg upgrade --no-dry-run openssl:x64-windows-static
 
       - name: Install vcpkg
         run: .\vcpkg\vcpkg integrate install
@@ -60,14 +78,31 @@ jobs:
         run: tree .\vcpkg\installed
       - name: echo directory structure2
         run: tree .\vcpkg
+
+      # Cache cargo dependencies
+      - name: Cache cargo registry
+        uses: actions/cache@v1
+        with:
+          path: ~/.cargo/registry
+          key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+      - name: Cache cargo index
+        uses: actions/cache@v1
+        with:
+          path: ~/.cargo/git
+          key: ${{ runner.os }}-cargo-index-${{ hashFiles('**/Cargo.lock') }}
+      - name: Cache cargo build
+        uses: actions/cache@v1
+        with:
+          path: target
+          key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
+
+      # Perform build checks
       - uses: actions-rs/cargo@v1
         with:
-          command: check
+          command: build
         env:
-          VCPKGRS_DYNAMIC: 1
-          # OPENSSL_DIR: ".\\vcpkg\\installed\\x64-windows"
-          # OPENSSL_LIB_DIR: ".\\vcpkg\\installed\\x64-windows\\lib"
-          # OPENSSL_INCLUDE_DIR: ".\\vcpkg\\installed\\x64-windows\\include"
+          OPENSSL_STATIC: 1
+          RUSTFLAGS: -Ctarget-feature=+crt-static
 
   test:
     name: Test Suite
@@ -79,6 +114,24 @@ jobs:
           profile: minimal
           toolchain: nightly
           override: true
+
+      # Cache cargo dependencies
+      - name: Cache cargo registry
+        uses: actions/cache@v1
+        with:
+          path: ~/.cargo/registry
+          key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+      - name: Cache cargo index
+        uses: actions/cache@v1
+        with:
+          path: ~/.cargo/git
+          key: ${{ runner.os }}-cargo-index-${{ hashFiles('**/Cargo.lock') }}
+      - name: Cache cargo build
+        uses: actions/cache@v1
+        with:
+          path: target
+          key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
+
       - uses: actions-rs/cargo@v1
         with:
           command: test
@@ -94,6 +147,24 @@ jobs:
           toolchain: nightly
           components: rustfmt
           override: true
+
+      # Cache cargo dependencies
+      - name: Cache cargo registry
+        uses: actions/cache@v1
+        with:
+          path: ~/.cargo/registry
+          key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+      - name: Cache cargo index
+        uses: actions/cache@v1
+        with:
+          path: ~/.cargo/git
+          key: ${{ runner.os }}-cargo-index-${{ hashFiles('**/Cargo.lock') }}
+      - name: Cache cargo build
+        uses: actions/cache@v1
+        with:
+          path: target
+          key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
+
       - uses: actions-rs/cargo@v1
         with:
           command: fmt
@@ -110,6 +181,24 @@ jobs:
           toolchain: nightly
           components: clippy
           override: true
+
+      # Cache cargo dependencies
+      - name: Cache cargo registry
+        uses: actions/cache@v1
+        with:
+          path: ~/.cargo/registry
+          key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+      - name: Cache cargo index
+        uses: actions/cache@v1
+        with:
+          path: ~/.cargo/git
+          key: ${{ runner.os }}-cargo-index-${{ hashFiles('**/Cargo.lock') }}
+      - name: Cache cargo build
+        uses: actions/cache@v1
+        with:
+          path: target
+          key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
+
       - uses: actions-rs/cargo@v1
         with:
           command: clippy
