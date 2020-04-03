@@ -1,5 +1,4 @@
 #![feature(const_generics)]
-#![feature(core_intrinsics)]
 #![allow(incomplete_features)]
 
 mod cli;
