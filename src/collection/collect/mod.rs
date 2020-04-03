@@ -4,7 +4,6 @@ use crate::util::buffer::{Buffer, BufferLike};
 use crate::util::{self, AnonymousSlice};
 
 use csv::{ByteRecord, Error};
-use numtoa::NumToA;
 
 pub mod files;
 pub mod read;
@@ -120,11 +119,12 @@ pub fn run(collector: &mut Collector, buffers: &mut WorkingBuffers) -> Result<()
 /// Collects the nanosecond unix timestamp read time
 #[inline]
 fn collect_read(buffers: &mut WorkingBuffers) -> () {
-    buffers
-        .record
-        .push_field(util::nano_ts().numtoa(10, &mut buffers.buffer.b));
-    // numtoa writes starting at the end of the buffer, so clear backwards
-    buffers.buffer.clear_unmanaged_backwards();
+    buffers.buffer.len = match itoa::write(&mut buffers.buffer.b[..], util::nano_ts()) {
+        Ok(n) => n,
+        Err(_) => 0,
+    };
+    buffers.record.push_field(&buffers.buffer.b);
+    buffers.buffer.clear();
 }
 
 /// Collects all stats for the pids subsystem

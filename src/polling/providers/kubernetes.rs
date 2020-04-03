@@ -103,17 +103,17 @@ impl QualityOfService {
 }
 
 impl Provider for Kubernetes {
-    fn initialize(&mut self, opts: &Opts, shell: Arc<Shell>) -> Option<InitializationError> {
+    fn initialize(&mut self, opts: &Opts, shell: Arc<Shell>) -> Result<(), InitializationError> {
         shell.status("Initializing", "Kubernetes API provider");
 
         // Get hostname to try to identify node name
         let hostname = match gethostname().into_string() {
             Ok(hostname) => hostname,
             Err(_) => {
-                return Some(InitializationError::new(
+                return Err(InitializationError::new(
                     "Could not retrieve hostname to use for node detection: Invalid string \
                      returned",
-                ));
+                ))
             },
         };
 
@@ -121,16 +121,16 @@ impl Provider for Kubernetes {
         let config = match self.exec(config::load_kube_config()) {
             Ok(config) => config,
             Err(_) => {
-                return Some(InitializationError::new(
+                return Err(InitializationError::new(
                     "Could not load kubernetes config. Make sure the current machine is a part of \
                      a cluster and has the cluster configuration copied to the config directory.",
-                ));
+                ))
             },
         };
 
         // Make sure cgroups are mounted properly
         if !cgroups::cgroups_mounted_properly() {
-            return Some(InitializationError::new(cgroups::INVALID_MOUNT_MESSAGE));
+            return Err(InitializationError::new(cgroups::INVALID_MOUNT_MESSAGE));
         }
 
         // Initialize client
@@ -138,12 +138,10 @@ impl Provider for Kubernetes {
 
         self.invariants = match self.build_invariants(&hostname, opts, shell) {
             Ok(invariants) => Some(invariants),
-            Err(err) => {
-                return Some(err);
-            },
+            Err(err) => return Err(err),
         };
 
-        None
+        Ok(())
     }
 
     fn fetch(&mut self) -> Result<Vec<TargetMetadata>, FetchError> {
@@ -153,69 +151,65 @@ impl Provider for Kubernetes {
         // Poll the reflector to update the pods; ignore errors
         let _ = self.exec(reflector.poll());
 
-        match self.get_pods() {
-            Err(e) => Err(e),
-            Ok(pods) => {
-                let original_num = pods.len();
-                let processed = pods
-                    .into_iter()
-                    .filter_map(|pod| {
-                        let meta = Meta::meta(&pod);
-                        let uid: &str = match &meta.uid {
-                            Some(uid) => &uid,
-                            None => {
-                                self.shell().verbose(|sh| {
-                                    sh.warn("Could not get uid for node! This shouldn't happen")
-                                });
-                                return None;
-                            },
-                        };
+        let pods = self.get_pods()?;
+        let original_num = pods.len();
+        let processed = pods
+            .into_iter()
+            .filter_map(|pod| {
+                let meta = Meta::meta(&pod);
+                let uid: &str = match &meta.uid {
+                    Some(uid) => &uid,
+                    None => {
+                        self.shell().verbose(|sh| {
+                            sh.warn("Could not get uid for node! This shouldn't happen")
+                        });
+                        return None;
+                    },
+                };
 
-                        let qos_class: QualityOfService = match QualityOfService::from_pod(&pod) {
-                            Some(qos_class) => qos_class,
-                            None => {
-                                self.shell().verbose(|sh| {
-                                    sh.warn(format!(
-                                        "Could not parse quality of service class for pod {}: \
-                                         invalid value '{}'",
-                                        name(&pod),
-                                        pod.status
-                                            .as_ref()
-                                            .and_then(|s| s.qos_class.as_deref())
-                                            .unwrap_or(NONE_STR)
-                                    ))
-                                });
-                                return None;
-                            },
-                        };
+                let qos_class: QualityOfService = match QualityOfService::from_pod(&pod) {
+                    Some(qos_class) => qos_class,
+                    None => {
+                        self.shell().verbose(|sh| {
+                            sh.warn(format!(
+                                "Could not parse quality of service class for pod {}: invalid \
+                                 value '{}'",
+                                name(&pod),
+                                pod.status
+                                    .as_ref()
+                                    .and_then(|s| s.qos_class.as_deref())
+                                    .unwrap_or(NONE_STR)
+                            ))
+                        });
+                        return None;
+                    },
+                };
 
-                        // Construct the cgroup path from the UID and QoS class
-                        // from the metadata, and make sure it exists/is mounted
-                        let cgroup_option = self.get_cgroup(&uid, qos_class);
+                // Construct the cgroup path from the UID and QoS class
+                // from the metadata, and make sure it exists/is mounted
+                let cgroup_option = self.get_cgroup(&uid, qos_class);
 
-                        match cgroup_option {
-                            None => None,
-                            Some(cgroup) => Some(TargetMetadata {
-                                id: String::from(uid),
-                                info: self.get_info(&pod),
-                                cgroup,
-                                provider_type: PROVIDER_TYPE,
-                            }),
-                        }
-                    })
-                    .collect::<Vec<_>>();
+                match cgroup_option {
+                    None => None,
+                    Some(cgroup) => Some(TargetMetadata {
+                        id: String::from(uid),
+                        info: self.get_info(&pod),
+                        cgroup,
+                        provider_type: PROVIDER_TYPE,
+                    }),
+                }
+            })
+            .collect::<Vec<_>>();
 
-                self.shell().verbose(|sh| {
-                    sh.info(format!(
-                        "Received {} -> {} containers from the Kubernetes API",
-                        original_num,
-                        processed.len()
-                    ))
-                });
+        self.shell().verbose(|sh| {
+            sh.info(format!(
+                "Received {} -> {} containers from the Kubernetes API",
+                original_num,
+                processed.len()
+            ))
+        });
 
-                Ok(processed)
-            },
-        }
+        Ok(processed)
     }
 }
 

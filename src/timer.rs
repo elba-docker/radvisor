@@ -6,7 +6,11 @@ use std::time::Duration;
 
 /// Represents a timer that can be iterated on and will block until either
 /// stopped or signalled by its worker thread to emit another tick. The specific
-/// implementation ensures
+/// implementation ensures that the timer ticks will be as close to the target
+/// interval as possible (using `std::sync::mpsc::Receiver::recv_timeout` as the
+/// timing mechanism) due to a separate thread doing the waiting. This means
+/// that this timer thread can signal and then immediately wait for the next
+/// interval without being slowed by the processing time for the previous tick.
 pub struct Timer {
     pub duration: Duration,
     shared:       Arc<SharedTimerState>,

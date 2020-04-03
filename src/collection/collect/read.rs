@@ -97,6 +97,9 @@ impl StatFileLayout {
             Some(file) => {
                 let mut file_mut = file;
                 let result = file_mut.read_to_end(&mut buffer);
+                // Ignore errors: if seeking fails, then the effect next time will be pushing
+                // empty buffers to the CSV rows, which lets the other monitoring
+                // continue
                 let _ = file_mut.seek(SeekFrom::Start(0));
                 result.is_ok()
             },
@@ -266,6 +269,9 @@ fn copy_lines_to_commas<const S: usize, const T: usize>(
         target.b[end] = COMMA;
         start = end + 1;
         comma_at_end = true;
+
+        // Update length of target buffer
+        target.len = end - 1;
     }
 
     // if last was written to, reset comma to NUL terminator

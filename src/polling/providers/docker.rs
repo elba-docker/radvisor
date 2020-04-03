@@ -32,28 +32,27 @@ pub struct Docker {
 }
 
 impl Provider for Docker {
-    fn initialize(&mut self, opts: &Opts, shell: Arc<Shell>) -> Option<InitializationError> {
+    fn initialize(&mut self, opts: &Opts, shell: Arc<Shell>) -> Result<(), InitializationError> {
         self.shell = Some(Arc::clone(&shell));
         self.shell().status("Initializing", "Docker API provider");
 
         // Ping the Docker API to make sure the current process can connect
         let future = self.client.ping();
-        let result = self.runtime.block_on(future);
-        match result {
+        match self.runtime.block_on(future) {
             Ok(_) => {},
-            Err(_) => return Some(InitializationError::new(CONNECTION_ERROR_MESSAGE)),
+            Err(_) => return Err(InitializationError::new(CONNECTION_ERROR_MESSAGE)),
         }
 
         // Make sure cgroups are mounted properly
         if !cgroups::cgroups_mounted_properly() {
-            return Some(InitializationError::new(cgroups::INVALID_MOUNT_MESSAGE));
+            return Err(InitializationError::new(cgroups::INVALID_MOUNT_MESSAGE));
         }
 
         self.info_cache = Some(RefCell::new(LruCache::with_expiry_duration(
             opts.polling_interval * POLLING_BLOCK_EXPIRY,
         )));
 
-        None
+        Ok(())
     }
 
     fn fetch(&mut self) -> Result<Vec<TargetMetadata>, FetchError> {

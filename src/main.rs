@@ -37,13 +37,21 @@ fn main() {
     // Wrap the shell in an Arc so that it can be sent across threads
     let shell = Arc::new(shell::Shell::new(&opts));
 
+    // Exit if running on a platform other than Linux
+    if !cfg!(target_os = "linux") {
+        shell.error("rAdvisor only runs on Linux due to its reliance on cgroups. See \
+        https://github.com/elba-kubernetes/radvisor/issues/3 for the tracking issue on \
+        adding support to Windows");
+        std::process::exit(1);
+    }
+
     match opts.command {
         Command::Run { mode } => {
             // Resolve container metadata provider
             let mut provider: Box<dyn Provider> = providers::for_mode(mode);
 
             // Determine if the current process can connect to the provider source
-            if let Some(err) = provider.initialize(&opts, Arc::clone(&shell)) {
+            if let Err(err) = provider.initialize(&opts, Arc::clone(&shell)) {
                 shell.error(err.message);
                 std::process::exit(1);
             }

@@ -1,10 +1,71 @@
 pub mod buffer;
 
-use libc::{clock_gettime, timespec, CLOCK_REALTIME};
-
 pub static N: u8 = '\n' as u8;
 pub static R: u8 = '\r' as u8;
 pub static S: u8 = ' ' as u8;
+
+/// Gets the nanosecond unix timestamp for a stat read
+pub fn nano_ts() -> u128 { imp::nano_ts() }
+
+/// Gets the second unix timestamp for the stat filename
+pub fn second_ts() -> u64 { imp::second_ts() }
+
+#[cfg(unix)]
+mod imp {
+    use libc::{clock_gettime, timespec, CLOCK_REALTIME};
+    use std::mem;
+
+    /// Invokes `clock_gettime` from time.h in libc to get a `timespec` struct
+    fn get_time() -> timespec {
+        let mut tp: timespec = unsafe { mem::zeroed() };
+        unsafe {
+            clock_gettime(CLOCK_REALTIME, &mut tp);
+        }
+        tp
+    }
+
+    pub fn nano_ts() -> u128 {
+        let tp = get_time();
+        (tp.tv_nsec as u128) + ((tp.tv_sec as u128) * 1_000_000_000)
+    }
+
+    pub fn second_ts() -> u64 { get_time().tv_sec as u64 }
+}
+
+#[cfg(windows)]
+mod imp {
+    use std::mem;
+    use winapi::shared::minwindef::{FILETIME, SYSTEMTIME, WORD};
+    use winapi::um::sysinfoapi;
+
+    /// Number of seconds between the start of the Windows epoch (Jan 1. 1601)
+    /// and the start of the Unix epoch (Jan 1. 1970)
+    const EPOCH_DIFFERENCE: u64 = 11644473600;
+    /// Number of nanoseconds between the start of the Windows epoch (Jan 1.
+    /// 1601) and the start of the Unix epoch (Jan 1. 1970)
+    const NANO_EPOCH_DIFFERENCE: u128 = (EPOCH_DIFFERENCE as u128) * 1_000_000_000;
+    /// Number of nanoseconds per tick
+    const TICK_LENGTH: u128 = 100;
+    /// Number of ticks per second
+    const TICK: i64 = 1_000_000_000 / (TICK_LENGTH as i64);
+
+    /// Executes a win32 call, returning a timestamp that represents the number
+    /// of 100 ns intervals since January 1, 1601 (UTC). Invokes
+    /// `GetSystemTimePreciseAsFileTime` from Sysinfoapi.h in
+    /// [winapi](https://docs.microsoft.com/en-us/windows/win32/api/sysinfoapi/nf-sysinfoapi-getsystemtimepreciseasfiletime)
+    fn file_timestamp() -> i64 {
+        let mut file_time: FILETIME = unsafe { mem::zeroed() };
+        unsafe {
+            sysinfoapi::GetSystemTimePreciseAsFileTime(&mut file_time);
+        }
+
+        (file_time.dwLowDateTime as i64) + (file_time.dw_HighDateTime as i64) << 32;
+    }
+
+    pub fn nano_ts() -> u128 { (file_timestamp() as u128) * TICK_LENGTH + NANO_EPOCH_DIFFERENCE }
+
+    pub fn second_ts() -> u64 { (file_timestamp() / TICK) as u64 + EPOCH_DIFFERENCE }
+}
 
 /// Returns true if the given char is a line feed, carriage return, or normal
 /// space
@@ -18,32 +79,6 @@ pub fn is_space(c: u8) -> bool { c == S }
 /// Returns true if the given char is a line feed or carriage return
 #[inline]
 pub fn is_newline(c: u8) -> bool { c == N || c == R }
-
-/// Gets the nanosecond unix timestamp for a stat read
-pub fn nano_ts() -> u128 {
-    let mut tp: timespec = timespec {
-        tv_sec:  0,
-        tv_nsec: 0,
-    };
-    // Invoke clock_gettime from time.h in libc
-    unsafe {
-        clock_gettime(CLOCK_REALTIME, &mut tp);
-    }
-    (tp.tv_nsec as u128) + ((tp.tv_sec as u128) * 1000000000)
-}
-
-/// Gets the second unix timestamp for the stat filename
-pub fn second_ts() -> u64 {
-    let mut tp: timespec = timespec {
-        tv_sec:  0,
-        tv_nsec: 0,
-    };
-    // Invoke clock_gettime from time.h in libc
-    unsafe {
-        clock_gettime(CLOCK_REALTIME, &mut tp);
-    }
-    tp.tv_sec as u64
-}
 
 /// Finds the position of the next character, starting at the given index. If a
 /// NUL character is reached before the target, the result is an None. Else, if
