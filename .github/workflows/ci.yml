@@ -22,12 +22,37 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v2
+
+      # Run vcpkg caching based on latest release version from GitHub
+      - name: Determine vcpkg version
+        run: echo "::set-env name=vcpkg_version::$((Invoke-WebRequest -Uri https://api.github.com/repos/microsoft/vcpkg/releases/latest | Select-Object -ExpandProperty Content | ConvertFrom-Json).tag_name)"
+        shell: powershell
+      - name: Cache vcpkg
+        id: cache-vcpkg
+        uses: actions/cache@v1
+        with:
+          path: vcpkg
+          key: ${{ runner.os }}-vcpkg-${{ env.vcpkg_version }}
       - name: Clone & bootstrap vcpkg
-        run: git clone https://github.com/Microsoft/vcpkg.git && powershell -command ".\vcpkg\bootstrap-vcpkg.bat"
+        if: steps.cache-vcpkg.outputs.cache-hit != 'true'
+        run: git clone https://github.com/Microsoft/vcpkg.git && .\vcpkg\bootstrap-vcpkg.bat
+        shell: powershell
+
+      # Always install integrations
       - name: Install vcpkg
-        run: powershell -command ".\vcpkg\vcpkg integrate install"
+        run: .\vcpkg\vcpkg integrate install
+        shell: powershell
+
+      # Either upgrade or install open SSL
       - name: Install open-ssl
-        run: powershell -command ".\vcpkg\vcpkg install openssl:x64-windows"
+        if: steps.cache-vcpkg.outputs.cache-hit != 'true'
+        run: .\vcpkg\vcpkg install openssl:x64-windows
+        shell: powershell
+      - name: Update open-ssl
+        if: steps.cache-vcpkg.outputs.cache-hit == 'true'
+        run: .\vcpkg\vcpkg upgrade --no-dry-run openssl:x64-windows
+        shell: powershell
+
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
@@ -38,9 +63,9 @@ jobs:
           command: check
         env:
           VCPKGRS_DYNAMIC: 1
-          OPENSSL_DIR: ".\\vcpkg\\packages\\openssl_x64-windows"
-          OPENSSL_LIB_DIR: ".\\vcpkg\\packages\\openssl_x64-windows\\lib"
-          OPENSSL_INCLUDE_DIR: ".\\vcpkg\\packages\\openssl_x64-windows\\include"
+          OPENSSL_DIR: ".\\vcpkg\\installed\\openssl_x64-windows"
+          OPENSSL_LIB_DIR: ".\\vcpkg\\installed\\openssl_x64-windows\\lib"
+          OPENSSL_INCLUDE_DIR: ".\\vcpkg\\installed\\openssl_x64-windows\\include"
 
   test:
     name: Test Suite
