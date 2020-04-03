@@ -32,6 +32,10 @@ winapi = { version = "0.3.8", features = ["std"] }
 # TODO: remove github link and migrate to stable version once 3.0 is released
 clap = { git = "https://github.com/clap-rs/clap/" }
 
+[target.'cfg(windows)'.dependencies.shiplift]
+version = "0.6"
+features = ["chrono", "tls"]
+
 [dev-dependencies]
 cargo-update = "3.0.0"
 
