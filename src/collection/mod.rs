@@ -219,8 +219,7 @@ fn update_collectors(
             shell.verbose(|sh| {
                 sh.info(format!(
                     "Tearing down old collector for {} (type={})",
-                    c.id,
-                    c.provider_type
+                    c.id, c.provider_type
                 ))
             });
         }
