@@ -7,7 +7,7 @@ on:
     branches:
       - master
 
-name: Dependency Checks
+name: security/licenses
 
 jobs:
   security_audit:
