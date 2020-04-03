@@ -33,10 +33,12 @@ jobs:
         with:
           path: vcpkg
           key: ${{ runner.os }}-vcpkg-${{ env.vcpkg_version }}
-      - name: Clone & bootstrap vcpkg
+      - name: Clone vcpkg
         if: steps.cache-vcpkg.outputs.cache-hit != 'true'
-        run: git clone https://github.com/Microsoft/vcpkg.git && .\vcpkg\bootstrap-vcpkg.bat
-        shell: powershell
+        run: git clone https://github.com/Microsoft/vcpkg.git
+      - name: Bootstrap vcpkg
+        if: steps.cache-vcpkg.outputs.cache-hit != 'true'
+        run: .\vcpkg\bootstrap-vcpkg.bat
 
       # Always install integrations
       - name: Install vcpkg
