@@ -63,8 +63,8 @@ jobs:
         # if: steps.cache-vcpkg.outputs.cache-hit != 'true'
         run: .\vcpkg\vcpkg install openssl:x64-windows-static
       # - name: Update open-ssl
-        # if: steps.cache-vcpkg.outputs.cache-hit == 'true'
-        # run: .\vcpkg\vcpkg upgrade --no-dry-run openssl:x64-windows-static
+      #   if: steps.cache-vcpkg.outputs.cache-hit == 'true'
+      #   run: .\vcpkg\vcpkg upgrade --no-dry-run openssl:x64-windows-static
 
       - name: Install vcpkg
         run: .\vcpkg\vcpkg integrate install
@@ -96,6 +96,7 @@ jobs:
       - uses: actions-rs/cargo@v1
         with:
           command: build
+          args: -Z features=itarget
         env:
           OPENSSL_STATIC: 1
           RUSTFLAGS: -Ctarget-feature=+crt-static
@@ -155,11 +156,6 @@ jobs:
         with:
           path: ~/.cargo/git
           key: ${{ runner.os }}-cargo-index-${{ hashFiles('**/Cargo.lock') }}-fmt
-      - name: Cache cargo build
-        uses: actions/cache@v1
-        with:
-          path: target
-          key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}-fmt
 
       - uses: actions-rs/cargo@v1
         with:
