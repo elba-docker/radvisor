@@ -1,7 +1,7 @@
 use std::fs::File;
 use std::path::{Path, PathBuf};
 
-const CGROUP_V1_ROOT: &'static str = "/sys/fs/cgroup";
+const CGROUP_V1_ROOT: &str = "/sys/fs/cgroup";
 
 /// File handles re-used for each target that read into the /proc VFS
 pub struct ProcFileHandles {

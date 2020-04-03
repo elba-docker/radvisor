@@ -19,7 +19,6 @@ use kube::config;
 use kube::runtime::Reflector;
 use lru_time_cache::LruCache;
 use serde::Serialize;
-use serde_yaml;
 use tokio::runtime::Runtime;
 
 /// Number of polling blocks that need to elapse before container info strings
@@ -27,7 +26,7 @@ use tokio::runtime::Runtime;
 const POLLING_BLOCK_EXPIRY: u32 = 5u32;
 
 /// String representation for "None"
-const NONE_STR: &'static str = "~";
+const NONE_STR: &str = "~";
 
 /// Root cgroup for kubernetes pods to fall under
 const ROOT_CGROUP: &str = "kubepods";
@@ -50,13 +49,13 @@ pub struct InitializationInvariants {
 }
 
 impl Kubernetes {
-    pub fn new() -> Box<dyn Provider> {
-        Box::new(Kubernetes {
+    pub fn new() -> Self {
+        Kubernetes {
             runtime:        RefCell::new(Runtime::new().unwrap()),
             client:         None,
             invariants:     None,
             cgroup_manager: CgroupManager::new(),
-        })
+        }
     }
 
     /// Unwraps the inner initialization invariants option field, panicking if
@@ -246,7 +245,7 @@ impl Kubernetes {
         // Get current node by hostname and store in provider
         let node_name_option: Option<String> = self
             .get_node_by_hostname(&hostname)
-            .and_then(|node| Meta::meta(&node).name.as_ref().map(|s| s.clone()));
+            .and_then(|node| Meta::meta(&node).name.as_ref().cloned());
 
         let node_name: String = match node_name_option {
             Some(name) => name,
@@ -289,7 +288,7 @@ impl Kubernetes {
                         },
                     };
 
-                let nodes_iter = match self.exec(reflector.state()) {
+                let mut nodes_iter = match self.exec(reflector.state()) {
                     Ok(state) => state.into_iter(),
                     Err(err) => {
                         self.shell().warn(format!(
@@ -302,23 +301,21 @@ impl Kubernetes {
 
                 // Try to get a node with the given hostname
                 let shell = self.shell();
-                return nodes_iter
-                    .filter(|node| match &Meta::meta(node).labels {
-                        None => false,
-                        Some(labels) => match labels.get("kubernetes.io/hostname") {
-                            Some(hostname) => hostname == target_hostname,
-                            None => {
-                                shell.verbose(|sh| {
-                                    sh.warn(format!(
-                                        "Node lacks 'kubernetes.io/hostname' label: {}",
-                                        name(node)
-                                    ))
-                                });
-                                false
-                            },
+                nodes_iter.find(|node| match &Meta::meta(node).labels {
+                    None => false,
+                    Some(labels) => match labels.get("kubernetes.io/hostname") {
+                        Some(hostname) => hostname == target_hostname,
+                        None => {
+                            shell.verbose(|sh| {
+                                sh.warn(format!(
+                                    "Node lacks 'kubernetes.io/hostname' label: {}",
+                                    name(node)
+                                ))
+                            });
+                            false
                         },
-                    })
-                    .nth(0);
+                    },
+                })
             },
         }
     }
@@ -364,7 +361,7 @@ impl Kubernetes {
     /// Gets the group path for the given UID and QoS class, printing out a
     /// message upon the first successful cgroup resolution
     fn get_cgroup(&mut self, uid: &str, qos_class: QualityOfService) -> Option<CgroupPath> {
-        let pod_slice = String::from("pod") + &uid;
+        let pod_slice = String::from("pod") + uid;
         // Determine if the manager had a resolved group beforehand
         let had_driver = self.cgroup_manager.driver().is_some();
 
@@ -471,6 +468,6 @@ fn try_format_info(pod: &Pod) -> Result<String, Box<dyn std::error::Error>> {
     Ok(String::from(serde_output.trim_start_matches("---\n")) + "\n")
 }
 
-fn name<'a, O: Meta>(obj: &'a O) -> &'a str { Meta::meta(obj).name.as_deref().unwrap_or(NONE_STR) }
+fn name<O: Meta>(obj: &O) -> &str { Meta::meta(obj).name.as_deref().unwrap_or(NONE_STR) }
 
-fn uid<'a, O: Meta>(obj: &'a O) -> &'a str { Meta::meta(obj).uid.as_deref().unwrap_or(NONE_STR) }
+fn uid<O: Meta>(obj: &O) -> &str { Meta::meta(obj).uid.as_deref().unwrap_or(NONE_STR) }

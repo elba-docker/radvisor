@@ -39,9 +39,8 @@ jobs:
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          # use stable toolchain for rustfmt since it's not always included
-          # in nightly
-          toolchain: stable
+          toolchain: nightly
+          components: rustfmt
           override: true
       - run: rustup component add rustfmt
       - uses: actions-rs/cargo@v1

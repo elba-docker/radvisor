@@ -1,8 +1,8 @@
 pub mod buffer;
 
-pub static N: u8 = '\n' as u8;
-pub static R: u8 = '\r' as u8;
-pub static S: u8 = ' ' as u8;
+pub static N: u8 = b'\n';
+pub static R: u8 = b'\r';
+pub static S: u8 = b' ';
 
 /// Gets the nanosecond unix timestamp for a stat read
 pub fn nano_ts() -> u128 { imp::nano_ts() }

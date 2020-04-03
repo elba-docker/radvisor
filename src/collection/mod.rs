@@ -24,11 +24,7 @@ type CollectorMap = Arc<Mutex<HashMap<String, RefCell<Collector>>>>;
 
 /// Thread function that collects all active targets and updates the active
 /// list, if possible
-pub fn run(
-    rx: Receiver<Vec<TargetMetadata>>,
-    context: IntervalWorkerContext,
-    location: PathBuf,
-) -> () {
+pub fn run(rx: Receiver<Vec<TargetMetadata>>, context: IntervalWorkerContext, location: PathBuf) {
     context.shell.status(
         "Beginning",
         format!(
@@ -168,7 +164,7 @@ fn update_collectors(
     collectors: &mut HashMap<String, RefCell<Collector>>,
     logs_location: &PathBuf,
     shell: &Shell,
-) -> () {
+) {
     // Set active to false on all entries
     for c in collectors.values() {
         let mut c = c.borrow_mut();

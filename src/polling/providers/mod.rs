@@ -26,7 +26,7 @@ pub trait Provider: Send {
 /// Gets the corresponding provider for the CLI polling mode
 pub fn for_mode(mode: Mode) -> Box<dyn Provider> {
     match mode {
-        Mode::Docker => docker::Docker::new(),
-        Mode::Kubernetes => kubernetes::Kubernetes::new(),
+        Mode::Docker => Box::new(docker::Docker::new()),
+        Mode::Kubernetes => Box::new(kubernetes::Kubernetes::new()),
     }
 }

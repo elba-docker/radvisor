@@ -4,11 +4,11 @@ use crate::util::buffer::{self, Buffer, BufferLike};
 use std::fs::File;
 use std::io::{Read, Seek, SeekFrom};
 
-const EMPTY_BUFFER: &'static [u8] = &[];
+const EMPTY_BUFFER: &[u8] = &[];
 
 /// Tries to read the given file handle, and directly write the contents as a
 /// field to the record
-pub fn entry(file: &Option<File>, buffers: &mut WorkingBuffers) -> () {
+pub fn entry(file: &Option<File>, buffers: &mut WorkingBuffers) {
     // Ignore errors: the buffer will just remain empty
     read_to_buffer(file, buffers);
 
@@ -27,7 +27,7 @@ pub fn entry(file: &Option<File>, buffers: &mut WorkingBuffers) -> () {
 /// followed by a number, and then a newline. Attempts to parse offsets.len()
 /// entries from the file, using the precomputed offsets array to skip reading
 /// the alphabetic key.
-pub fn stat_file(file: &Option<File>, offsets: &[usize], buffers: &mut WorkingBuffers) -> () {
+pub fn stat_file(file: &Option<File>, offsets: &[usize], buffers: &mut WorkingBuffers) {
     // Track whether we should keep parsing or if we should fill in the entries with
     // empty buffers
     let successful = read_to_buffer(file, buffers).is_some();
@@ -35,9 +35,9 @@ pub fn stat_file(file: &Option<File>, offsets: &[usize], buffers: &mut WorkingBu
     let mut success_count = 0;
     if successful {
         let mut line_start = 0;
-        for i in 0..offsets.len() {
+        for offset in offsets {
             // Parse next
-            let target = line_start + offsets[i] + 1;
+            let target = line_start + offset + 1;
             if target >= buffers.buffer.len {
                 break;
             }
@@ -135,11 +135,11 @@ impl StatFileLayout {
 /// comparing each byte-by-byte until the target is found. Runs in O(n) time on
 /// the length of source
 fn find_index(source: &[&[u8]], target: &[u8]) -> Option<usize> {
-    for i in 0..source.len() {
-        if source[i].len() == target.len() {
+    for (i, slice) in source.iter().enumerate() {
+        if slice.len() == target.len() {
             let mut all_equal = true;
             for j in 0..target.len() {
-                if source[i][j] != target[j] {
+                if slice[j] != target[j] {
                     all_equal = false;
                     break;
                 }
@@ -154,16 +154,11 @@ fn find_index(source: &[&[u8]], target: &[u8]) -> Option<usize> {
 
 /// Reads and parses a stat file, using a pre-examined layout to quickly read
 /// the desired entries from the file.
-pub fn with_layout(
-    file: &Option<File>,
-    layout: &StatFileLayout,
-    buffers: &mut WorkingBuffers,
-) -> () {
+pub fn with_layout(file: &Option<File>, layout: &StatFileLayout, buffers: &mut WorkingBuffers) {
     let successful = read_to_buffer(file, buffers).is_some();
     if successful {
         let lines = util::ByteLines::new(&buffers.buffer.b);
-        let mut i = 0;
-        for (line, start) in lines {
+        for (i, (line, start)) in lines.enumerate() {
             match &layout.lines[i] {
                 None => {},
                 Some(line_metadata) => {
@@ -175,7 +170,6 @@ pub fn with_layout(
                     }
                 },
             }
-            i += 1;
         }
     }
 
@@ -193,7 +187,7 @@ pub fn with_layout(
 }
 
 /// Clears the slice buffer, resetting all values to their default
-fn clear_slice_buffer(buffers: &mut WorkingBuffers) -> () {
+fn clear_slice_buffer(buffers: &mut WorkingBuffers) {
     let default_value = <AnonymousSlice>::default();
     for i in 0..buffers.slices.len() {
         buffers.slices[i] = default_value;
@@ -229,7 +223,7 @@ fn read_to_buffer(file: &Option<File>, buffers: &mut WorkingBuffers) -> Option<u
 }
 
 /// Tries to read the entire file, moving each line to a comma-separated string
-pub fn all(file: &Option<File>, buffers: &mut WorkingBuffers) -> () {
+pub fn all(file: &Option<File>, buffers: &mut WorkingBuffers) {
     // Ignore errors: the buffer will just remain empty
     read_to_buffer(file, buffers);
 
@@ -249,13 +243,13 @@ pub fn all(file: &Option<File>, buffers: &mut WorkingBuffers) -> () {
     buffers.copy_buffer.clear();
 }
 
-pub static COMMA: u8 = ',' as u8;
+pub static COMMA: u8 = b',';
 
 /// Copies lines from the incoming buffer to the target buffer
 fn copy_lines_to_commas<const S: usize, const T: usize>(
     source: &Buffer<S>,
     target: &mut Buffer<T>,
-) -> () {
+) {
     let mut start = 0;
     let mut comma_at_end = false;
     let lines = util::ByteLines::new(&source.b);

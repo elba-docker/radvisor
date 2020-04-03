@@ -11,13 +11,13 @@ pub struct Buffer<const SIZE: usize> {
 pub trait BufferLike {
     /// **(Managed)** Clears a buffer by setting each element to 0 until it
     /// reaches the end of the content
-    fn clear(&mut self) -> ();
+    fn clear(&mut self);
     /// **(Unmanaged)** Clears a buffer by setting each element to 0 until it
     /// reaches a 0 value, starting from the start of the buffer
-    fn clear_unmanaged(&mut self) -> ();
+    fn clear_unmanaged(&mut self);
     /// **(Unmanaged)** clears a buffer by setting each element to 0 until it
     /// reaches a 0 value, starting from the end of the buffer
-    fn clear_unmanaged_backwards(&mut self) -> ();
+    fn clear_unmanaged_backwards(&mut self);
     /// **(Managed)** returns a slice without a trailing newline
     fn trim(&self) -> &[u8];
     /// **(Unmanaged)** Finds the length of the buffer's contents, ended by a 0
@@ -55,11 +55,11 @@ impl<const SIZE: usize> BufferLike for Buffer<SIZE> {
         while end < self.b.len() && self.b[end] != 0u8 {
             end += 1;
         }
-        return &self.b[0..end];
+        &self.b[0..end]
     }
 
     #[inline]
-    fn clear(&mut self) -> () {
+    fn clear(&mut self) {
         for i in 0..self.len {
             self.b[i] = 0;
         }
@@ -67,7 +67,7 @@ impl<const SIZE: usize> BufferLike for Buffer<SIZE> {
     }
 
     #[inline]
-    fn clear_unmanaged(&mut self) -> () {
+    fn clear_unmanaged(&mut self) {
         for i in 0..SIZE {
             if self.b[i] == 0 {
                 break;
@@ -79,7 +79,7 @@ impl<const SIZE: usize> BufferLike for Buffer<SIZE> {
     }
 
     #[inline]
-    fn clear_unmanaged_backwards(&mut self) -> () {
+    fn clear_unmanaged_backwards(&mut self) {
         for i in (0..SIZE).rev() {
             if self.b[i] == 0 {
                 break;
@@ -98,8 +98,8 @@ impl<const SIZE: usize> BufferLike for Buffer<SIZE> {
 #[inline]
 pub fn content_len_raw(buf: &[u8]) -> usize {
     let mut len: usize = 0;
-    for i in 0..buf.len() {
-        if buf[i] == 0 {
+    for byte in buf {
+        if *byte == 0 {
             break;
         } else {
             len += 1;

@@ -1,5 +1,8 @@
+// Allow const generics feature in Rust nightly
 #![feature(const_generics)]
 #![allow(incomplete_features)]
+// Allow for using booleans in match statements where it makes it more readable
+#![allow(clippy::match_bool)]
 
 mod cli;
 mod collection;
@@ -62,7 +65,7 @@ fn main() {
 
 /// Bootstraps the two worker threads, preparing the necessary communication
 /// between them
-fn run(opts: Opts, provider: Box<dyn Provider>, shell: Arc<Shell>) -> () {
+fn run(opts: Opts, provider: Box<dyn Provider>, shell: Arc<Shell>) {
     // Used to send container metadata lists from the polling thread to the
     // collection thread
     let (tx, rx): (Sender<Vec<TargetMetadata>>, Receiver<Vec<TargetMetadata>>) = mpsc::channel();

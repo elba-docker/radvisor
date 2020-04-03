@@ -1,3 +1,6 @@
+// Allow using Mutex<bool> to support Mutex/Condvar pattern
+#![allow(clippy::mutex_atomic)]
+
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::{self, Receiver, Sender};
 use std::sync::{Arc, Condvar, Mutex};
@@ -31,7 +34,7 @@ struct SharedTimerState {
 
 /// Represents a timer or timer-like object that can be stopped
 pub trait Stoppable {
-    fn stop(&self) -> ();
+    fn stop(&self);
 }
 
 impl Timer {
@@ -80,7 +83,7 @@ impl Timer {
 
 /// Performs the internal logic to stop and then signal an update to the
 /// listening thread
-fn stop_timer(shared: &SharedTimerState) -> () {
+fn stop_timer(shared: &SharedTimerState) {
     shared.stopping.store(true, Ordering::SeqCst);
     let mut signal = shared.lock.lock().unwrap();
     *signal = true;
@@ -98,13 +101,13 @@ fn stop_timer(shared: &SharedTimerState) -> () {
 impl Stoppable for Timer {
     /// Stops the timer thread when it checks on the next tick and immediately
     /// stops iteration
-    fn stop(&self) -> () { stop_timer(&self.shared); }
+    fn stop(&self) { stop_timer(&self.shared); }
 }
 
 impl Stoppable for TimerStopper {
     /// Stops the timer thread and the thread blocked on the iteration
     /// immediately
-    fn stop(&self) -> () { stop_timer(&self.shared); }
+    fn stop(&self) { stop_timer(&self.shared); }
 }
 
 impl Drop for Timer {

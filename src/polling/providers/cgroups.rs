@@ -125,7 +125,7 @@ const SYSTEMD_SLICE_SUFFIX: &str = ".slice";
 /// kubepods-burstable.slice/kubepods-burstable-pod1234_5678.slice"
 /// see [`kubernetes/kubelet/cm/cgroup_manager_linux.go:ToSystemd()`](https://github.com/kubernetes/kubernetes/blob/bb5ed1b79709c865d9aa86008048f19331530041/pkg/kubelet/cm/cgroup_manager_linux.go#L87-L103)
 fn make_systemd(slices: &[&str]) -> PathBuf {
-    if slices.len() == 0 || slices.len() == 1 && slices[0].len() == 0 {
+    if slices.is_empty() || slices.len() == 1 && slices[0].is_empty() {
         return PathBuf::from("");
     }
 
@@ -151,7 +151,7 @@ fn make_systemd(slices: &[&str]) -> PathBuf {
         accumulator += "-";
     }
 
-    return path;
+    path
 }
 
 /// Escapes a cgroup slice to be in the style of Systemd cgroups

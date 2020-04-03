@@ -3,7 +3,6 @@ use std::fmt;
 use std::io::{self, Write};
 use std::sync::Mutex;
 
-use atty;
 use termcolor::{self, Color, ColorSpec, StandardStream, WriteColor};
 
 /// Inspiration/partial implementations taken from the Cargo source at
@@ -115,7 +114,7 @@ impl Shell {
     }
 
     /// Shortcut to right-align and color green a status message.
-    pub fn status<T, U>(&self, status: T, message: U) -> ()
+    pub fn status<T, U>(&self, status: T, message: U)
     where
         T: fmt::Display,
         U: fmt::Display,
@@ -123,7 +122,7 @@ impl Shell {
         self.print(&status, Some(&message), Color::Green, None, true);
     }
 
-    pub fn status_header<T>(&self, status: T) -> ()
+    pub fn status_header<T>(&self, status: T)
     where
         T: fmt::Display,
     {
@@ -139,7 +138,7 @@ impl Shell {
         status_color: Color,
         text_color: Option<Color>,
         justified: bool,
-    ) -> () {
+    ) {
         match self.verbosity {
             Verbosity::Quiet => (),
             _ => {
@@ -153,7 +152,7 @@ impl Shell {
     }
 
     /// Prints a red 'error' message.
-    pub fn error<T: fmt::Display>(&self, message: T) -> () {
+    pub fn error<T: fmt::Display>(&self, message: T) {
         let mut err = self
             .err
             .lock()
@@ -168,7 +167,7 @@ impl Shell {
     }
 
     /// Prints an amber 'warning' message.
-    pub fn warn<T: fmt::Display>(&self, message: T) -> () {
+    pub fn warn<T: fmt::Display>(&self, message: T) {
         match self.verbosity {
             Verbosity::Quiet => (),
             _ => self.print(&"(warning)", Some(&message), Color::Yellow, None, true),
@@ -176,7 +175,7 @@ impl Shell {
     }
 
     /// Prints a cyan 'info' message.
-    pub fn info<T: fmt::Display>(&self, message: T) -> () {
+    pub fn info<T: fmt::Display>(&self, message: T) {
         self.print(&"(info)", Some(&message), Color::Cyan, None, true);
     }
 
@@ -209,13 +208,12 @@ impl Shell {
 
     /// Executes the given callback with a reference to the shell object handle
     /// if the shell is in verbose mode
-    pub fn verbose<F>(&self, callback: F) -> ()
+    pub fn verbose<F>(&self, callback: F)
     where
         F: Fn(&Shell) -> (),
     {
-        match self.verbosity {
-            Verbosity::Verbose => callback(self),
-            _ => {},
+        if let Verbosity::Verbose = self.verbosity {
+            callback(self);
         }
     }
 }
@@ -337,9 +335,7 @@ mod imp {
                 _ => libc::STDERR_FILENO,
             };
 
-            // The .into() here is needed for FreeBSD which defines TIOCGWINSZ
-            // as c_uint but ioctl wants c_ulong.
-            if libc::ioctl(fileno, libc::TIOCGWINSZ.into(), &mut winsize) < 0 {
+            if libc::ioctl(fileno, libc::TIOCGWINSZ, &mut winsize) < 0 {
                 return None;
             }
             if winsize.ws_col > 0 {

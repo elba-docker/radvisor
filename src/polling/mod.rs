@@ -12,7 +12,7 @@ pub fn run(
     tx: Sender<Vec<TargetMetadata>>,
     context: IntervalWorkerContext,
     provider: Box<dyn Provider>,
-) -> () {
+) {
     context.shell.status(
         "Beginning",
         format!(

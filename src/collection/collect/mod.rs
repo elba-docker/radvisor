@@ -118,7 +118,7 @@ pub fn run(collector: &mut Collector, buffers: &mut WorkingBuffers) -> Result<()
 
 /// Collects the nanosecond unix timestamp read time
 #[inline]
-fn collect_read(buffers: &mut WorkingBuffers) -> () {
+fn collect_read(buffers: &mut WorkingBuffers) {
     buffers.buffer.len = match itoa::write(&mut buffers.buffer.b[..], util::nano_ts()) {
         Ok(n) => n,
         Err(_) => 0,
@@ -130,7 +130,7 @@ fn collect_read(buffers: &mut WorkingBuffers) -> () {
 /// Collects all stats for the pids subsystem
 /// see https://www.kernel.org/doc/html/latest/admin-guide/cgroup-v1/pids.html
 #[inline]
-fn collect_pids(buffers: &mut WorkingBuffers, handles: &ProcFileHandles) -> () {
+fn collect_pids(buffers: &mut WorkingBuffers, handles: &ProcFileHandles) {
     read::entry(&handles.current_pids, buffers);
     read::entry(&handles.max_pids, buffers);
 }
@@ -147,7 +147,7 @@ const CPU_STAT_OFFSETS: [usize; 3] = [
 /// Collects all stats for the cpu and cpuacct subsystems
 /// see https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/6/html/resource_management_guide/sec-cpuacct
 #[inline]
-fn collect_cpu(buffers: &mut WorkingBuffers, handles: &ProcFileHandles) -> () {
+fn collect_cpu(buffers: &mut WorkingBuffers, handles: &ProcFileHandles) {
     read::entry(&handles.cpuacct_usage, buffers);
     read::entry(&handles.cpuacct_usage_sys, buffers);
     read::entry(&handles.cpuacct_usage_user, buffers);
@@ -158,7 +158,7 @@ fn collect_cpu(buffers: &mut WorkingBuffers, handles: &ProcFileHandles) -> () {
 
 /// Original entries in the memory.stat file that map to columns (in the same
 /// order) in the final output
-const MEMORY_STAT_ENTRIES: &[&'static [u8]] = &[
+const MEMORY_STAT_ENTRIES: &[&[u8]] = &[
     b"hierarchical_memory_limit",
     b"hierarchical_memsw_limit",
     b"total_cache",
@@ -189,7 +189,7 @@ fn collect_memory(
     buffers: &mut WorkingBuffers,
     handles: &ProcFileHandles,
     layout: &read::StatFileLayout,
-) -> () {
+) {
     read::entry(&handles.memory_usage_in_bytes, buffers);
     read::entry(&handles.memory_max_usage_in_bytes, buffers);
     read::entry(&handles.memory_limit_in_bytes, buffers);
@@ -201,7 +201,7 @@ fn collect_memory(
 /// Collects all stats for the blkio subsystem
 /// see https://www.kernel.org/doc/Documentation/cgroup-v1/blkio-controller.txt
 #[inline]
-fn collect_blkio(buffers: &mut WorkingBuffers, handles: &ProcFileHandles) -> () {
+fn collect_blkio(buffers: &mut WorkingBuffers, handles: &ProcFileHandles) {
     read::all(&handles.blkio_io_service_bytes, buffers);
     read::all(&handles.blkio_io_serviced, buffers);
     read::all(&handles.blkio_io_service_time, buffers);

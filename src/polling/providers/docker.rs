@@ -9,7 +9,6 @@ use std::fmt::Write;
 use std::sync::Arc;
 
 use lru_time_cache::LruCache;
-use serde_yaml;
 use shiplift::rep::Container;
 use tokio_compat::runtime::Runtime;
 
@@ -81,14 +80,14 @@ impl Provider for Docker {
 }
 
 impl Docker {
-    pub fn new() -> Box<dyn Provider> {
-        Box::new(Docker {
+    pub fn new() -> Self {
+        Docker {
             client:         shiplift::Docker::new(),
             runtime:        Runtime::new().unwrap(),
             cgroup_manager: CgroupManager::new(),
             info_cache:     None,
             shell:          None,
-        })
+        }
     }
 
     /// Converts a container to a its metadata, or rejects it if it shouldn't
@@ -101,7 +100,7 @@ impl Docker {
                     self.shell().warn(format!(
                         "Could not create container metadata for container {}: cgroup path could \
                          not be constructed or does not exist",
-                        c.names.iter().nth(0).unwrap_or(&c.id)
+                        c.names.get(0).unwrap_or(&c.id)
                     ));
                     None
                 },
