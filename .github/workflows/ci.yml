@@ -22,6 +22,12 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v2
+      - name: Clone & bootstrap vcpkg
+        run: git clone https://github.com/Microsoft/vcpkg.git && powershell -command ".\vcpkg\bootstrap-vcpkg.bat"
+      - name: Install vcpkg
+        run: powershell -command ".\vcpkg\vcpkg integrate install"
+      - name: Install open-ssl
+        run: powershell -command ".\vcpkg\vcpkg install openssl:x64-windows"
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
@@ -30,6 +36,8 @@ jobs:
       - uses: actions-rs/cargo@v1
         with:
           command: check
+        env:
+          VCPKGRS_DYNAMIC: 1
 
   test:
     name: Test Suite
