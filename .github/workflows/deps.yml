@@ -7,7 +7,7 @@ on:
     branches:
       - master
 
-name: security/licenses
+name: security
 
 jobs:
   security_audit:
@@ -18,19 +18,3 @@ jobs:
       - uses: actions-rs/audit-check@v1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-
-  fossa-cli:
-    runs-on: ubuntu-latest
-    name: Fossa CLI Analyze
-    steps:
-      - uses: actions/checkout@v1
-      - name: Install fossa-cli
-        run: "curl -H 'Cache-Control: no-cache' https://raw.githubusercontent.com/fossas/fossa-cli/master/install.sh | bash"
-      - name: Run Fossa
-        run: fossa analyze
-        env:
-          FOSSA_API_KEY: ${{ secrets.FOSSA_API_TOKEN }}
-      - name: Run Fossa
-        run: fossa test
-        env:
-          FOSSA_API_KEY: ${{ secrets.FOSSA_API_TOKEN }}

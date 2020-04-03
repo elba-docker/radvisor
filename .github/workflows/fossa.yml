@@ -1,0 +1,27 @@
+on:
+  push:
+    paths:
+      - "**/Cargo.toml"
+      - "**/Cargo.lock"
+  pull_request:
+    branches:
+      - master
+
+name: fossa-licenses
+
+jobs:
+  fossa-cli:
+    runs-on: ubuntu-latest
+    name: Fossa CLI Analyze
+    steps:
+      - uses: actions/checkout@v1
+      - name: Install fossa-cli
+        run: "curl -H 'Cache-Control: no-cache' https://raw.githubusercontent.com/fossas/fossa-cli/master/install.sh | bash"
+      - name: Run Fossa
+        run: fossa analyze
+        env:
+          FOSSA_API_KEY: ${{ secrets.FOSSA_API_TOKEN }}
+      - name: Run Fossa
+        run: fossa test
+        env:
+          FOSSA_API_KEY: ${{ secrets.FOSSA_API_TOKEN }}
