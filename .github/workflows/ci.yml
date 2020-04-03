@@ -40,11 +40,6 @@ jobs:
         if: steps.cache-vcpkg.outputs.cache-hit != 'true'
         run: .\vcpkg\bootstrap-vcpkg.bat
 
-      # Always install integrations
-      - name: Install vcpkg
-        run: .\vcpkg\vcpkg integrate install
-        shell: pwsh
-
       # Either upgrade or install open SSL
       - name: Install open-ssl
         if: steps.cache-vcpkg.outputs.cache-hit != 'true'
@@ -53,6 +48,9 @@ jobs:
         if: steps.cache-vcpkg.outputs.cache-hit == 'true'
         run: .\vcpkg\vcpkg upgrade --no-dry-run openssl:x64-windows
 
+      - name: Install vcpkg
+        run: .\vcpkg\vcpkg integrate install
+        shell: pwsh
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
