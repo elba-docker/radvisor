@@ -1,6 +1,6 @@
 # ![rAdvisor](https://i.imgur.com/aYdn3MV.png)
 
-> Monitors & collects system resource utilization on Linux for [Docker](https://www.docker.com/) containers and [Kubernetes](https://kubernetes.io/) pods with **high granularity** and **low overhead**, emitting resource utilization logs in [CSVY](https://csvy.org/) (csv + yaml) format. Originally, developed in Rust as a custom tool to help detect and analyze millibottlenecks in containerized online systems, rAdvisor runs by polling the target provider (either the local Docker daemon or the Kubernetes API server) every 1 second to get a list of active, running containers/pods. From this list, rAdvisor runs a collection thread every 50ms to get resource utilization data for each active target using Linux [`cgroups`](https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/6/html/resource_management_guide/ch01), outputting the resultant logs in `/var/log/radvisor/stats`.
+> Monitors & collects system resource utilization on Linux for [Docker](https://www.docker.com/) containers and [Kubernetes](https://kubernetes.io/) pods with **fine granularity** and **low overhead**, emitting resource utilization logs in [CSVY](https://csvy.org/) (csv + yaml) format. Originally, developed in Rust as a custom tool to help detect and analyze millibottlenecks in containerized online systems, rAdvisor runs by polling the target provider (either the local Docker daemon or the Kubernetes API server) every 1 second to get a list of active, running containers/pods. From this list, rAdvisor runs a collection thread every 50ms to get resource utilization data for each active target using Linux [`cgroups`](https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/6/html/resource_management_guide/ch01), outputting the resultant logs in `/var/log/radvisor/stats`.
 
 ## 🖨️ Example Output
 
@@ -117,6 +117,10 @@ Initializing Docker API provider
 Beginning statistics collection
 Identified cgroupfs as cgroup driver
 ```
+
+## ☑️ Supported Operating Systems
+
+At the moment, rAdvisor only supports Linux (due to its heavy reliance on cgroups), though there is a tracking issue for extending its functionality to work with Window's own first-party containerization API, HCS: [radvisor/issues/#3](https://github.com/elba-kubernetes/radvisor/issues/3).
 
 ## 🏗️ Building
 
