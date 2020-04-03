@@ -62,14 +62,14 @@ jobs:
         run: tree .\vcpkg\installed
       - name: echo directory structure2
         run: tree .\vcpkg
-      # - uses: actions-rs/cargo@v1
-      #   with:
-      #     command: check
-      #   env:
-      #     VCPKGRS_DYNAMIC: 1
-      #     OPENSSL_DIR: ".\\vcpkg\\installed\\openssl_x64-windows"
-      #     OPENSSL_LIB_DIR: ".\\vcpkg\\installed\\openssl_x64-windows\\lib"
-      #     OPENSSL_INCLUDE_DIR: ".\\vcpkg\\installed\\openssl_x64-windows\\include"
+      - uses: actions-rs/cargo@v1
+        with:
+          command: check
+        env:
+          VCPKGRS_DYNAMIC: 1
+          OPENSSL_DIR: ".\\vcpkg\\installed\\x64-windows"
+          OPENSSL_LIB_DIR: ".\\vcpkg\\installed\\x64-windows\\lib"
+          OPENSSL_INCLUDE_DIR: ".\\vcpkg\\installed\\x64-windows\\include"
 
   test:
     name: Test Suite
