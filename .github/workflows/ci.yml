@@ -71,7 +71,7 @@ jobs:
         uses: actions/cache@v1
         with:
           path: .\vcpkg\installed
-          key: ${{ env.cache-id }}-openssl-${{ hashFiles("./vcpkg/ports/openssl/CONTROL") }}
+          key: ${{ env.cache-id }}-openssl-${{ hashFiles('./vcpkg/ports/openssl/CONTROL') }}
       - name: Install open-ssl
         run: vcpkg install openssl:x64-windows-static
         if: steps.cache-openssl.outputs.cache-hit != 'true'
