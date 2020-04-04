@@ -50,7 +50,7 @@ jobs:
         uses: actions/cache@v1
         with:
           path: vcpkg
-          key: ${{ runner.os }}-vcpkg-${{ env.vcpkg_version }}
+          key: ${{ runner.os }}-vcpkg-${{ env.vcpkg_version }}-openssl
       - name: Clone vcpkg
         if: steps.cache-vcpkg.outputs.cache-hit != 'true'
         run: git clone https://github.com/Microsoft/vcpkg.git
