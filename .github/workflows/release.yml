@@ -1,11 +1,12 @@
 on:
   push:
-    branches:
-    - ci-test
     # # Listen for semver-tagged pushes to generate releases
     # tags:
     #   - v[0-9]+.[0-9]+.[0-9]+
+    branches:
+      - master
 
+# Workflow for creating a new release and attaching clean-built artifacts
 name: release
 env:
   toolchain: nightly
@@ -13,152 +14,86 @@ env:
 # ? Note: doesn't currently use a matrix due to each target OS having very different
 # ?       dependency installation requirements
 jobs:
-  windows-amd64:
-    name: Publish for windows-amd64
-    runs-on: windows-latest
-    env:
-      # Share cache with other compatible OS jobs
-      cache-id: windows-amd64
-      output-path: target/release/radvisor.exe
-      artifact-name: radvisor-windows-amd64
-      build-target: x86_64-pc-windows-msvc
-    steps:
-    - uses: actions/checkout@v2
-
-    # Use vcpkg to install OpenSSL for Windows builds:
-    # https://github.com/sfackler/rust-openssl/issues/1062#issuecomment-489441940
-    # https://github.com/Microsoft/vcpkg
-    - name: Get latest vcpkg version
-      # Get the latest vcpkg version string from GitHub via the latest release
-      run: >-
-        echo "::set-output name=version::$(
-          (Invoke-WebRequest -Uri https://api.github.com/repos/microsoft/vcpkg/releases/latest |
-            Select-Object -ExpandProperty Content |
-            ConvertFrom-Json).tag_name
-          )"
-      id: vcpkg
-      shell: pwsh
-    - name: Cache vcpkg
-      id: cache-vcpkg
-      uses: actions/cache@v1
-      with:
-        path: vcpkg
-        # Use vcpkg version as cache key
-        key: ${{ env.cache-id }}-vcpkg-${{ steps.vcpkg.outputs.version }}-openssl
-    - name: Clone and install vcpkg
-      if: steps.cache-vcpkg.outputs.cache-hit != 'true'
-      run: git clone https://github.com/Microsoft/vcpkg.git && .\vcpkg\bootstrap-vcpkg.bat
-      shell: pwsh
-
-    # Either upgrade or install OpenSSL depending on vcpkg cache hit
-    # ? Note: the -static package version is installted in order to statically link later
-    - name: Install open-ssl
-      if: steps.cache-vcpkg.outputs.cache-hit != 'true'
-      run: .\vcpkg\vcpkg install openssl:x64-windows-static
-    - name: Update open-ssl
-      if: steps.cache-vcpkg.outputs.cache-hit == 'true'
-      run: .\vcpkg\vcpkg upgrade --no-dry-run openssl:x64-windows-static
-
-    - name: Install vcpkg integration
-      run: .\vcpkg\vcpkg integrate install
-    - uses: actions-rs/toolchain@v1
-      with:
-        profile: minimal
-        toolchain: ${{ env.toolchain }}
-        override: true
-
-    # Cache cargo dependencies (cache based on Cargo.lock)
-    - name: Cache cargo registry
-      uses: actions/cache@v1
-      with:
-        path: ~/.cargo/registry
-        key: -cargo-registry-${{ hashFiles('**/Cargo.lock') }}
-    - name: Cache cargo index
-      uses: actions/cache@v1
-      with:
-        path: ~/.cargo/git
-        key: ${{ env.cache-id }}-cargo-index-${{ hashFiles('**/Cargo.lock') }}
-    - name: Cache cargo build
-      uses: actions/cache@v1
-      with:
-        path: target
-        key: ${{ env.cache-id }}-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
-
-    # Build binary
-    - uses: actions-rs/cargo@v1
-      with:
-        command: build
-        # itarget lets us specify in Cargo.toml to disable hyperlocal (which targets unix)
-        # Tracking issue: https://github.com/rust-lang/cargo/issues/7914
-        args: >-
-          --release --bins
-          -Z features=itarget
-          --target ${{ env.build-target }}
-      env:
-        # Statically link openssl (needs the RUSTFLAGS variable)
-        # More info: https://docs.rs/vcpkg/0.2.6/vcpkg/
-        OPENSSL_STATIC: 1
-        RUSTFLAGS: -Ctarget-feature=+crt-static
-
-    # # Upload artifacts and create new release if needed
-    # - name: Upload binaries to release
-    #   uses: svenstaro/upload-release-action@v1-release
-    #   with:
-    #     repo_token: ${{ secrets.GITHUB_TOKEN }}
-    #     file: ${{ env.output-path }}
-    #     asset_name: ${{ env.artifact-name }}
-    #     tag: ${{ github.ref }}
-    #     overwrite: true
-
-
+  # Build for 64-bit linux and add binary as an artifact to release
   linux-amd64:
     name: Publish for linux-amd64
     runs-on: ubuntu-latest
     env:
-      # Share cache with other compatible OS jobs
-      cache-id: linux-amd64
       output-path: target/release/radvisor
       artifact-name: radvisor-linux-amd64
       build-target: x86_64-unknown-linux-gnu
     steps:
-    - uses: actions/checkout@v2
-    - uses: actions-rs/toolchain@v1
-      with:
-        profile: minimal
-        toolchain: ${{ env.toolchain }}
-        override: true
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: ${{ env.toolchain }}
+          override: true
 
-    # Cache cargo dependencies (cache based on Cargo.lock)
-    - name: Cache cargo registry
-      uses: actions/cache@v1
-      with:
-        path: ~/.cargo/registry
-        key: -cargo-registry-${{ hashFiles('**/Cargo.lock') }}
-    - name: Cache cargo index
-      uses: actions/cache@v1
-      with:
-        path: ~/.cargo/git
-        key: ${{ env.cache-id }}-cargo-index-${{ hashFiles('**/Cargo.lock') }}
-    - name: Cache cargo build
-      uses: actions/cache@v1
-      with:
-        path: target
-        key: ${{ env.cache-id }}-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
+      # Build binary (cleanbuild for release)
+      - uses: actions-rs/cargo@v1
+        with:
+          command: build
+          args: >-
+            --release --bins
+            --target ${{ env.build-target }}
+      - name: Strip binary
+        run: strip ${{ output-path }}
 
-    # Build binary
-    - uses: actions-rs/cargo@v1
-      with:
-        command: build
-        args: >-
-          --release --bins
-          --target ${{ env.build-target }}
+      # # Upload artifacts and create new release if needed
+      # - name: Upload binaries to release
+      #   uses: svenstaro/upload-release-action@v1-release
+      #   with:
+      #     repo_token: ${{ secrets.GITHUB_TOKEN }}
+      #     file: ${{ env.output-path }}
+      #     asset_name: ${{ env.artifact-name }}
+      #     tag: ${{ github.ref }}
+      #     overwrite: true
 
-    # # Upload artifacts and create new release if needed
-    # - name: Upload binaries to release
-    #   uses: svenstaro/upload-release-action@v1-release
-    #   with:
-    #     repo_token: ${{ secrets.GITHUB_TOKEN }}
-    #     file: ${{ env.output-path }}
-    #     asset_name: ${{ env.artifact-name }}
-    #     tag: ${{ github.ref }}
-    #     overwrite: true
+  # Build for 64-bit windows and add .exe as an artifact to release
+  windows-amd64:
+    name: Publish for windows-amd64
+    runs-on: windows-latest
+    env:
+      output-path: target/release/radvisor.exe
+      artifact-name: radvisor-windows-amd64
+      build-target: x86_64-pc-windows-msvc
+    steps:
+      - uses: actions/checkout@v2
+      - name: Clone and install vcpkg
+        run: git clone https://github.com/Microsoft/vcpkg.git && .\vcpkg\bootstrap-vcpkg.bat
+        shell: pwsh
+      - name: Install open-ssl
+        # ? Note: the -static package version is installted in order to statically link later
+        run: .\vcpkg\vcpkg install openssl:x64-windows-static
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: ${{ env.toolchain }}
+          override: true
+
+      # Build binary
+      - uses: actions-rs/cargo@v1
+        with:
+          command: build
+          # itarget lets us specify in Cargo.toml to disable hyperlocal (which targets unix)
+          # Tracking issue: https://github.com/rust-lang/cargo/issues/7914
+          args: >-
+            --release --bins
+            -Z features=itarget
+            --target ${{ env.build-target }}
+        env:
+          # Statically link openssl (needs the RUSTFLAGS variable)
+          # More info: https://docs.rs/vcpkg/0.2.6/vcpkg/
+          OPENSSL_STATIC: 1
+          RUSTFLAGS: -Ctarget-feature=+crt-static
+
+      # # Upload artifacts and create new release if needed
+      # - name: Upload binaries to release
+      #   uses: svenstaro/upload-release-action@v1-release
+      #   with:
+      #     repo_token: ${{ secrets.GITHUB_TOKEN }}
+      #     file: ${{ env.output-path }}
+      #     asset_name: ${{ env.artifact-name }}
+      #     tag: ${{ github.ref }}
+      #     overwrite: true
