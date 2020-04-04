@@ -73,7 +73,7 @@ jobs:
           path: .\vcpkg\installed
           key: ${{ env.cache-id }}-openssl-${{ hashFiles('./vcpkg/ports/openssl/CONTROL') }}
       - name: Install open-ssl
-        run: vcpkg install openssl:x64-windows-static
+        run: .\vcpkg\vcpkg install openssl:x64-windows-static
         if: steps.cache-openssl.outputs.cache-hit != 'true'
 
       - name: Install vcpkg integration

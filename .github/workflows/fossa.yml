@@ -7,12 +7,13 @@ on:
     branches:
       - master
 
+# Workflow for running Fossa CLI to have Fossa analyze dependencies and their licenses
 name: fossa-licenses
 
 jobs:
   fossa-cli:
     runs-on: ubuntu-latest
-    name: Fossa CLI Analyze
+    name: License Compliance
     steps:
       - uses: actions/checkout@v1
       - name: Install fossa-cli

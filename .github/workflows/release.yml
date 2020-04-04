@@ -1,10 +1,10 @@
 on:
   push:
-    # # Listen for semver-tagged pushes to generate releases
-    # tags:
-    #   - v[0-9]+.[0-9]+.[0-9]+
+    # Listen for semver-tagged pushes to generate releases
+    tags:
+      - v[0-9]+.[0-9]+.[0-9]+
     branches:
-      - ci-test
+      - master
 
 # Workflow for creating a new release and attaching clean-built artifacts
 name: release
@@ -40,23 +40,23 @@ jobs:
       - name: Strip binary
         run: strip ${{ env.output-path }}
 
-      # # Upload artifacts and create new release if needed
-      # - name: Upload binaries to release
-      #   uses: svenstaro/upload-release-action@v1-release
-      #   with:
-      #     repo_token: ${{ secrets.GITHUB_TOKEN }}
-      #     file: ${{ env.output-path }}
-      #     asset_name: ${{ env.artifact-name }}
-      #     tag: ${{ github.ref }}
-      #     overwrite: true
+      # Upload artifacts and create new release if needed
+      - name: Upload binaries to release
+        uses: svenstaro/upload-release-action@v1-release
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: ${{ env.output-path }}
+          asset_name: ${{ env.artifact-name }}
+          tag: ${{ github.ref }}
+          overwrite: true
 
   # Build for 64-bit windows and add .exe as an artifact to release
   windows-amd64:
     name: Publish (windows-amd64)
     runs-on: windows-latest
     env:
-      output-path: target/release/radvisor.exe
       artifact-name: radvisor-windows-amd64
+      output-path: target/x86_64-pc-windows-msvc/release/radvisor.exe
       build-target: x86_64-pc-windows-msvc
     steps:
       - uses: actions/checkout@v2
@@ -91,12 +91,12 @@ jobs:
           OPENSSL_STATIC: 1
           RUSTFLAGS: -Ctarget-feature=+crt-static
 
-      # # Upload artifacts and create new release if needed
-      # - name: Upload binaries to release
-      #   uses: svenstaro/upload-release-action@v1-release
-      #   with:
-      #     repo_token: ${{ secrets.GITHUB_TOKEN }}
-      #     file: ${{ env.output-path }}
-      #     asset_name: ${{ env.artifact-name }}
-      #     tag: ${{ github.ref }}
-      #     overwrite: true
+      # Upload artifacts and create new release if needed
+      - name: Upload binaries to release
+        uses: svenstaro/upload-release-action@v1-release
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: ${{ env.output-path }}
+          asset_name: ${{ env.artifact-name }}
+          tag: ${{ github.ref }}
+          overwrite: true
