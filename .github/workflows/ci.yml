@@ -60,11 +60,11 @@ jobs:
 
       # Either upgrade or install open SSL
       - name: Install open-ssl
-        # if: steps.cache-vcpkg.outputs.cache-hit != 'true'
+        if: steps.cache-vcpkg.outputs.cache-hit != 'true'
         run: .\vcpkg\vcpkg install openssl:x64-windows-static
-      # - name: Update open-ssl
-        # if: steps.cache-vcpkg.outputs.cache-hit == 'true'
-        # run: .\vcpkg\vcpkg upgrade --no-dry-run openssl:x64-windows-static
+      - name: Update open-ssl
+        if: steps.cache-vcpkg.outputs.cache-hit == 'true'
+        run: .\vcpkg\vcpkg upgrade --no-dry-run openssl:x64-windows-static
 
       - name: Install vcpkg
         run: .\vcpkg\vcpkg integrate install
