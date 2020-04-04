@@ -1,11 +1,11 @@
 on:
+  pull_request:
   push:
+    branches:
+      - master
     paths:
       - "**/Cargo.toml"
       - "**/Cargo.lock"
-  pull_request:
-    branches:
-      - master
 
 # Workflow for running Fossa CLI to have Fossa analyze dependencies and their licenses
 name: fossa-licenses

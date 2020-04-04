@@ -1,4 +1,8 @@
-on: [push, pull_request]
+on:
+  pull_request:
+  push:
+    branches:
+      - master
 
 # Workflow to run build checks/tests/lints for each commit/PR
 name: build/test
