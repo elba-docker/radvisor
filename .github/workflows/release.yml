@@ -38,7 +38,7 @@ jobs:
             --release --bins
             --target ${{ env.build-target }}
       - name: Strip binary
-        run: strip ${{ output-path }}
+        run: strip ${{ env.output-path }}
 
       # # Upload artifacts and create new release if needed
       # - name: Upload binaries to release
