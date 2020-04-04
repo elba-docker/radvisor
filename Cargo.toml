@@ -7,7 +7,6 @@ readme = "README.md"
 license = "MIT"
 
 [dependencies]
-shiplift = "0.6"
 tokio = "0.2.13"
 tokio-compat = "0.1.5"
 bus = "2.2.3"
@@ -32,9 +31,13 @@ winapi = { version = "0.3.8", features = ["std"] }
 # TODO: remove github link and migrate to stable version once 3.0 is released
 clap = { git = "https://github.com/clap-rs/clap/" }
 
-[target.'cfg(windows)'.dependencies.shiplift]
-version = "0.6"
-features = ["chrono", "tls"]
+# Unix-specific dependencies
+[target.'cfg(unix)'.dependencies]
+shiplift = "0.6"
+
+# Windows-specific dependencies
+[target.'cfg(windows)'.dependencies]
+shiplift = { version = "0.6", default-features = false, features = ["chrono", "tls"] }
 
 [dev-dependencies]
 cargo-update = "3.0.0"
