@@ -76,6 +76,9 @@ jobs:
         run: vcpkg install openssl:x64-windows-static
         if: steps.cache-openssl.outputs.cache-hit != 'true'
 
+      - name: Install vcpkg integration
+        run: .\vcpkg\vcpkg integrate install
+        shell: pwsh
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal

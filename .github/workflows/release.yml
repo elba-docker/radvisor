@@ -19,9 +19,9 @@ jobs:
     name: Publish (linux-amd64)
     runs-on: ubuntu-latest
     env:
-      output-path: target/release/radvisor
       artifact-name: radvisor-linux-amd64
       build-target: x86_64-unknown-linux-gnu
+      output-path: target/x86_64-unknown-linux-gnu/release/radvisor
     steps:
       - uses: actions/checkout@v2
       - uses: actions-rs/toolchain@v1
@@ -66,6 +66,9 @@ jobs:
       - name: Install open-ssl
         # ? Note: the -static package version is installted in order to statically link later
         run: .\vcpkg\vcpkg install openssl:x64-windows-static
+      - name: Install vcpkg integration
+        run: .\vcpkg\vcpkg integrate install
+        shell: pwsh
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
