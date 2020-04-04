@@ -1,12 +1,14 @@
 on:
+  pull_request:
   push:
+    branches:
+      - master
     paths:
       - "**/Cargo.toml"
       - "**/Cargo.lock"
-  pull_request:
-    branches:
-      - master
 
+# Workflow for performing a security audit on dependencies for known vulnerabilities
+# in specific crates/versions
 name: security
 
 jobs:
