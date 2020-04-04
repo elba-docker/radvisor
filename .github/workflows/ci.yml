@@ -27,17 +27,17 @@ jobs:
         uses: actions/cache@v1
         with:
           path: ~/.cargo/registry
-          key: ${{ env.cache-id }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+          key: ${{ env.cache-id }}-cargo--registry-${{ hashFiles('**/Cargo.lock') }}
       - name: Cache cargo index
         uses: actions/cache@v1
         with:
           path: ~/.cargo/git
-          key: ${{ env.cache-id }}-cargo-index-${{ hashFiles('**/Cargo.lock') }}
+          key: ${{ env.cache-id }}-cargo--index-${{ hashFiles('**/Cargo.lock') }}
       - name: Cache cargo build
         uses: actions/cache@v1
         with:
           path: target
-          key: ${{ env.cache-id }}-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
+          key: ${{ env.cache-id }}-cargo--build-target-${{ hashFiles('**/Cargo.lock') }}
 
       # Same as `cargo build`, but does not perform expensive final codegen
       # https://doc.rust-lang.org/cargo/commands/cargo-check.html
@@ -87,17 +87,17 @@ jobs:
         uses: actions/cache@v1
         with:
           path: ~/.cargo/registry
-          key: ${{ env.cache-id }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+          key: ${{ env.cache-id }}-cargo--registry-${{ hashFiles('**/Cargo.lock') }}
       - name: Cache cargo index
         uses: actions/cache@v1
         with:
           path: ~/.cargo/git
-          key: ${{ env.cache-id }}-cargo-index-${{ hashFiles('**/Cargo.lock') }}
+          key: ${{ env.cache-id }}-cargo--index-${{ hashFiles('**/Cargo.lock') }}
       - name: Cache cargo build
         uses: actions/cache@v1
         with:
           path: target
-          key: ${{ env.cache-id }}-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
+          key: ${{ env.cache-id }}-cargo--build-target-${{ hashFiles('**/Cargo.lock') }}
 
       # Perform build checks
       - uses: actions-rs/cargo@v1
@@ -116,7 +116,7 @@ jobs:
 
   # Run test suite on Linux
   test:
-    name: Test Suite (Linux)
+    name: Test Suite (Linux x64)
     runs-on: ubuntu-latest
     env:
       # Share cache with other compatible jobs
@@ -135,17 +135,17 @@ jobs:
         uses: actions/cache@v1
         with:
           path: ~/.cargo/registry
-          key: ${{ env.cache-id }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+          key: ${{ env.cache-id }}-cargo--registry-${{ hashFiles('**/Cargo.lock') }}
       - name: Cache cargo index
         uses: actions/cache@v1
         with:
           path: ~/.cargo/git
-          key: ${{ env.cache-id }}-cargo-index-${{ hashFiles('**/Cargo.lock') }}
+          key: ${{ env.cache-id }}-cargo--index-${{ hashFiles('**/Cargo.lock') }}
       - name: Cache cargo build
         uses: actions/cache@v1
         with:
           path: target
-          key: ${{ env.cache-id }}-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
+          key: ${{ env.cache-id }}-cargo--build-target-${{ hashFiles('**/Cargo.lock') }}
 
       # Same as `cargo build`, but does not perform expensive final codegen
       # https://doc.rust-lang.org/cargo/commands/cargo-check.html
@@ -176,12 +176,12 @@ jobs:
         uses: actions/cache@v1
         with:
           path: ~/.cargo/registry
-          key: ${{ env.cache-id }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+          key: ${{ env.cache-id }}-cargo--registry-${{ hashFiles('**/Cargo.lock') }}
       - name: Cache cargo index
         uses: actions/cache@v1
         with:
           path: ~/.cargo/git
-          key: ${{ env.cache-id }}-cargo-index-${{ hashFiles('**/Cargo.lock') }}
+          key: ${{ env.cache-id }}-cargo--index-${{ hashFiles('**/Cargo.lock') }}
 
       - uses: actions-rs/cargo@v1
         with:
@@ -209,17 +209,17 @@ jobs:
         uses: actions/cache@v1
         with:
           path: ~/.cargo/registry
-          key: ${{ env.cache-id }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+          key: ${{ env.cache-id }}-cargo--registry-${{ hashFiles('**/Cargo.lock') }}
       - name: Cache cargo index
         uses: actions/cache@v1
         with:
           path: ~/.cargo/git
-          key: ${{ env.cache-id }}-cargo-index-${{ hashFiles('**/Cargo.lock') }}
+          key: ${{ env.cache-id }}-cargo--index-${{ hashFiles('**/Cargo.lock') }}
       - name: Cache cargo build
         uses: actions/cache@v1
         with:
           path: target
-          key: ${{ env.cache-id }}-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
+          key: ${{ env.cache-id }}-cargo--build-target-${{ hashFiles('**/Cargo.lock') }}
 
       - uses: actions-rs/cargo@v1
         with:

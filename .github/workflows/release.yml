@@ -16,7 +16,7 @@ env:
 jobs:
   # Build for 64-bit linux and add binary as an artifact to release
   linux-amd64:
-    name: Publish for linux-amd64
+    name: Publish (linux-amd64)
     runs-on: ubuntu-latest
     env:
       output-path: target/release/radvisor
@@ -52,7 +52,7 @@ jobs:
 
   # Build for 64-bit windows and add .exe as an artifact to release
   windows-amd64:
-    name: Publish for windows-amd64
+    name: Publish (windows-amd64)
     runs-on: windows-latest
     env:
       output-path: target/release/radvisor.exe
