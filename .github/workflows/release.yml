@@ -53,7 +53,7 @@ jobs:
     name: Publish (windows-amd64)
     runs-on: windows-latest
     env:
-      artifact-name: radvisor-windows-amd64
+      artifact-name: radvisor-windows-amd64.exe
       output-path: target/x86_64-pc-windows-msvc/release/radvisor.exe
       build-target: x86_64-pc-windows-msvc
     steps:
