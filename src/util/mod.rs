@@ -35,7 +35,7 @@ mod imp {
 #[cfg(windows)]
 mod imp {
     use std::mem;
-    use winapi::shared::minwindef::{FILETIME, SYSTEMTIME, WORD};
+    use winapi::shared::minwindef::FILETIME;
     use winapi::um::sysinfoapi;
 
     /// Number of seconds between the start of the Windows epoch (Jan 1. 1601)
@@ -59,7 +59,7 @@ mod imp {
             sysinfoapi::GetSystemTimePreciseAsFileTime(&mut file_time);
         }
 
-        (file_time.dwLowDateTime as i64) + (file_time.dw_HighDateTime as i64) << 32;
+        (file_time.dwLowDateTime as i64) + (file_time.dwHighDateTime as i64) << 32
     }
 
     pub fn nano_ts() -> u128 { (file_timestamp() as u128) * TICK_LENGTH + NANO_EPOCH_DIFFERENCE }
