@@ -24,6 +24,13 @@ use std::vec::Vec;
 
 use bus::Bus;
 
+/// Disable compilation on platforms other than Linux or Windows
+#[cfg(not(any(target_os = "windows", target_os = "linux")))]
+fn target_check() {
+    sorry! ("rAdvisor only compiles for Linux and Windows targets");
+    sorry! ("To request support for additional targets, feel free to file an issue");
+}
+
 /// Parses CLI args and runs the correct procedure depending on the subcommand
 fn main() {
     // Setup human-readable panic handler

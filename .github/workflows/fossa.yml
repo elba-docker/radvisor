@@ -7,7 +7,8 @@ on:
       - "**/Cargo.toml"
       - "**/Cargo.lock"
 
-# Workflow for running Fossa CLI to have Fossa analyze dependencies and their licenses
+# Workflow for running Fossa CLI to have Fossa analyze dependencies and their
+# licenses
 name: fossa-licenses
 
 jobs:
@@ -17,7 +18,10 @@ jobs:
     steps:
       - uses: actions/checkout@v1
       - name: Install fossa-cli
-        run: "curl -H 'Cache-Control: no-cache' https://raw.githubusercontent.com/fossas/fossa-cli/master/install.sh | bash"
+        run: >-
+          curl -H 'Cache-Control: no-cache'
+          https://raw.githubusercontent.com/fossas/fossa-cli/master/install.sh |
+          bash
       - name: Run Fossa
         run: fossa analyze
         env:

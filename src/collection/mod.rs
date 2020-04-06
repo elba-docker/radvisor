@@ -1,5 +1,6 @@
 pub mod collect;
 pub mod collector;
+pub mod system_info;
 
 use crate::collection::collect::WorkingBuffers;
 use crate::collection::collector::Collector;

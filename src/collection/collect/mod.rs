@@ -1,7 +1,6 @@
 use crate::collection::collect::files::ProcFileHandles;
 use crate::collection::collector::Collector;
-use crate::util::buffer::{Buffer, BufferLike};
-use crate::util::{self, AnonymousSlice};
+use crate::util::{self, Buffer, BufferLike, AnonymousSlice};
 
 use csv::{ByteRecord, Error};
 

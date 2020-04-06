@@ -65,9 +65,12 @@ jobs:
       # Use vcpkg to install OpenSSL for Windows builds:
       # https://github.com/sfackler/rust-openssl/issues/1062#issuecomment-489441940
       # https://github.com/Microsoft/vcpkg
-      # ? Note: the -static package version is installted in order to statically link later
+      # ? Note: the -static package version is installted in order to statically
+      # ? ink later
       - name: Clone and install vcpkg
-        run: git clone https://github.com/Microsoft/vcpkg.git && .\vcpkg\bootstrap-vcpkg.bat
+        run: >-
+          git clone https://github.com/Microsoft/vcpkg.git &&
+          .\vcpkg\bootstrap-vcpkg.bat
         shell: pwsh
 
       - name: Cache OpenSSL installation
@@ -110,7 +113,8 @@ jobs:
       - uses: actions-rs/cargo@v1
         with:
           command: build
-          # itarget lets us specify in Cargo.toml to disable hyperlocal (which targets unix)
+          # itarget lets us specify in Cargo.toml to disable hyperlocal (which
+          # targets unix).
           # Tracking issue: https://github.com/rust-lang/cargo/issues/7914
           args: >-
             -Z features=itarget

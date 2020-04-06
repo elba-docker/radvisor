@@ -2,6 +2,7 @@ use crate::cli;
 use crate::collection::collect;
 use crate::collection::collect::files::ProcFileHandles;
 use crate::collection::collect::read::StatFileLayout;
+use crate::collection::system_info::SystemInfo;
 use crate::shared::TargetMetadata;
 use crate::util;
 use std::fs::{self, File, OpenOptions};
@@ -57,11 +58,14 @@ impl Collector {
     /// metadata. Writes the file header and then opens up read file handles
     /// for all of the /proc cgroup virtual files
     fn new(file: File, target: &TargetMetadata) -> Result<Self, Error> {
+        let system_info: String = textwrap::indent(&SystemInfo::get().as_yaml(), "  ");
+
         // Write the YAML header to the file before initializing the CSV writer
         writeln!(&file, "---")?;
         writeln!(&file, "Version: {}", cli::VERSION.unwrap_or("unknown"))?;
         writeln!(&file, "Provider: {}", target.provider_type)?;
         write!(&file, "{}", target.info)?;
+        write!(&file, "System:\n{}", system_info)?;
         writeln!(&file, "Cgroup: {}", target.cgroup.path.display())?;
         writeln!(&file, "CgroupDriver: {}", target.cgroup.driver)?;
         writeln!(&file, "InitializedAt: {}", util::nano_ts())?;
