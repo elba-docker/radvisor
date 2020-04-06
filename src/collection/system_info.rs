@@ -63,14 +63,10 @@ pub struct Distribution {
 impl Distribution {
     /// Attempts to get the Linux distribution metadata, succeeding only on
     /// Linux and if the values can be retrieved properly
-    pub fn try_get() -> Option<Self> {
-        Distribution::get_inner()
-    }
+    pub fn try_get() -> Option<Self> { Distribution::get_inner() }
 
     #[cfg(target_os = "windows")]
-    fn get_inner() -> Option<Self> {
-        None
-    }
+    fn get_inner() -> Option<Self> { None }
 
     #[cfg(target_os = "linux")]
     fn get_inner() -> Option<Self> {
