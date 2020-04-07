@@ -2000,8 +2000,7 @@ dependencies = [
 [[package]]
 name = "sys-info"
 version = "0.6.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4bbb07eeb96387ca95eb5a800b3aa8896fa1876a2cd86b3a53f1c4bd2caddfd1"
+source = "git+https://github.com/jazevedo620/sys-info-rs#7d9c7100a825e7c7da0b3d73b29260f8f7bbccd6"
 dependencies = [
  "cc",
  "libc",
