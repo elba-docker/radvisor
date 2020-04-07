@@ -20,3 +20,12 @@ compile:
 	-Z unstable-options \
 	--out-dir $(OUT_DIR) \
 	--target $(BUILD_TARGET)
+
+# Enable static OpenSSL linking on Windows
+windows: export OPENSSL_STATIC = 1
+windows: export RUSTFLAGS = -Ctarget-feature=+crt-static
+
+windows:
+	cargo build \
+	-Z features=itarget
+
