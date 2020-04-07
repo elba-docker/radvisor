@@ -661,6 +661,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "gcc"
+version = "0.3.55"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8f5f3913fa0bfe7ee1fd8248b6b9f42a5af4b9d65ec2dd2c3c26132b950ecfc2"
+
+[[package]]
 name = "gethostname"
 version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1999,12 +2005,11 @@ dependencies = [
 
 [[package]]
 name = "sys-info"
-version = "0.6.0"
+version = "0.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4bbb07eeb96387ca95eb5a800b3aa8896fa1876a2cd86b3a53f1c4bd2caddfd1"
+checksum = "246f8bbb443ae0026c92266c26d997d04634c8b44c3baff9fa3bff445b40878c"
 dependencies = [
- "cc",
- "libc",
+ "gcc",
 ]
 
 [[package]]
