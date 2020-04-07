@@ -47,9 +47,9 @@ fn main() {
     let shell = Arc::new(shell::Shell::new(&opts));
 
     // Exit if running on a platform other than Linux
-    if !cfg!(target_os = "linux") {
+    if cfg!(not(target_os = "linux")) {
         shell.error(
-            "rAdvisor only runs on Linux due to its reliance on cgroups.
+            "rAdvisor only runs on Linux due to its reliance on cgroups. \n\
              See https://github.com/elba-kubernetes/radvisor/issues/3 \
              for the tracking issue on adding support to Windows",
         );
