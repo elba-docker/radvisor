@@ -65,7 +65,7 @@ impl Distribution {
     /// Linux and if the values can be retrieved properly
     pub fn try_get() -> Option<Self> { Distribution::get_inner() }
 
-    #[cfg(target_os = "windows")]
+    #[cfg(not(target_os = "linux"))]
     fn get_inner() -> Option<Self> { None }
 
     #[cfg(target_os = "linux")]
