@@ -7,8 +7,8 @@ on:
       - "**/Cargo.toml"
       - "**/Cargo.lock"
 
-# Workflow for performing a security audit on dependencies for known vulnerabilities
-# in specific crates/versions
+# Workflow for performing a security audit on dependencies for known
+# vulnerabilities in specific crates/versions
 name: security
 
 jobs:

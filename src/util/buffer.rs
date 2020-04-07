@@ -1,4 +1,7 @@
-use crate::util;
+//! Contains `Buffer`, a statically-sized working buffer that can be used to
+//! additionally include length when in managed mode.
+
+use crate::util::byte::is_whitespace;
 
 /// Working buffer of raw bytes. Can operate both in **managed** mode (where it
 /// keeps track of length) and **unmanaged** mode (where it acts) as a plain
@@ -37,12 +40,12 @@ impl<const SIZE: usize> BufferLike for Buffer<SIZE> {
         }
 
         let mut start = 0;
-        while start < self.len && util::is_whitespace(self.b[start]) {
+        while start < self.len && is_whitespace(self.b[start]) {
             start += 1;
         }
 
         let mut end = self.len - 1;
-        while end > start && util::is_whitespace(self.b[end]) {
+        while end > start && is_whitespace(self.b[end]) {
             end -= 1;
         }
 
@@ -118,12 +121,12 @@ pub fn trim_raw(buf: &[u8]) -> &[u8] {
     }
 
     let mut start = 0;
-    while start < len && util::is_whitespace(buf[start]) {
+    while start < len && is_whitespace(buf[start]) {
         start += 1;
     }
 
     let mut end = len - 1;
-    while end > start && util::is_whitespace(buf[end]) {
+    while end > start && is_whitespace(buf[end]) {
         end -= 1;
     }
 

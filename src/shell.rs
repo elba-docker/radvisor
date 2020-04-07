@@ -321,7 +321,7 @@ impl OutSink {
     }
 }
 
-#[cfg(unix)]
+#[cfg(target_os = "linux")]
 mod imp {
     use std::mem;
 
@@ -347,7 +347,7 @@ mod imp {
     }
 }
 
-#[cfg(windows)]
+#[cfg(target_os = "windows")]
 mod imp {
     use std::{cmp, mem, ptr};
     use winapi::um::fileapi::*;

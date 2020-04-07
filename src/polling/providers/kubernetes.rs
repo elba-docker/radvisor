@@ -14,7 +14,7 @@ use gethostname::gethostname;
 use k8s_openapi::api::core::v1::{Node, Pod};
 use k8s_openapi::apimachinery::pkg::apis::meta::v1::Time;
 use kube::api::{ListParams, Meta, Resource};
-use kube::client::APIClient;
+use kube::client::Client;
 use kube::config;
 use kube::runtime::Reflector;
 use lru_time_cache::LruCache;
@@ -35,7 +35,7 @@ const PROVIDER_TYPE: &str = "kubernetes";
 
 pub struct Kubernetes {
     runtime:        RefCell<Runtime>,
-    client:         Option<APIClient>,
+    client:         Option<Client>,
     cgroup_manager: CgroupManager,
     /// Collection of fields that must be initialized after successful provider
     /// initialization occurs. This condition is invariant
@@ -133,7 +133,7 @@ impl Provider for Kubernetes {
         }
 
         // Initialize client
-        self.client = Some(APIClient::new(config));
+        self.client = Some(Client::from(config));
 
         self.invariants = match self.build_invariants(&hostname, opts, shell) {
             Ok(invariants) => Some(invariants),

@@ -24,6 +24,13 @@ use std::vec::Vec;
 
 use bus::Bus;
 
+/// Disable compilation on platforms other than Linux or Windows
+#[cfg(not(any(target_os = "windows", target_os = "linux")))]
+fn target_check() {
+    sorry!("rAdvisor only compiles for Linux and Windows targets");
+    sorry!("To request support for additional targets, feel free to file an issue");
+}
+
 /// Parses CLI args and runs the correct procedure depending on the subcommand
 fn main() {
     // Setup human-readable panic handler
@@ -40,10 +47,12 @@ fn main() {
     let shell = Arc::new(shell::Shell::new(&opts));
 
     // Exit if running on a platform other than Linux
-    if !cfg!(target_os = "linux") {
-        shell.error("rAdvisor only runs on Linux due to its reliance on cgroups. See \
-        https://github.com/elba-kubernetes/radvisor/issues/3 for the tracking issue on \
-        adding support to Windows");
+    if cfg!(not(target_os = "linux")) {
+        shell.error(
+            "rAdvisor only runs on Linux due to its reliance on cgroups. \n\
+             See https://github.com/elba-kubernetes/radvisor/issues/3 \
+             for the tracking issue on adding support to Windows",
+        );
         std::process::exit(1);
     }
 

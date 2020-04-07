@@ -9,8 +9,8 @@ name: release
 env:
   toolchain: nightly
 
-# ? Note: doesn't currently use a matrix due to each target OS having very different
-# ?       dependency installation requirements
+# ? Note: doesn't currently use a matrix due to each target OS having very
+# ?       different dependency installation requirements
 jobs:
   # Build for 64-bit linux and add binary as an artifact to release
   linux-amd64:
@@ -59,10 +59,13 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - name: Clone and install vcpkg
-        run: git clone https://github.com/Microsoft/vcpkg.git && .\vcpkg\bootstrap-vcpkg.bat
+        run: >-
+          git clone https://github.com/Microsoft/vcpkg.git &&
+          .\vcpkg\bootstrap-vcpkg.bat
         shell: pwsh
       - name: Install open-ssl
-        # ? Note: the -static package version is installted in order to statically link later
+        # ? Note: the -static package version is installted in order to
+        # ? statically link later
         run: .\vcpkg\vcpkg install openssl:x64-windows-static
       - name: Install vcpkg integration
         run: .\vcpkg\vcpkg integrate install
@@ -77,7 +80,8 @@ jobs:
       - uses: actions-rs/cargo@v1
         with:
           command: build
-          # itarget lets us specify in Cargo.toml to disable hyperlocal (which targets unix)
+          # itarget lets us specify in Cargo.toml to disable hyperlocal
+          # (which targets unix).
           # Tracking issue: https://github.com/rust-lang/cargo/issues/7914
           args: >-
             --release --bins
