@@ -86,7 +86,7 @@ mod cpu {
     /// Uses `GetActiveProcessorCount` from Winbase.h in
     /// [winapi](https://docs.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-getactiveprocessorcount)
     fn num_processors() -> u64 {
-        let count: DWORD = unsafe { GetActiveProcessorCount(GroupNumber: WORD) };
+        let count: DWORD = unsafe { GetActiveProcessorCount(ALL_PROCESSOR_GROUPS) };
         count as u64
     }
 

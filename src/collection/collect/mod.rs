@@ -1,6 +1,6 @@
 use crate::collection::collect::files::ProcFileHandles;
 use crate::collection::collector::Collector;
-use crate::util::{self, Buffer, BufferLike, AnonymousSlice};
+use crate::util::{self, AnonymousSlice, Buffer, BufferLike};
 
 use csv::{ByteRecord, Error};
 
@@ -89,6 +89,7 @@ impl WorkingBuffers {
     pub fn new() -> Self {
         WorkingBuffers {
             record:      ByteRecord::with_capacity(ROW_BUFFER_SIZE, *ROW_LENGTH),
+            slices:      [<AnonymousSlice>::default(); SLICES_BUFFER_SIZE],
             buffer:      Buffer {
                 len: 0,
                 b:   [0u8; WORKING_BUFFER_SIZE],
@@ -97,7 +98,6 @@ impl WorkingBuffers {
                 len: 0,
                 b:   [0u8; WORKING_BUFFER_SIZE],
             },
-            slices:      [<AnonymousSlice>::default(); SLICES_BUFFER_SIZE],
         }
     }
 }
