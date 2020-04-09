@@ -92,7 +92,7 @@ impl Provider for Docker {
         let removed_len = removed.len();
         events.reserve_exact(added.len() + removed_len);
         // Add all removed Ids as Stop events
-        events.extend(removed.into_iter().map(|id| CollectionEvent::Stop(id)));
+        events.extend(removed.into_iter().map(CollectionEvent::Stop));
 
         // Add all added Ids as Start events
         let start_events = added
@@ -112,7 +112,7 @@ impl Provider for Docker {
                     },
                 };
 
-                match self.to_start_event(container) {
+                match self.make_start_event(container) {
                     Ok(start) => Some(start),
                     Err(error) => {
                         let container_display = display(container);
@@ -178,7 +178,7 @@ impl Docker {
 
     /// Converts a container to a collection start event, preparing all
     /// serialization/cgroup checks needed
-    fn to_start_event(
+    fn make_start_event(
         &mut self,
         container: &Container,
     ) -> Result<CollectionEvent, StartCollectionError> {

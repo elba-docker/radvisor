@@ -6,15 +6,15 @@ use std::iter::IntoIterator;
 /// new items are added or old items are removed.
 #[derive(Debug, Clone)]
 pub struct ItemPool<T: Ord + Clone> {
-    active_targets: BTreeSet<T>,
-    working_set:    BTreeSet<T>,
+    items:       BTreeSet<T>,
+    working_set: BTreeSet<T>,
 }
 
 impl<T: Ord + Clone> Default for ItemPool<T> {
     fn default() -> Self {
         Self {
-            active_targets: BTreeSet::new(),
-            working_set:    BTreeSet::new(),
+            items:       BTreeSet::new(),
+            working_set: BTreeSet::new(),
         }
     }
 }
@@ -31,20 +31,20 @@ impl<T: Ord + Clone> ItemPool<T> {
     where
         I: IntoIterator<Item = T>,
     {
-        let active_targets = &mut self.active_targets;
+        let items = &mut self.items;
         let working_set = &mut self.working_set;
 
         // Add all new target Ids to the working set
         working_set.extend(new_target_ids);
 
         let added: Vec<T> = working_set
-            .drain_filter(|i| !active_targets.contains(i))
+            .drain_filter(|i| !items.contains(i))
             .collect::<Vec<_>>();
-        let removed: Vec<T> = active_targets
+        let removed: Vec<T> = items
             .drain_filter(|i| !working_set.contains(i))
             .collect::<Vec<_>>();
 
-        active_targets.extend(added.iter().map(|i| i.clone()));
+        items.extend(added.iter().cloned());
         working_set.clear();
         (added, removed)
     }

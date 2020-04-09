@@ -187,7 +187,7 @@ impl Provider for Kubernetes {
             .into_iter()
             .flat_map(|p| {
                 let uid = uid_option(&p);
-                uid.map(|s| s.to_owned()).and_then(|id| Some((id, p)))
+                uid.map(|s| s.to_owned()).map(|id| (id, p))
             })
             .collect::<BTreeMap<_, _>>();
 
@@ -198,7 +198,7 @@ impl Provider for Kubernetes {
         let removed_len = removed.len();
         events.reserve_exact(added.len() + removed.len());
         // Add all removed Ids as Stop events
-        events.extend(removed.into_iter().map(|id| CollectionEvent::Stop(id)));
+        events.extend(removed.into_iter().map(CollectionEvent::Stop));
 
         // Add all added Ids as Start events
         let start_events = added
@@ -218,7 +218,7 @@ impl Provider for Kubernetes {
                     },
                 };
 
-                match self.to_start_event(pod) {
+                match self.make_start_event(pod) {
                     Ok(start) => Some(start),
                     Err(error) => {
                         self.shell().warn(error.display(pod));
@@ -345,15 +345,13 @@ impl Kubernetes {
 
     /// Converts a pod to a collection start event, preparing all
     /// serialization/cgroup checks needed
-    fn to_start_event(&mut self, pod: &Pod) -> Result<CollectionEvent, StartCollectionError> {
+    fn make_start_event(&mut self, pod: &Pod) -> Result<CollectionEvent, StartCollectionError> {
         let uid: &str = uid_option(pod).ok_or(StartCollectionError::MissingPodUid)?;
         let method = self.get_collection_method(pod, uid)?;
         let metadata = match serialize_pod_info(pod) {
             Ok(metadata) => metadata,
             Err(err) => {
-                return Err(StartCollectionError::MetadataSerializationError(
-                    Error::from(err),
-                ));
+                return Err(StartCollectionError::MetadataSerializationError(err));
             },
         };
 
@@ -387,29 +385,6 @@ impl Kubernetes {
         }
     }
 
-    /// Gets a reference to the current Kubernetes API client
-    fn client(&self) -> &Client {
-        self.client
-            .as_ref()
-            .expect("Client must be initialized: invariant violated")
-    }
-
-    /// Gets a reference to the current pod reflector
-    fn pod_reflector(&self) -> &Reflector<Pod> {
-        self.pod_reflector
-            .as_ref()
-            .expect("Pod reflector must be initialized: invariant violated")
-    }
-
-    /// Gets a reference to the current shell
-    fn shell(&self) -> &Shell {
-        self.shell
-            .as_ref()
-            .expect("Shell must be initialized: invariant violated")
-    }
-}
-
-impl Kubernetes {
     /// Gets the group path for the given UID and QoS class, printing out a
     /// message upon the first successful cgroup resolution
     fn get_cgroup(&mut self, uid: &str, qos_class: QualityOfService) -> Option<CgroupPath> {
@@ -429,6 +404,27 @@ impl Kubernetes {
         }
 
         cgroup_option
+    }
+
+    /// Gets a reference to the current Kubernetes API client
+    fn client(&self) -> &Client {
+        self.client
+            .as_ref()
+            .expect("Client must be initialized: invariant violated")
+    }
+
+    /// Gets a reference to the current pod reflector
+    fn pod_reflector(&self) -> &Reflector<Pod> {
+        self.pod_reflector
+            .as_ref()
+            .expect("Pod reflector must be initialized: invariant violated")
+    }
+
+    /// Gets a reference to the current shell
+    fn shell(&self) -> &Shell {
+        self.shell
+            .as_ref()
+            .expect("Shell must be initialized: invariant violated")
     }
 }
 

@@ -55,7 +55,7 @@ pub enum ProviderType {
 
 impl ProviderType {
     /// Gets the corresponding provider for the CLI polling mode
-    pub fn get_impl(&self) -> Box<dyn Provider> {
+    pub fn get_impl(self) -> Box<dyn Provider> {
         match self {
             #[cfg(feature = "docker")]
             ProviderType::Docker => Box::new(docker::Docker::new()),
