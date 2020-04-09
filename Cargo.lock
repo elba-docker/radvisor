@@ -286,9 +286,9 @@ dependencies = [
  "indexmap",
  "lazy_static",
  "strsim 0.9.3",
+ "term_size 1.0.0-beta1",
  "textwrap",
  "unicode-width",
- "vec_map",
 ]
 
 [[package]]
@@ -2090,6 +2090,28 @@ dependencies = [
 ]
 
 [[package]]
+name = "term_size"
+version = "0.3.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9e5b9a66db815dcfd2da92db471106457082577c3c278d4138ab3e3b4e189327"
+dependencies = [
+ "kernel32-sys",
+ "libc",
+ "winapi 0.2.8",
+]
+
+[[package]]
+name = "term_size"
+version = "1.0.0-beta1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a8a17d8699e154863becdf18e4fd28bd0be27ca72856f54daf75c00f2566898f"
+dependencies = [
+ "kernel32-sys",
+ "libc",
+ "winapi 0.2.8",
+]
+
+[[package]]
 name = "termcolor"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2104,6 +2126,7 @@ version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d326610f408c7a4eb6f51c37c330e496b08506c9457c9d34287ecc38809fb060"
 dependencies = [
+ "term_size 0.3.1",
  "unicode-width",
 ]
 

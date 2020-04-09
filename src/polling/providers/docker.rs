@@ -1,4 +1,4 @@
-use crate::cli::Opts;
+use crate::cli::RunCommand;
 use crate::polling::providers::{InitializationError, Provider};
 use crate::shared::{CollectionEvent, CollectionMethod, CollectionTarget};
 use crate::shell::Shell;
@@ -64,7 +64,11 @@ enum StartCollectionError {
 }
 
 impl Provider for Docker {
-    fn initialize(&mut self, _opts: &Opts, shell: Arc<Shell>) -> Result<(), InitializationError> {
+    fn initialize(
+        &mut self,
+        _opts: &RunCommand,
+        shell: Arc<Shell>,
+    ) -> Result<(), InitializationError> {
         self.shell = Some(Arc::clone(&shell));
         self.shell().status("Initializing", "Docker API provider");
 

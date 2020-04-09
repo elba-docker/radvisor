@@ -14,7 +14,7 @@ mod shell;
 mod timer;
 mod util;
 
-use crate::cli::{Command, Opts};
+use crate::cli::{Command, Opts, RunCommand};
 use crate::polling::providers::Provider;
 use crate::shared::{CollectionEvent, IntervalWorkerContext};
 use crate::shell::Shell;
@@ -28,8 +28,10 @@ use bus::Bus;
 /// Disable compilation on platforms other than Linux or Windows
 #[cfg(not(any(target_os = "windows", target_os = "linux")))]
 fn target_check() {
-    sorry!("rAdvisor only compiles for Linux and Windows targets");
-    sorry!("To request support for additional targets, feel free to file an issue");
+    compile_error!(
+        "rAdvisor only compiles for Linux and Windows targets. To request support for additional \
+         platforms, feel free to file an issue at https://github.com/elba-kubernetes/radvisor/issues/new"
+    );
 }
 
 /// Parses CLI args and runs the correct procedure depending on the subcommand
@@ -58,24 +60,24 @@ fn main() {
     }
 
     match opts.command {
-        Command::Run { mode } => {
+        Command::Run(run_opts) => {
             // Resolve container metadata provider
-            let mut provider: Box<dyn Provider> = mode.get_impl();
+            let mut provider: Box<dyn Provider> = run_opts.mode.get_impl();
 
             // Determine if the current process can connect to the provider source
-            if let Err(err) = provider.initialize(&opts, Arc::clone(&shell)) {
+            if let Err(err) = provider.initialize(&run_opts, Arc::clone(&shell)) {
                 shell.error(format!("{}", err));
                 std::process::exit(1);
             }
 
-            run(opts, provider, shell);
+            run(run_opts, provider, shell);
         },
     }
 }
 
 /// Bootstraps the two worker threads, preparing the necessary communication
 /// between them
-fn run(opts: Opts, provider: Box<dyn Provider>, shell: Arc<Shell>) {
+fn run(opts: RunCommand, provider: Box<dyn Provider>, shell: Arc<Shell>) {
     // Used to send collection events from the polling thread to the collection
     // thread
     let (tx, rx): (Sender<CollectionEvent>, Receiver<CollectionEvent>) = mpsc::channel();

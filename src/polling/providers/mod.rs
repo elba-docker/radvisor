@@ -3,7 +3,7 @@ pub mod docker;
 #[cfg(feature = "kubernetes")]
 pub mod kubernetes;
 
-use crate::cli::Opts;
+use crate::cli::RunCommand;
 use crate::shared::CollectionEvent;
 use crate::shell::Shell;
 use std::marker::Send;
@@ -27,7 +27,11 @@ pub trait Provider: Send {
     /// Performs initialization/a connection check to see if the current process
     /// can access the necessary resources to later retrieve lists of
     /// targets metadata and generate collection events
-    fn initialize(&mut self, opts: &Opts, shell: Arc<Shell>) -> Result<(), InitializationError>;
+    fn initialize(
+        &mut self,
+        opts: &RunCommand,
+        shell: Arc<Shell>,
+    ) -> Result<(), InitializationError>;
     /// Attempts to poll the provider for a list of collection events (new/old
     /// targets), returning an Error if it failed
     fn poll(&mut self) -> Result<Vec<CollectionEvent>, Error>;
