@@ -2,9 +2,12 @@ use std::fmt;
 use std::fs;
 use std::path::{Path, PathBuf};
 
+use serde::Serialize;
+
 /// Docker cgroup driver used to orchestrate moving containers in and out of
 /// cgroups
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug, PartialEq, Serialize)]
+#[serde(rename_all = "lowercase")]
 pub enum CgroupDriver {
     Systemd,
     Cgroupfs,
@@ -164,9 +167,9 @@ pub fn escape_systemd(slice: &str) -> String { slice.replace("-", "_") }
 /// see [`kubernetes/kubelet/cm/cgroup_manager_linux.go:ToCgroupfs()`](https://github.com/kubernetes/kubernetes/blob/bb5ed1b79709c865d9aa86008048f19331530041/pkg/kubelet/cm/cgroup_manager_linux.go#L116-L118)
 fn make_cgroupfs(slices: &[&str]) -> PathBuf { slices.iter().collect() }
 
-pub const INVALID_MOUNT_MESSAGE: &str = "rAdvisor expects cgroups to be mounted in \
-                                         /sys/fs/cgroup. If this is\nthe case, make sure that the \
-                                         'cpuacct' resource controller has not been disabled.";
+pub const INVALID_CGROUP_MOUNT_MESSAGE: &str =
+    "rAdvisor expects cgroups to be mounted in /sys/fs/cgroup. If this is\nthe case, make sure \
+     that the 'cpuacct' resource controller has not been disabled.";
 
 /// Checks if cgroups are mounted in /sys/fs/cgroup and if the cpuacct subsystem
 /// is enabled (necessary for proper driver detection)

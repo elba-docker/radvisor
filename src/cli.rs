@@ -1,3 +1,4 @@
+use crate::polling::providers::ProviderType;
 use crate::shell::ColorMode;
 use std::error;
 use std::fmt;
@@ -28,21 +29,6 @@ impl fmt::Display for ParseFailure {
 
 impl error::Error for ParseFailure {
     fn source(&self) -> Option<&(dyn error::Error + 'static)> { None }
-}
-
-impl std::str::FromStr for Mode {
-    type Err = ParseFailure;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s.to_lowercase().as_str() {
-            "docker" => Ok(Mode::Docker),
-            "kubernetes" => Ok(Mode::Kubernetes),
-            _ => Err(ParseFailure {
-                field: "mode".to_owned(),
-                given: s.to_owned(),
-            }),
-        }
-    }
 }
 
 fn parse_duration(raw: &str) -> Result<Duration, humantime::DurationError> {
@@ -121,23 +107,8 @@ pub enum Command {
     #[clap(about = "runs a collection thread that writes resource statistics to output CSV files")]
     Run {
         #[clap(subcommand)]
-        mode: Mode,
+        mode: ProviderType,
     },
-}
-
-#[derive(Clap, Clone, Copy)]
-pub enum Mode {
-    #[clap(
-        about = "runs collection using docker as the target backend; collecting stats for each \
-                 container"
-    )]
-    Docker,
-
-    #[clap(
-        about = "runs collection using kubernetes as the target backend; collecting stats for \
-                 each pod"
-    )]
-    Kubernetes,
 }
 
 /// Parses and resolves defaults for all CLI arguments. Additionally, handles

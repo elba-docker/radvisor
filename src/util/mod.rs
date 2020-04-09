@@ -3,10 +3,14 @@
 
 pub(self) mod buffer;
 pub(self) mod byte;
+pub(self) mod cgroups;
+pub(self) mod pool;
 pub(self) mod system;
 
 pub use buffer::*;
 pub use byte::*;
+pub use cgroups::*;
+pub use pool::*;
 pub use system::*;
 
 /// Represents an anonymous slice, lacking any memory ownership semantics

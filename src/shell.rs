@@ -1,4 +1,5 @@
 use crate::cli::{Opts, ParseFailure};
+use crate::util;
 use std::fmt;
 use std::io::{self, Write};
 use std::sync::Mutex;
@@ -315,88 +316,8 @@ impl OutSink {
                 is_tty: true,
                 stream_type,
                 ..
-            } => imp::width(*stream_type),
+            } => util::terminal_width(*stream_type),
             _ => None,
-        }
-    }
-}
-
-#[cfg(target_os = "linux")]
-mod imp {
-    use std::mem;
-
-    pub fn width(stream: atty::Stream) -> Option<usize> {
-        unsafe {
-            let mut winsize: libc::winsize = mem::zeroed();
-
-            // Resolve correct fileno for the stream type
-            let fileno = match stream {
-                atty::Stream::Stdout => libc::STDOUT_FILENO,
-                _ => libc::STDERR_FILENO,
-            };
-
-            if libc::ioctl(fileno, libc::TIOCGWINSZ, &mut winsize) < 0 {
-                return None;
-            }
-            if winsize.ws_col > 0 {
-                Some(winsize.ws_col as usize)
-            } else {
-                None
-            }
-        }
-    }
-}
-
-#[cfg(target_os = "windows")]
-mod imp {
-    use std::{cmp, mem, ptr};
-    use winapi::um::fileapi::*;
-    use winapi::um::handleapi::*;
-    use winapi::um::processenv::*;
-    use winapi::um::winbase::*;
-    use winapi::um::wincon::*;
-    use winapi::um::winnt::*;
-
-    pub fn width(_stream: atty::Stream) -> Option<usize> {
-        unsafe {
-            let stdout = GetStdHandle(STD_ERROR_HANDLE);
-            let mut csbi: CONSOLE_SCREEN_BUFFER_INFO = mem::zeroed();
-            if GetConsoleScreenBufferInfo(stdout, &mut csbi) != 0 {
-                return Some((csbi.srWindow.Right - csbi.srWindow.Left) as usize);
-            }
-
-            // On mintty/msys/cygwin based terminals, the above fails with
-            // INVALID_HANDLE_VALUE. Use an alternate method which works
-            // in that case as well.
-            let h = CreateFileA(
-                "CONOUT$\0".as_ptr() as *const CHAR,
-                GENERIC_READ | GENERIC_WRITE,
-                FILE_SHARE_READ | FILE_SHARE_WRITE,
-                ptr::null_mut(),
-                OPEN_EXISTING,
-                0,
-                ptr::null_mut(),
-            );
-            if h == INVALID_HANDLE_VALUE {
-                return None;
-            }
-
-            let mut csbi: CONSOLE_SCREEN_BUFFER_INFO = mem::zeroed();
-            let rc = GetConsoleScreenBufferInfo(h, &mut csbi);
-            CloseHandle(h);
-            if rc != 0 {
-                let width = (csbi.srWindow.Right - csbi.srWindow.Left) as usize;
-                // Unfortunately cygwin/mintty does not set the size of the
-                // backing console to match the actual window size. This
-                // always reports a size of 80 or 120 (not sure what
-                // determines that). Use a conservative max of 60 which should
-                // work in most circumstances. ConEmu does some magic to
-                // resize the console correctly, but there's no reasonable way
-                // to detect which kind of terminal we are running in, or if
-                // GetConsoleScreenBufferInfo returns accurate information.
-                return Some(cmp::min(60, width));
-            }
-            None
         }
     }
 }

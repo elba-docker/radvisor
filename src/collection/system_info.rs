@@ -34,12 +34,6 @@ impl SystemInfo {
             cpu_speed:        sys_info::cpu_speed().ok(),
         }
     }
-
-    pub fn as_yaml(&self) -> String {
-        let serde_output = serde_yaml::to_string(self).unwrap_or_else(|_| String::from(""));
-        // Remove top ---
-        String::from(serde_output.trim_start_matches("---\n")) + "\n"
-    }
 }
 
 /// Represents metadata about a Linux distribution, compliant with
