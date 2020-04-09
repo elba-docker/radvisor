@@ -1,7 +1,7 @@
 pub mod providers;
 
 use crate::polling::providers::Provider;
-use crate::shared::{IntervalWorkerContext, TargetMetadata};
+use crate::shared::{CollectionEvent, IntervalWorkerContext};
 use crate::timer::{Stoppable, Timer};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::Sender;
@@ -9,7 +9,7 @@ use std::sync::Arc;
 
 /// Thread function that updates the target list each second by default
 pub fn run(
-    tx: Sender<Vec<TargetMetadata>>,
+    tx: Sender<CollectionEvent>,
     context: IntervalWorkerContext,
     provider: Box<dyn Provider>,
 ) {
@@ -38,25 +38,27 @@ pub fn run(
     let mut provider = provider;
 
     for _ in timer {
-        let targets: Vec<TargetMetadata> = match provider.fetch() {
+        let events: Vec<CollectionEvent> = match provider.poll() {
             Ok(vec) => vec,
             Err(err) => {
                 context
                     .shell
-                    .error(format!("Could not fetch target metadata: {}", err));
+                    .error(format!("Could not poll target provider: {}", err));
                 Vec::with_capacity(0)
             },
         };
 
         // Make sure the collection hasn't been stopped
         if !has_stopped.load(Ordering::SeqCst) {
-            // If sending fails, then stop the collection thread
-            if let Err(err) = tx.send(targets) {
-                context.shell.error(format!(
-                    "Could not send polled target data to collector thread: {}",
-                    err
-                ));
-                break;
+            for event in events {
+                if let Err(err) = tx.send(event) {
+                    // If sending fails, then stop the collection thread
+                    context.shell.error(format!(
+                        "Could not send polled target events to collector thread: {}",
+                        err
+                    ));
+                    break;
+                }
             }
         }
     }

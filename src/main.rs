@@ -1,5 +1,7 @@
 // Allow const generics feature in Rust nightly
 #![feature(const_generics)]
+// Use draining on BTreeSet to optimizing memory movement
+#![feature(btree_drain_filter)]
 #![allow(incomplete_features)]
 // Allow for using booleans in match statements where it makes it more readable
 #![allow(clippy::match_bool)]
@@ -13,14 +15,13 @@ mod timer;
 mod util;
 
 use crate::cli::{Command, Opts};
-use crate::polling::providers::{self, Provider};
-use crate::shared::{IntervalWorkerContext, TargetMetadata};
+use crate::polling::providers::Provider;
+use crate::shared::{CollectionEvent, IntervalWorkerContext};
 use crate::shell::Shell;
 use std::sync::mpsc::{self, Receiver, Sender};
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::Duration;
-use std::vec::Vec;
 
 use bus::Bus;
 
@@ -59,11 +60,11 @@ fn main() {
     match opts.command {
         Command::Run { mode } => {
             // Resolve container metadata provider
-            let mut provider: Box<dyn Provider> = providers::for_mode(mode);
+            let mut provider: Box<dyn Provider> = mode.get_impl();
 
             // Determine if the current process can connect to the provider source
             if let Err(err) = provider.initialize(&opts, Arc::clone(&shell)) {
-                shell.error(err.message);
+                shell.error(format!("{}", err));
                 std::process::exit(1);
             }
 
@@ -75,9 +76,9 @@ fn main() {
 /// Bootstraps the two worker threads, preparing the necessary communication
 /// between them
 fn run(opts: Opts, provider: Box<dyn Provider>, shell: Arc<Shell>) {
-    // Used to send container metadata lists from the polling thread to the
-    // collection thread
-    let (tx, rx): (Sender<Vec<TargetMetadata>>, Receiver<Vec<TargetMetadata>>) = mpsc::channel();
+    // Used to send collection events from the polling thread to the collection
+    // thread
+    let (tx, rx): (Sender<CollectionEvent>, Receiver<CollectionEvent>) = mpsc::channel();
 
     // Create the thread worker contexts using the term bus lock
     let term_bus = initialize_term_handler(Arc::clone(&shell));
