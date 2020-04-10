@@ -1,5 +1,5 @@
 use crate::polling::providers::ProviderType;
-use crate::shell::ColorMode;
+use crate::shell::ShellOptions;
 use std::error;
 use std::fmt;
 use std::path::PathBuf;
@@ -43,31 +43,9 @@ fn parse_duration(raw: &str) -> Result<Duration, humantime::DurationError> {
     about = "Monitors container resource utilization with high granularity and low overhead"
 )]
 pub struct Opts {
-    #[clap(
-        short = "q",
-        long = "quiet",
-        help = "whether to run in quiet mode (minimal output)",
-        global = true
-    )]
-    pub quiet: bool,
-
-    #[clap(
-        short = "v",
-        long = "verbose",
-        help = "whether to run in verbose mode (maximum output)",
-        global = true
-    )]
-    pub verbose: bool,
-
-    /// Mode of the color output of the process
-    #[clap(
-        short = "c",
-        long = "color",
-        help = "color display mode for stdout/stderr output",
-        default_value = "auto",
-        global = true
-    )]
-    pub color_mode: ColorMode,
+    // Shell output-related options
+    #[clap(flatten)]
+    pub shell_options: ShellOptions,
 
     /// Polling provider to use (docker or kubernetes)
     #[clap(subcommand)]
@@ -76,8 +54,8 @@ pub struct Opts {
 
 #[derive(Clap)]
 pub struct RunCommand {
-    #[clap(subcommand)]
-    pub mode: ProviderType,
+    #[clap(help = "provider to use to generate collection targets (such as containers/pods)")]
+    pub provider: ProviderType,
 
     /// Collection interval between log entries
     #[clap(

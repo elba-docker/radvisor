@@ -1,8 +1,9 @@
 on:
   push:
-    # Listen for semver-tagged pushes to generate releases
-    tags:
-      - v[0-9]+.[0-9]+.[0-9]+
+    branch: ci-test
+    # # Listen for semver-tagged pushes to generate releases
+    # tags:
+    #   - v[0-9]+.[0-9]+.[0-9]+
 
 # Workflow for creating a new release and attaching clean-built artifacts
 name: release
@@ -19,7 +20,8 @@ jobs:
     env:
       artifact-name: radvisor-linux-amd64
       build-target: x86_64-unknown-linux-gnu
-      output-path: target/x86_64-unknown-linux-gnu/release/radvisor
+      output-dir: out
+      output-path: out/radvisor
     steps:
       - uses: actions/checkout@v2
       - uses: actions-rs/toolchain@v1
@@ -34,19 +36,23 @@ jobs:
           command: build
           args: >-
             --release --bins
+            -Z unstable-options
+            --out-dir ${{ env.output-dir }}
             --target ${{ env.build-target }}
       - name: Strip binary
         run: strip ${{ env.output-path }}
 
-      # Upload artifacts and create new release if needed
-      - name: Upload binaries to release
-        uses: svenstaro/upload-release-action@v1-release
-        with:
-          repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: ${{ env.output-path }}
-          asset_name: ${{ env.artifact-name }}
-          tag: ${{ github.ref }}
-          overwrite: true
+      # # Upload artifacts and create new release if needed
+      # - name: Upload binaries to release
+      #   uses: svenstaro/upload-release-action@v1-release
+      #   with:
+      #     repo_token: ${{ secrets.GITHUB_TOKEN }}
+      #     file: ${{ env.output-path }}
+      #     asset_name: ${{ env.artifact-name }}
+      #     tag: ${{ github.ref }}
+      #     overwrite: true
+      # TODO temp
+      - run: ${{ env.output-path }} --help
 
   # Build for 64-bit windows and add .exe as an artifact to release
   windows-amd64:
@@ -54,7 +60,8 @@ jobs:
     runs-on: windows-latest
     env:
       artifact-name: radvisor-windows-amd64
-      output-path: target/x86_64-pc-windows-msvc/release/radvisor.exe
+      output-dir: out
+      output-path: out/radvisor.exe
       build-target: x86_64-pc-windows-msvc
     steps:
       - uses: actions/checkout@v2
@@ -64,7 +71,7 @@ jobs:
           .\vcpkg\bootstrap-vcpkg.bat
         shell: pwsh
       - name: Install open-ssl
-        # ? Note: the -static package version is installted in order to
+        # ? Note: the -static package version is installed in order to
         # ? statically link later
         run: .\vcpkg\vcpkg install openssl:x64-windows-static
       - name: Install vcpkg integration
@@ -84,8 +91,10 @@ jobs:
           # (which targets unix).
           # Tracking issue: https://github.com/rust-lang/cargo/issues/7914
           args: >-
-            --release --bins
+            --release --bins --all
             -Z features=itarget
+            -Z unstable-options
+            --out-dir ${{ env.output-dir }}
             --target ${{ env.build-target }}
         env:
           # Statically link openssl (needs the RUSTFLAGS variable)
@@ -93,12 +102,35 @@ jobs:
           OPENSSL_STATIC: 1
           RUSTFLAGS: -Ctarget-feature=+crt-static
 
-      # Upload artifacts and create new release if needed
-      - name: Upload binaries to release
+      # # Upload artifacts and create new release if needed
+      # - name: Upload binaries to release
+      #   uses: svenstaro/upload-release-action@v1-release
+      #   with:
+      #     repo_token: ${{ secrets.GITHUB_TOKEN }}
+      #     file: ${{ env.output-path }}
+      #     asset_name: ${{ env.artifact-name }}
+      #     tag: ${{ github.ref }}
+      #     overwrite: true
+      # TODO temp
+      - run: stat ${{ env.output-path }}
+      - run: ${{ env.output-path }} --help
+
+      # Create package files
+      - name: Run toolbox generation
+        run: ${{ env.output-path }}-toolbox -v --color=never
+      # Create .deb
+      - uses: actions-rs/cargo@v1
+        with:
+          command: deb
+          args: >-
+            --no-build
+            --target=${{ env.build-target }}
+      # Upload package artifacts and create new release if needed
+      - name: Upload package to release
         uses: svenstaro/upload-release-action@v1-release
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: ${{ env.output-path }}
-          asset_name: ${{ env.artifact-name }}
+          file: target/${{ env.build-targets }}/debian/radvisor.deb
+          asset_name: ${{ env.artifact-name }}.deb
           tag: ${{ github.ref }}
           overwrite: true

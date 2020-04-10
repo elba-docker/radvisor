@@ -277,7 +277,7 @@ dependencies = [
 [[package]]
 name = "clap"
 version = "3.0.0-beta.1"
-source = "git+https://github.com/clap-rs/clap/#d8434ec92529b68aaaf06f7b1a6ecb148cbac4a3"
+source = "git+https://github.com/clap-rs/clap/#20a741872994cb69a616e52fcff5e7b4a0f05f91"
 dependencies = [
  "ansi_term 0.12.1",
  "atty",
@@ -289,18 +289,27 @@ dependencies = [
  "term_size 1.0.0-beta1",
  "textwrap",
  "unicode-width",
+ "vec_map",
 ]
 
 [[package]]
 name = "clap_derive"
 version = "3.0.0-beta.1"
-source = "git+https://github.com/clap-rs/clap/#d8434ec92529b68aaaf06f7b1a6ecb148cbac4a3"
+source = "git+https://github.com/clap-rs/clap/#20a741872994cb69a616e52fcff5e7b4a0f05f91"
 dependencies = [
  "heck",
  "proc-macro-error",
  "proc-macro2",
  "quote",
  "syn",
+]
+
+[[package]]
+name = "clap_generate"
+version = "3.0.0-beta.1"
+source = "git+https://github.com/clap-rs/clap/#20a741872994cb69a616e52fcff5e7b4a0f05f91"
+dependencies = [
+ "clap 3.0.0-beta.1",
 ]
 
 [[package]]
@@ -557,6 +566,12 @@ name = "foreign-types-shared"
 version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "00b0228411908ca8685dba7fc2cdd70ec9990a6e753e89b6ac91a84c40fbaf4b"
+
+[[package]]
+name = "fs_extra"
+version = "1.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5f2a4a2034423744d2cc7ca2068453168dcdb82c438419e639a26bd87839c674"
 
 [[package]]
 name = "fuchsia-zircon"
@@ -1566,6 +1581,18 @@ dependencies = [
  "tokio 0.2.16",
  "tokio-compat",
  "winapi 0.3.8",
+]
+
+[[package]]
+name = "radvisor-toolbox"
+version = "1.1.4"
+dependencies = [
+ "clap 3.0.0-beta.1",
+ "clap_generate",
+ "flate2",
+ "fs_extra",
+ "radvisor",
+ "tar",
 ]
 
 [[package]]

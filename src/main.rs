@@ -1,23 +1,9 @@
-// Allow const generics feature in Rust nightly
-#![feature(const_generics)]
-// Use draining on BTreeSet to optimizing memory movement
-#![feature(btree_drain_filter)]
-#![allow(incomplete_features)]
-// Allow for using booleans in match statements where it makes it more readable
-#![allow(clippy::match_bool)]
-
-mod cli;
-mod collection;
-mod polling;
-mod shared;
-mod shell;
-mod timer;
-mod util;
-
-use crate::cli::{Command, Opts, RunCommand};
-use crate::polling::providers::Provider;
-use crate::shared::{CollectionEvent, IntervalWorkerContext};
-use crate::shell::Shell;
+use radvisor::cli::{self, Command, Opts, RunCommand};
+use radvisor::collection;
+use radvisor::polling;
+use radvisor::polling::providers::Provider;
+use radvisor::shared::{CollectionEvent, IntervalWorkerContext};
+use radvisor::shell::{self, Shell};
 use std::sync::mpsc::{self, Receiver, Sender};
 use std::sync::{Arc, Mutex};
 use std::thread;
@@ -47,7 +33,7 @@ fn main() {
     // Parse command line arguments
     let opts: Opts = cli::load();
     // Wrap the shell in an Arc so that it can be sent across threads
-    let shell = Arc::new(shell::Shell::new(&opts));
+    let shell = Arc::new(shell::Shell::new(&opts.shell_options));
 
     // Exit if running on a platform other than Linux
     if cfg!(not(target_os = "linux")) {
@@ -62,7 +48,7 @@ fn main() {
     match opts.command {
         Command::Run(run_opts) => {
             // Resolve container metadata provider
-            let mut provider: Box<dyn Provider> = run_opts.mode.get_impl();
+            let mut provider: Box<dyn Provider> = run_opts.provider.get_impl();
 
             // Determine if the current process can connect to the provider source
             if let Err(err) = provider.initialize(&run_opts, Arc::clone(&shell)) {

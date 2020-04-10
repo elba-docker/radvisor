@@ -1,0 +1,19 @@
+[package]
+name = "radvisor-toolbox"
+version = "1.1.4"
+authors = ["Joseph Azevedo <joseph.az@gatech.edu>"]
+edition = "2018"
+readme = "README.md"
+license = "MIT"
+
+[[bin]]
+name = "radvisor-toolbox"
+path = "src/main.rs"
+
+[dependencies]
+radvisor = { path = "../." }
+clap = { git = "https://github.com/clap-rs/clap/", default-features = false, features = ["std", "derive"] }
+clap_generate = { git = "https://github.com/clap-rs/clap/" }
+tar = "0.4.26"
+flate2 = "1.0.14"
+fs_extra = "1.1.0"

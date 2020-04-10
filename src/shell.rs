@@ -1,9 +1,10 @@
-use crate::cli::{Opts, ParseFailure};
+use crate::cli::ParseFailure;
 use crate::util;
 use std::fmt;
 use std::io::{self, Write};
 use std::sync::Mutex;
 
+use clap::Clap;
 use termcolor::{self, Color, ColorSpec, StandardStream, WriteColor};
 
 /// Inspiration/partial implementations taken from the Cargo source at
@@ -20,10 +21,41 @@ pub enum Verbosity {
     Quiet,
 }
 
+/// All clap-compatible configuration parameters for the Shell
+#[derive(Clap)]
+pub struct ShellOptions {
+    #[clap(
+        short = "q",
+        long = "quiet",
+        help = "whether to run in quiet mode (minimal output)",
+        global = true
+    )]
+    pub quiet: bool,
+
+    #[clap(
+        short = "v",
+        long = "verbose",
+        help = "whether to run in verbose mode (maximum output)",
+        global = true,
+        conflicts_with = "quiet"
+    )]
+    pub verbose: bool,
+
+    /// Mode of the color output of the process
+    #[clap(
+        short = "c",
+        long = "color",
+        help = "color display mode for stdout/stderr output",
+        default_value = "auto",
+        global = true
+    )]
+    pub color_mode: ColorMode,
+}
+
 impl Verbosity {
     /// Determines the appropriate verbosity setting for the specified CLI
     /// options
-    fn from_opts(opts: &Opts) -> Self {
+    fn from_opts(opts: &ShellOptions) -> Self {
         match opts.quiet {
             true => Verbosity::Quiet,
             false => match opts.verbose {
@@ -82,7 +114,7 @@ pub struct Shell {
 impl Shell {
     /// Creates a new instance of the Shell handle, initializing all fields from
     /// the CLI options as necessary. Should only be called once per process.
-    pub fn new(opts: &Opts) -> Self {
+    pub fn new(opts: &ShellOptions) -> Self {
         Shell {
             verbosity: Verbosity::from_opts(opts),
             out:       Mutex::new(OutSink::Stream {
