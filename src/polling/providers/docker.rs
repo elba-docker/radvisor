@@ -1,142 +1,222 @@
-use crate::cli::Opts;
-use crate::polling::providers::cgroups::{self, CgroupManager, CgroupPath};
-use crate::polling::providers::{FetchError, InitializationError, Provider};
-use crate::shared::TargetMetadata;
+use crate::cli::RunCommand;
+use crate::polling::providers::{InitializationError, Provider};
+use crate::shared::{CollectionEvent, CollectionMethod, CollectionTarget};
 use crate::shell::Shell;
-use crate::util;
-use std::cell::RefCell;
-use std::fmt::Write;
+use crate::util::{self, CgroupManager, CgroupPath, ItemPool};
+use std::collections::BTreeMap;
 use std::sync::Arc;
 
-use lru_time_cache::LruCache;
+use failure::Error;
 use shiplift::rep::Container;
 use tokio_compat::runtime::Runtime;
 
-const CONNECTION_ERROR_MESSAGE: &str = "Could not connect to the docker socket. Are you running \
-                                        rAdvisor as root?\nIf running at a non-standard URL, set \
-                                        DOCKER_HOST to the correct URL.";
-
 const PROVIDER_TYPE: &str = "docker";
 
-/// Number of polling blocks that need to elapse before container info strings
-/// are evicted from the time-based LRU cache
-const POLLING_BLOCK_EXPIRY: u32 = 5u32;
-
 pub struct Docker {
-    client:         shiplift::Docker,
-    runtime:        Runtime,
-    cgroup_manager: CgroupManager,
-    info_cache:     Option<RefCell<LruCache<String, String>>>,
-    shell:          Option<Arc<Shell>>,
+    container_id_pool: ItemPool<String>,
+    cgroup_manager:    CgroupManager,
+    runtime:           Runtime,
+    client:            shiplift::Docker,
+    shell:             Option<Arc<Shell>>,
+}
+
+impl Default for Docker {
+    fn default() -> Self {
+        Docker {
+            container_id_pool: ItemPool::new(),
+            cgroup_manager:    CgroupManager::new(),
+            runtime:           Runtime::new().unwrap(),
+            client:            shiplift::Docker::new(),
+            shell:             None,
+        }
+    }
+}
+
+/// Possible errors that can occur during Docker provider initialization
+#[derive(Clone, Copy, Debug)]
+enum DockerInitError {
+    ConnectionFailed,
+    InvalidCgroupMount,
+}
+
+impl Into<InitializationError> for DockerInitError {
+    fn into(self) -> InitializationError {
+        match self {
+            DockerInitError::ConnectionFailed => InitializationError {
+                suggestion: String::from(
+                    "Could not connect to the docker socket. Are you running rAdvisor as \
+                     root?\nIf running at a non-standard URL, set DOCKER_HOST to the correct URL.",
+                ),
+            },
+            DockerInitError::InvalidCgroupMount => InitializationError {
+                suggestion: String::from(util::INVALID_CGROUP_MOUNT_MESSAGE),
+            },
+        }
+    }
+}
+
+/// Possible error that can occur during Docker container collection target
+/// initialization
+#[derive(Debug)]
+enum StartCollectionError {
+    MetadataSerializationError(Error),
+    CgroupNotFound,
 }
 
 impl Provider for Docker {
-    fn initialize(&mut self, opts: &Opts, shell: Arc<Shell>) -> Result<(), InitializationError> {
+    fn initialize(
+        &mut self,
+        _opts: &RunCommand,
+        shell: Arc<Shell>,
+    ) -> Result<(), InitializationError> {
         self.shell = Some(Arc::clone(&shell));
         self.shell().status("Initializing", "Docker API provider");
 
-        // Ping the Docker API to make sure the current process can connect
-        let future = self.client.ping();
-        match self.runtime.block_on(future) {
-            Ok(_) => {},
-            Err(_) => return Err(InitializationError::new(CONNECTION_ERROR_MESSAGE)),
+        match self.try_init() {
+            Ok(_) => Ok(()),
+            Err(init_err) => Err(init_err.into()),
         }
-
-        // Make sure cgroups are mounted properly
-        if !cgroups::cgroups_mounted_properly() {
-            return Err(InitializationError::new(cgroups::INVALID_MOUNT_MESSAGE));
-        }
-
-        self.info_cache = Some(RefCell::new(LruCache::with_expiry_duration(
-            opts.polling_interval * POLLING_BLOCK_EXPIRY,
-        )));
-
-        Ok(())
     }
 
-    fn fetch(&mut self) -> Result<Vec<TargetMetadata>, FetchError> {
+    fn poll(&mut self) -> Result<Vec<CollectionEvent>, Error> {
         let future = self.client.containers().list(&Default::default());
-        match self.runtime.block_on(future) {
-            Err(e) => Err(FetchError::new(Some(e.into()))),
-            Ok(containers) => {
-                let original_num = containers.len();
-                let container_metadata = containers
-                    .into_iter()
-                    .filter_map(|c| self.convert_container(c))
-                    .collect::<Vec<_>>();
+        let containers = self.runtime.block_on(future)?;
 
-                self.shell().verbose(|sh| {
-                    sh.info(format!(
-                        "Received {} -> {} containers from the Docker API",
-                        original_num,
-                        container_metadata.len()
-                    ))
-                });
+        let original_num = containers.len();
+        let to_collect: BTreeMap<String, Container> = containers
+            .into_iter()
+            .filter(should_collect_stats)
+            .map(|c| (c.id.clone(), c))
+            .collect::<BTreeMap<_, _>>();
 
-                Ok(container_metadata)
-            },
-        }
+        let ids = to_collect.keys().map(String::clone);
+        let mut events: Vec<CollectionEvent> = Vec::new();
+        let (added, removed) = self.container_id_pool.update(ids);
+
+        let removed_len = removed.len();
+        events.reserve_exact(added.len() + removed_len);
+        // Add all removed Ids as Stop events
+        events.extend(removed.into_iter().map(CollectionEvent::Stop));
+
+        // Add all added Ids as Start events
+        let start_events = added
+            .into_iter()
+            .flat_map(|id| {
+                // It shouldn't be possible to have an Id that doesn't exist in the map, but
+                // check anyways
+                let container = match to_collect.get(&id) {
+                    Some(container) => container,
+                    None => {
+                        self.shell().error(format!(
+                            "Processed Id from ItemPool added result that was not in fetched \
+                             container list. This is a bug!\nId: {}",
+                            id
+                        ));
+                        return None;
+                    },
+                };
+
+                match self.make_start_event(container) {
+                    Ok(start) => Some(start),
+                    Err(error) => {
+                        let container_display = display(container);
+                        match error {
+                            StartCollectionError::CgroupNotFound => {
+                                self.shell().warn(format!(
+                                    "Could not create container metadata for container {}: cgroup \
+                                     path could not be constructed or does not exist",
+                                    container_display
+                                ));
+                            },
+                            StartCollectionError::MetadataSerializationError(cause) => {
+                                self.shell().warn(format!(
+                                    "Could not serialize container metadata: {}",
+                                    cause
+                                ));
+                            },
+                        }
+
+                        // Ignore container and continue initializing the rest
+                        None
+                    },
+                }
+            })
+            .collect::<Vec<_>>();
+        let processed_num = start_events.len();
+        events.extend(start_events);
+
+        self.shell().verbose(|sh| {
+            sh.info(format!(
+                "Received {} -> {} (+{}, -{}) containers from the Docker API",
+                original_num,
+                to_collect.len(),
+                processed_num,
+                removed_len
+            ))
+        });
+
+        Ok(events)
     }
 }
 
 impl Docker {
-    pub fn new() -> Self {
-        Docker {
-            client:         shiplift::Docker::new(),
-            runtime:        Runtime::new().unwrap(),
-            cgroup_manager: CgroupManager::new(),
-            info_cache:     None,
-            shell:          None,
+    pub fn new() -> Self { Default::default() }
+
+    /// Attempts to initialize the Docker provider, failing if the connection
+    /// check to the Docker daemon failed or if the needed Cgroups aren't
+    /// mounted properly
+    fn try_init(&mut self) -> Result<(), DockerInitError> {
+        // Ping the Docker API to make sure the current process can connect
+        let future = self.client.ping();
+        self.runtime
+            .block_on(future)
+            .map_err(|_| DockerInitError::ConnectionFailed)?;
+
+        // Make sure cgroups are mounted properly
+        if !util::cgroups_mounted_properly() {
+            return Err(DockerInitError::InvalidCgroupMount);
         }
+
+        Ok(())
     }
 
-    /// Converts a container to a its metadata, or rejects it if it shouldn't
-    /// be collected for the next polling tick
-    fn convert_container(&mut self, c: Container) -> Option<TargetMetadata> {
-        match should_collect_stats(&c) {
-            true => match self.try_format_metadata(&c) {
-                Some(metadata) => Some(metadata),
-                None => {
-                    self.shell().warn(format!(
-                        "Could not create container metadata for container {}: cgroup path could \
-                         not be constructed or does not exist",
-                        c.names.get(0).unwrap_or(&c.id)
-                    ));
-                    None
-                },
+    /// Converts a container to a collection start event, preparing all
+    /// serialization/cgroup checks needed
+    fn make_start_event(
+        &mut self,
+        container: &Container,
+    ) -> Result<CollectionEvent, StartCollectionError> {
+        let method = self.get_collection_method(container)?;
+        let metadata = match serde_yaml::to_value(container) {
+            Ok(metadata) => metadata,
+            Err(err) => {
+                return Err(StartCollectionError::MetadataSerializationError(
+                    Error::from(err),
+                ));
             },
-            false => None,
-        }
-    }
+        };
 
-    /// Try to get info from LRU cache before re-serializing it
-    fn get_info(&mut self, c: &Container) -> String {
-        let mut info_cache = self
-            .info_cache
-            .as_ref()
-            .expect("LRU Cache must be initialized: invariant violated")
-            .borrow_mut();
-        match info_cache.get(&c.id) {
-            Some(info) => info.clone(),
-            None => {
-                let info = self.format_info(&c);
-                info_cache.insert(c.id.clone(), info.clone());
-                info
+        Ok(CollectionEvent::Start {
+            method,
+            target: CollectionTarget {
+                provider: PROVIDER_TYPE,
+                metadata: Some(metadata),
+                name:     container.names.get(0).unwrap_or(&container.id).clone(),
+                id:       container.id.clone(),
             },
-        }
+        })
     }
 
-    /// Formats container info used for the header row and cgroup path. Can fail
-    /// if the cgroup doesn't exist.
-    fn try_format_metadata(&mut self, c: &Container) -> Option<TargetMetadata> {
-        match self.get_cgroup(c) {
-            None => None,
-            Some(cgroup) => Some(TargetMetadata {
-                id: c.id.clone(),
-                info: self.get_info(c),
-                cgroup,
-                provider_type: PROVIDER_TYPE,
-            }),
+    /// Gets the collection method struct for the container, resolving the
+    /// proper collection method
+    fn get_collection_method(
+        &mut self,
+        container: &Container,
+    ) -> Result<CollectionMethod, StartCollectionError> {
+        // Only one type of CollectionMethod currently
+        match self.get_cgroup(container) {
+            Some(cgroup) => Ok(CollectionMethod::LinuxCgroups(cgroup)),
+            None => Err(StartCollectionError::CgroupNotFound),
         }
     }
 
@@ -165,22 +245,6 @@ impl Docker {
         cgroup_option
     }
 
-    /// Formats container info headers to YAML for display at the top of each
-    /// CSV file. Uses serde-yaml to serialize the Container struct to YAML,
-    /// before adding an extra field in `PolledAt`
-    fn format_info(&self, c: &Container) -> String {
-        match try_format_info(c) {
-            Ok(yaml) => yaml,
-            Err(err) => {
-                self.shell().error(format!(
-                    "Could not serialize container info for container {}: {}",
-                    &c.id, err
-                ));
-                String::from("")
-            },
-        }
-    }
-
     /// Gets a reference to the current shell
     fn shell(&self) -> &Shell {
         self.shell
@@ -192,11 +256,6 @@ impl Docker {
 /// Whether radvisor should collect statistics for the given container
 fn should_collect_stats(_c: &Container) -> bool { true }
 
-/// Attempts to format container info, potentially failing to do so
-fn try_format_info(c: &Container) -> Result<String, Box<dyn std::error::Error>> {
-    let serde_output = serde_yaml::to_string(c)?;
-    // Remove top ---
-    let mut yaml = String::from(serde_output.trim_start_matches("---\n")) + "\n";
-    writeln!(&mut yaml, "PolledAt: {}", util::nano_ts())?;
-    Ok(yaml)
-}
+/// Gets a human-readable representation of the container, attempting to use the
+/// name before using the Id as a fallback
+fn display(container: &Container) -> &str { container.names.get(0).unwrap_or(&container.id) }

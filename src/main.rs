@@ -1,5 +1,7 @@
 // Allow const generics feature in Rust nightly
 #![feature(const_generics)]
+// Use draining on BTreeSet to optimizing memory movement
+#![feature(btree_drain_filter)]
 #![allow(incomplete_features)]
 // Allow for using booleans in match statements where it makes it more readable
 #![allow(clippy::match_bool)]
@@ -12,17 +14,25 @@ mod shell;
 mod timer;
 mod util;
 
-use crate::cli::{Command, Opts};
-use crate::polling::providers::{self, Provider};
-use crate::shared::{IntervalWorkerContext, TargetMetadata};
+use crate::cli::{Command, Opts, RunCommand};
+use crate::polling::providers::Provider;
+use crate::shared::{CollectionEvent, IntervalWorkerContext};
 use crate::shell::Shell;
 use std::sync::mpsc::{self, Receiver, Sender};
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::Duration;
-use std::vec::Vec;
 
 use bus::Bus;
+
+/// Disable compilation on platforms other than Linux or Windows
+#[cfg(not(any(target_os = "windows", target_os = "linux")))]
+fn target_check() {
+    compile_error!(
+        "rAdvisor only compiles for Linux and Windows targets. To request support for additional \
+         platforms, feel free to file an issue at https://github.com/elba-kubernetes/radvisor/issues/new"
+    );
+}
 
 /// Parses CLI args and runs the correct procedure depending on the subcommand
 fn main() {
@@ -40,35 +50,37 @@ fn main() {
     let shell = Arc::new(shell::Shell::new(&opts));
 
     // Exit if running on a platform other than Linux
-    if !cfg!(target_os = "linux") {
-        shell.error("rAdvisor only runs on Linux due to its reliance on cgroups. See \
-        https://github.com/elba-kubernetes/radvisor/issues/3 for the tracking issue on \
-        adding support to Windows");
+    if cfg!(not(target_os = "linux")) {
+        shell.error(
+            "rAdvisor only runs on Linux due to its reliance on cgroups. \n\
+             See https://github.com/elba-kubernetes/radvisor/issues/3 \
+             for the tracking issue on adding support to Windows",
+        );
         std::process::exit(1);
     }
 
     match opts.command {
-        Command::Run { mode } => {
+        Command::Run(run_opts) => {
             // Resolve container metadata provider
-            let mut provider: Box<dyn Provider> = providers::for_mode(mode);
+            let mut provider: Box<dyn Provider> = run_opts.mode.get_impl();
 
             // Determine if the current process can connect to the provider source
-            if let Err(err) = provider.initialize(&opts, Arc::clone(&shell)) {
-                shell.error(err.message);
+            if let Err(err) = provider.initialize(&run_opts, Arc::clone(&shell)) {
+                shell.error(format!("{}", err));
                 std::process::exit(1);
             }
 
-            run(opts, provider, shell);
+            run(run_opts, provider, shell);
         },
     }
 }
 
 /// Bootstraps the two worker threads, preparing the necessary communication
 /// between them
-fn run(opts: Opts, provider: Box<dyn Provider>, shell: Arc<Shell>) {
-    // Used to send container metadata lists from the polling thread to the
-    // collection thread
-    let (tx, rx): (Sender<Vec<TargetMetadata>>, Receiver<Vec<TargetMetadata>>) = mpsc::channel();
+fn run(opts: RunCommand, provider: Box<dyn Provider>, shell: Arc<Shell>) {
+    // Used to send collection events from the polling thread to the collection
+    // thread
+    let (tx, rx): (Sender<CollectionEvent>, Receiver<CollectionEvent>) = mpsc::channel();
 
     // Create the thread worker contexts using the term bus lock
     let term_bus = initialize_term_handler(Arc::clone(&shell));

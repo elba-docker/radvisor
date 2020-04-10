@@ -1,6 +1,5 @@
 use crate::collection::collect::{AnonymousSlice, WorkingBuffers};
-use crate::util;
-use crate::util::buffer::{self, Buffer, BufferLike};
+use crate::util::{self, Buffer, BufferLike};
 use std::fs::File;
 use std::io::{Read, Seek, SeekFrom};
 
@@ -13,7 +12,7 @@ pub fn entry(file: &Option<File>, buffers: &mut WorkingBuffers) {
     read_to_buffer(file, buffers);
 
     let trimmed = buffers.buffer.trim();
-    if buffer::content_len_raw(trimmed) == 0 {
+    if util::content_len_raw(trimmed) == 0 {
         // Buffer ended up empty; prevent writing NUL bytes
         buffers.record.push_field(&EMPTY_BUFFER[..]);
     } else {
@@ -46,7 +45,7 @@ pub fn stat_file(file: &Option<File>, offsets: &[usize], buffers: &mut WorkingBu
                 Some(newline) => {
                     // Push the parsed number as the next field
                     let number_slice = &buffers.buffer.b[target..newline];
-                    buffers.record.push_field(buffer::trim_raw(number_slice));
+                    buffers.record.push_field(util::trim_raw(number_slice));
                     // Set line_start to the start of the next line (after newline)
                     line_start = newline + 1;
                     success_count += 1;
@@ -111,7 +110,7 @@ impl StatFileLayout {
                 match util::find_char(&line, 0, util::is_space) {
                     None => {},
                     Some(space_pos) => {
-                        let key = buffer::trim_raw(&line[0..space_pos]);
+                        let key = util::trim_raw(&line[0..space_pos]);
                         let index_option = find_index(entries, key);
                         lines_to_entries.push(index_option.map(|idx| StatFileLine {
                             entry:  idx,
@@ -228,7 +227,7 @@ pub fn all(file: &Option<File>, buffers: &mut WorkingBuffers) {
     read_to_buffer(file, buffers);
 
     let trimmed = buffers.buffer.trim();
-    if buffer::content_len_raw(trimmed) == 0 {
+    if util::content_len_raw(trimmed) == 0 {
         // Buffer ended up empty; prevent writing NUL bytes
         buffers.record.push_field(&EMPTY_BUFFER[..]);
     } else {
