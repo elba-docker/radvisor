@@ -30,7 +30,7 @@ assets = [
     ["out/docs/docs.tar.gz", "usr/share/doc/radvisor/", "644"],
     ["out/docs/readme.tar.gz", "usr/share/doc/radvisor/", "644"],
     # Manpages
-    ["out/man/radvisor*.1.gz", "usr/share/man/man1/"],
+    ["out/man/radvisor*.1.gz", "usr/share/man/man1/", "644"],
     # Shell completion files
     ["out/completion/bash", "usr/share/bash-completion/completions/radvisor", "644"],
     ["out/completion/fish", "usr/share/fish/vendor_completions.d/radvisor.fish", "644"],
