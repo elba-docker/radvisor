@@ -1,8 +1,9 @@
 on:
   push:
-    # Listen for semver-tagged pushes to generate releases
-    tags:
-      - v[0-9]+.[0-9]+.[0-9]+
+    branch: ci-test
+    # # Listen for semver-tagged pushes to generate releases
+    # tags:
+    #   - v[0-9]+.[0-9]+.[0-9]+
 
 # Workflow for creating a new release and attaching clean-built artifacts
 name: release
