@@ -47,10 +47,10 @@ impl Collector {
     /// read and write file handles and writes the file header for the log
     /// file.
     pub fn create(
-        logs_location: &PathBuf,
+        logs_location: &Path,
         target: CollectionTarget,
-        cgroup: CgroupPath,
-    ) -> Result<Collector, Error> {
+        cgroup: &CgroupPath,
+    ) -> Result<Self, Error> {
         // Ensure directories exist before creating the collector
         fs::create_dir_all(logs_location)?;
         let path = construct_log_path(&target.id, logs_location)?;
@@ -59,7 +59,7 @@ impl Collector {
             .create(true)
             .append(true)
             .open(path)?;
-        let collector = Collector::new(file, target, &cgroup)?;
+        let collector = Self::new(file, target, cgroup)?;
         Ok(collector)
     }
 
@@ -78,7 +78,7 @@ impl Collector {
     fn new(file: File, target: CollectionTarget, cgroup: &CgroupPath) -> Result<Self, Error> {
         let header = LogFileHeader {
             version:        cli::VERSION.unwrap_or("unknown"),
-            provider:       &target.provider,
+            provider:       target.provider,
             metadata:       &target.metadata,
             system:         SystemInfo::get(),
             cgroup:         &cgroup.path,
@@ -99,7 +99,7 @@ impl Collector {
 
         let file_handles = ProcFileHandles::new(&cgroup.path);
         let memory_layout = collect::examine_memory(&file_handles);
-        Ok(Collector {
+        Ok(Self {
             writer,
             active: true,
             file_handles,
@@ -110,7 +110,7 @@ impl Collector {
 }
 
 /// Constructs the log filepath for the given target id
-fn construct_log_path(id: &str, logs_location: &PathBuf) -> Result<String, io::Error> {
+fn construct_log_path(id: &str, logs_location: &Path) -> Result<String, io::Error> {
     // Construct filename
     let filename = format!("{}_{}.log", id.to_string(), util::second_ts().to_string());
 

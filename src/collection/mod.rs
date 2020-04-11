@@ -9,7 +9,7 @@ use crate::shell::Shell;
 use crate::timer::{Stoppable, Timer};
 use std::cell::RefCell;
 use std::collections::HashMap;
-use std::path::PathBuf;
+use std::path::Path;
 use std::sync::mpsc::Receiver;
 use std::sync::{Arc, Mutex};
 
@@ -24,7 +24,7 @@ type CollectorMap = Arc<Mutex<HashMap<String, RefCell<Collector>>>>;
 
 /// Thread function that collects all active targets and updates the active
 /// list, if possible
-pub fn run(rx: Receiver<CollectionEvent>, context: IntervalWorkerContext, location: PathBuf) {
+pub fn run(rx: &Receiver<CollectionEvent>, context: IntervalWorkerContext, location: &Path) {
     context.shell.status(
         "Beginning",
         format!(
@@ -70,7 +70,7 @@ pub fn run(rx: Receiver<CollectionEvent>, context: IntervalWorkerContext, locati
 
                 // The collection thread is yielding to the sleep; flush the buffers now
                 let collectors = collectors_c.lock().unwrap();
-                flush_buffers(&collectors, shell_c);
+                flush_buffers(&collectors, &shell_c);
                 stop_handle_c.stop();
             },
         }
@@ -94,7 +94,7 @@ pub fn run(rx: Receiver<CollectionEvent>, context: IntervalWorkerContext, locati
 
         // Check to see if update thread has sent any new start/stop events
         for event in rx.try_iter() {
-            handle_event(event, &mut collectors, &location, &context.shell);
+            handle_event(event, &mut collectors, location, &context.shell);
         }
 
         // Loop over active target ids and run collection
@@ -123,7 +123,7 @@ pub fn run(rx: Receiver<CollectionEvent>, context: IntervalWorkerContext, locati
 
             // If termination signaled during collection, then the collection thread
             // needs to tear down the buffers
-            flush_buffers(&collectors, context.shell);
+            flush_buffers(&collectors, &context.shell);
             stop_handle.stop();
             break;
         } else {
@@ -135,7 +135,7 @@ pub fn run(rx: Receiver<CollectionEvent>, context: IntervalWorkerContext, locati
 }
 
 /// Flushes the buffers for the given
-fn flush_buffers(collectors: &HashMap<String, RefCell<Collector>>, shell: Arc<Shell>) {
+fn flush_buffers(collectors: &HashMap<String, RefCell<Collector>>, shell: &Arc<Shell>) {
     shell.status("Stopping", "collecting and flushing buffers");
 
     for (id, c) in collectors.iter() {
@@ -155,7 +155,7 @@ fn flush_buffers(collectors: &HashMap<String, RefCell<Collector>>, shell: Arc<Sh
 fn handle_event(
     event: CollectionEvent,
     collectors: &mut HashMap<String, RefCell<Collector>>,
-    logs_location: &PathBuf,
+    logs_location: &Path,
     shell: &Shell,
 ) {
     match event {
@@ -170,7 +170,7 @@ fn handle_event(
             match method {
                 CollectionMethod::LinuxCgroups(path) => {
                     let id = target.id.clone();
-                    match Collector::create(logs_location, target, path) {
+                    match Collector::create(logs_location, target, &path) {
                         Ok(new_collector) => {
                             collectors.insert(id, RefCell::new(new_collector));
                         },

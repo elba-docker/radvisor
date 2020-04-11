@@ -20,7 +20,7 @@ pub struct Timer {
 }
 
 /// Represents a cloneable handle to stop a timer running its own worker thread
-pub struct TimerStopper {
+pub struct Stopper {
     shared: Arc<SharedTimerState>,
 }
 
@@ -38,7 +38,8 @@ pub trait Stoppable {
 }
 
 impl Timer {
-    pub fn new(dur: Duration) -> (Self, TimerStopper) {
+    #[must_use]
+    pub fn new(dur: Duration) -> (Self, Stopper) {
         let (tx_stop, rx_stop): (Sender<()>, Receiver<()>) = mpsc::channel();
         let shared = Arc::new(SharedTimerState {
             stopping:    AtomicBool::new(false),
@@ -72,11 +73,11 @@ impl Timer {
 
         let shared_c = Arc::clone(&shared);
         (
-            Timer {
+            Self {
                 duration: dur,
                 shared,
             },
-            TimerStopper { shared: shared_c },
+            Stopper { shared: shared_c },
         )
     }
 }
@@ -104,7 +105,7 @@ impl Stoppable for Timer {
     fn stop(&self) { stop_timer(&self.shared); }
 }
 
-impl Stoppable for TimerStopper {
+impl Stoppable for Stopper {
     /// Stops the timer thread and the thread blocked on the iteration
     /// immediately
     fn stop(&self) { stop_timer(&self.shared); }
@@ -143,9 +144,9 @@ impl Iterator for Timer {
     }
 }
 
-impl Clone for TimerStopper {
+impl Clone for Stopper {
     fn clone(&self) -> Self {
-        TimerStopper {
+        Self {
             shared: Arc::clone(&self.shared),
         }
     }

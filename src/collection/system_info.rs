@@ -20,9 +20,10 @@ pub struct SystemInfo {
 
 impl SystemInfo {
     /// Gets the current system info, requesting fresh values for each field.
-    pub fn get() -> SystemInfo {
+    #[must_use]
+    pub fn get() -> Self {
         let mem_info = sys_info::mem_info();
-        SystemInfo {
+        Self {
             os_type:          sys_info::os_type().ok(),
             os_release:       sys_info::os_release().ok(),
             distribution:     Distribution::try_get(),
@@ -57,7 +58,8 @@ pub struct Distribution {
 impl Distribution {
     /// Attempts to get the Linux distribution metadata, succeeding only on
     /// Linux and if the values can be retrieved properly
-    pub fn try_get() -> Option<Self> { Distribution::get_inner() }
+    #[must_use]
+    pub fn try_get() -> Option<Self> { Self::get_inner() }
 
     #[cfg(not(target_os = "linux"))]
     fn get_inner() -> Option<Self> { None }
@@ -81,7 +83,7 @@ impl Distribution {
                     variant_id,
                     ..
                 } = info;
-                Some(Distribution {
+                Some(Self {
                     id,
                     id_like,
                     name,

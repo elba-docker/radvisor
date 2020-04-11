@@ -14,3 +14,6 @@ radvisor
 
 # Valgrind's heap analysis tool
 massif.out.*
+
+# Other artifacts
+/out/

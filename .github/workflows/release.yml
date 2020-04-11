@@ -19,24 +19,35 @@ jobs:
     env:
       artifact-name: radvisor-linux-amd64
       build-target: x86_64-unknown-linux-gnu
-      output-path: target/x86_64-unknown-linux-gnu/release/radvisor
+      output-dir: out
+      output-path: out/radvisor
     steps:
       - uses: actions/checkout@v2
-      - uses: actions-rs/toolchain@v1
+      - name: Install toolchain
+        uses: actions-rs/toolchain@v1
         with:
           profile: minimal
           toolchain: ${{ env.toolchain }}
           override: true
 
       # Build binary (cleanbuild for release)
-      - uses: actions-rs/cargo@v1
+      - name: Run cargo build
+        uses: actions-rs/cargo@v1
         with:
           command: build
           args: >-
-            --release --bins
+            --release --bins --all
+            -Z unstable-options
+            --out-dir ${{ env.output-dir }}
             --target ${{ env.build-target }}
       - name: Strip binary
         run: strip ${{ env.output-path }}
+
+      # Make sure artifacts were created and run properly
+      - run: stat ${{ env.output-path }}
+      - run: ${{ env.output-path }} --help
+      - run: stat ${{ env.output-path }}-toolbox
+      - run: ${{ env.output-path }}-toolbox --help
 
       # Upload artifacts and create new release if needed
       - name: Upload binaries to release
@@ -48,13 +59,72 @@ jobs:
           tag: ${{ github.ref }}
           overwrite: true
 
+      # Create package files
+      - name: Run toolbox generation
+        run: >-
+          ${{ env.output-path }}-toolbox
+          -v --color=never
+          --repo-root .
+
+      # Compile manpages
+      - name: Install pandoc
+        run: sudo apt-get install -y pandoc
+      - name: Compiling manpages
+        shell: bash
+        run: >-
+          (
+            mkdir -p "out/man"
+            cd man
+            for i in $(find . -name 'radvisor*.1.md')
+            do
+              base="${i%.*}"
+              echo "Generating man pages for $i at $base"
+              pandoc --standalone --to man "$i" -o "$base"
+              echo "Compressing manpages to $base.gz"
+              gzip -f "$base"
+              mv "$base.gz" "../out/man/"
+            done
+          )
+
+      # Create .deb
+      - name: Install cargo-deb
+        uses: actions-rs/cargo@v1
+        with:
+          command: install
+          args: cargo-deb
+      - name: Generate deb package with cargo-deb
+        uses: actions-rs/cargo@v1
+        with:
+          command: deb
+          args: >-
+            --target=${{ env.build-target }}
+            --no-build
+      - name: Locate deb package
+        id: deb-location
+        run: echo "::set-output name=path::$(find ./ -type f -name "*.deb" | head -1)"
+
+      # Make sure package was created and is valid
+      - run: stat ${{ steps.deb-location.outputs.path }}
+      - run: dpkg -c ${{ steps.deb-location.outputs.path }}
+
+      # Upload package artifacts and create new release if needed
+      - name: Upload package to release
+        uses: svenstaro/upload-release-action@v1-release
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: ${{ steps.deb-location.outputs.path }}
+          asset_name: ${{ env.artifact-name }}.deb
+          tag: ${{ github.ref }}
+          overwrite: true
+
   # Build for 64-bit windows and add .exe as an artifact to release
   windows-amd64:
     name: Publish (windows-amd64)
     runs-on: windows-latest
     env:
       artifact-name: radvisor-windows-amd64
-      output-path: target/x86_64-pc-windows-msvc/release/radvisor.exe
+      output-dir: out
+      output-path: out/radvisor.exe
       build-target: x86_64-pc-windows-msvc
     steps:
       - uses: actions/checkout@v2
@@ -64,20 +134,22 @@ jobs:
           .\vcpkg\bootstrap-vcpkg.bat
         shell: pwsh
       - name: Install open-ssl
-        # ? Note: the -static package version is installted in order to
+        # ? Note: the -static package version is installed in order to
         # ? statically link later
         run: .\vcpkg\vcpkg install openssl:x64-windows-static
       - name: Install vcpkg integration
         run: .\vcpkg\vcpkg integrate install
         shell: pwsh
-      - uses: actions-rs/toolchain@v1
+      - name: Install toolchain
+        uses: actions-rs/toolchain@v1
         with:
           profile: minimal
           toolchain: ${{ env.toolchain }}
           override: true
 
       # Build binary
-      - uses: actions-rs/cargo@v1
+      - name: Run cargo build
+        uses: actions-rs/cargo@v1
         with:
           command: build
           # itarget lets us specify in Cargo.toml to disable hyperlocal
@@ -86,12 +158,17 @@ jobs:
           args: >-
             --release --bins
             -Z features=itarget
+            -Z unstable-options
+            --out-dir ${{ env.output-dir }}
             --target ${{ env.build-target }}
         env:
           # Statically link openssl (needs the RUSTFLAGS variable)
           # More info: https://docs.rs/vcpkg/0.2.6/vcpkg/
           OPENSSL_STATIC: 1
           RUSTFLAGS: -Ctarget-feature=+crt-static
+
+      # Make sure artifacts were created and run properly
+      - run: ${{ env.output-path }} --help
 
       # Upload artifacts and create new release if needed
       - name: Upload binaries to release

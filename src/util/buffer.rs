@@ -36,6 +36,7 @@ pub trait BufferLike {
 
 impl<const SIZE: usize> BufferLike for Buffer<SIZE> {
     #[inline]
+    #[must_use]
     fn trim(&self) -> &[u8] {
         // Prevent underflow later by early terminating
         if self.len == 0 {
@@ -56,23 +57,22 @@ impl<const SIZE: usize> BufferLike for Buffer<SIZE> {
     }
 
     #[inline]
+    #[must_use]
     fn content_unmanaged(&self) -> &[u8] {
         let mut end = 0;
-        while end < self.b.len() && self.b[end] != 0u8 {
+        while end < self.b.len() && self.b[end] != 0_u8 {
             end += 1;
         }
         &self.b[0..end]
     }
 
     #[inline]
-    fn content(&self) -> &[u8] {
-        &self.b[0..self.len]
-    }
+    fn content(&self) -> &[u8] { &self.b[0..self.len] }
 
     #[inline]
     fn clear(&mut self) {
         for i in 0..self.len {
-            self.b[i] = 0;
+            self.b[i] = 0_u8;
         }
         self.len = 0;
     }
@@ -80,10 +80,10 @@ impl<const SIZE: usize> BufferLike for Buffer<SIZE> {
     #[inline]
     fn clear_unmanaged(&mut self) {
         for i in 0..SIZE {
-            if self.b[i] == 0 {
+            if self.b[i] == 0_u8 {
                 break;
             } else {
-                self.b[i] = 0;
+                self.b[i] = 0_u8;
             }
         }
         self.len = 0;
@@ -92,25 +92,27 @@ impl<const SIZE: usize> BufferLike for Buffer<SIZE> {
     #[inline]
     fn clear_unmanaged_backwards(&mut self) {
         for i in (0..SIZE).rev() {
-            if self.b[i] == 0 {
+            if self.b[i] == 0_u8 {
                 break;
             } else {
-                self.b[i] = 0;
+                self.b[i] = 0_u8;
             }
         }
         self.len = 0;
     }
 
     #[inline]
+    #[must_use]
     fn unmanaged_len(&self) -> usize { content_len_raw(&self.b) }
 }
 
 /// Determines the length of the non-zero content in a raw buffer slice
 #[inline]
+#[must_use]
 pub fn content_len_raw(buf: &[u8]) -> usize {
     let mut len: usize = 0;
     for byte in buf {
-        if *byte == 0 {
+        if *byte == 0_u8 {
             break;
         } else {
             len += 1;
@@ -121,6 +123,7 @@ pub fn content_len_raw(buf: &[u8]) -> usize {
 
 /// Trims a raw buffer slice to not include any starting or ending whitespace
 #[inline]
+#[must_use]
 pub fn trim_raw(buf: &[u8]) -> &[u8] {
     let len: usize = content_len_raw(buf);
     // Prevent underflow later by early terminating

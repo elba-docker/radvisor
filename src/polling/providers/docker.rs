@@ -7,6 +7,7 @@ use std::collections::BTreeMap;
 use std::sync::Arc;
 
 use failure::Error;
+use shiplift::builder::ContainerListOptions;
 use shiplift::rep::Container;
 use tokio_compat::runtime::Runtime;
 
@@ -20,18 +21,6 @@ pub struct Docker {
     shell:             Option<Arc<Shell>>,
 }
 
-impl Default for Docker {
-    fn default() -> Self {
-        Docker {
-            container_id_pool: ItemPool::new(),
-            cgroup_manager:    CgroupManager::new(),
-            runtime:           Runtime::new().unwrap(),
-            client:            shiplift::Docker::new(),
-            shell:             None,
-        }
-    }
-}
-
 /// Possible errors that can occur during Docker provider initialization
 #[derive(Clone, Copy, Debug)]
 enum DockerInitError {
@@ -42,13 +31,13 @@ enum DockerInitError {
 impl Into<InitializationError> for DockerInitError {
     fn into(self) -> InitializationError {
         match self {
-            DockerInitError::ConnectionFailed => InitializationError {
+            Self::ConnectionFailed => InitializationError {
                 suggestion: String::from(
                     "Could not connect to the docker socket. Are you running rAdvisor as \
                      root?\nIf running at a non-standard URL, set DOCKER_HOST to the correct URL.",
                 ),
             },
-            DockerInitError::InvalidCgroupMount => InitializationError {
+            Self::InvalidCgroupMount => InitializationError {
                 suggestion: String::from(util::INVALID_CGROUP_MOUNT_MESSAGE),
             },
         }
@@ -79,14 +68,22 @@ impl Provider for Docker {
     }
 
     fn poll(&mut self) -> Result<Vec<CollectionEvent>, Error> {
-        let future = self.client.containers().list(&Default::default());
+        let future = self
+            .client
+            .containers()
+            .list(&ContainerListOptions::default());
         let containers = self.runtime.block_on(future)?;
 
         let original_num = containers.len();
         let to_collect: BTreeMap<String, Container> = containers
             .into_iter()
-            .filter(should_collect_stats)
-            .map(|c| (c.id.clone(), c))
+            .filter_map(|c| {
+                if should_collect_stats(&c) {
+                    Some((c.id.clone(), c))
+                } else {
+                    None
+                }
+            })
             .collect::<BTreeMap<_, _>>();
 
         let ids = to_collect.keys().map(String::clone);
@@ -159,8 +156,21 @@ impl Provider for Docker {
     }
 }
 
+impl Default for Docker {
+    fn default() -> Self { Self::new() }
+}
+
 impl Docker {
-    pub fn new() -> Self { Default::default() }
+    #[must_use]
+    pub fn new() -> Self {
+        Self {
+            container_id_pool: ItemPool::new(),
+            cgroup_manager:    CgroupManager::new(),
+            runtime:           Runtime::new().unwrap(),
+            client:            shiplift::Docker::new(),
+            shell:             None,
+        }
+    }
 
     /// Attempts to initialize the Docker provider, failing if the connection
     /// check to the Docker daemon failed or if the needed Cgroups aren't
@@ -230,10 +240,12 @@ impl Docker {
         // cgroups by (full) container ID. Cgroup path depends on the driver used:
         // according to https://docs.docker.com/engine/reference/commandline/dockerd/#default-cgroup-parent ,
         // "[container cgroups are mounted at] `/docker` for fs cgroup driver and
-        // `system.slice` for systemd cgroup driver." The .slice is omitted
-        let cgroup_option: Option<CgroupPath> = self
-            .cgroup_manager
-            .get_cgroup_divided(&["system", &c.id], &["docker", &c.id]);
+        // `system.slice` for systemd cgroup driver."
+        let cgroup_option: Option<CgroupPath> = self.cgroup_manager.get_cgroup_divided(
+            &["system.slice", &format!("docker-{}.scope", &c.id)],
+            &["docker", &c.id],
+            false,
+        );
 
         if !had_driver {
             if let Some(driver) = self.cgroup_manager.driver() {
@@ -254,6 +266,8 @@ impl Docker {
 }
 
 /// Whether radvisor should collect statistics for the given container
+/// TODO investigate more stringent checks
+#[allow(clippy::missing_const_for_fn)]
 fn should_collect_stats(_c: &Container) -> bool { true }
 
 /// Gets a human-readable representation of the container, attempting to use the

@@ -3,22 +3,25 @@
 
 use crate::util::buffer::content_len_raw;
 
-pub static N: u8 = b'\n';
-pub static R: u8 = b'\r';
-pub static S: u8 = b' ';
+pub const N: u8 = b'\n';
+pub const R: u8 = b'\r';
+pub const S: u8 = b' ';
 
 /// Returns true if the given char is a line feed, carriage return, or normal
 /// space
 #[inline]
-pub fn is_whitespace(c: u8) -> bool { is_newline(c) || is_space(c) }
+#[must_use]
+pub const fn is_whitespace(c: u8) -> bool { is_newline(c) || is_space(c) }
 
 /// Returns true if the given char is a normal whitespace
 #[inline]
-pub fn is_space(c: u8) -> bool { c == S }
+#[must_use]
+pub const fn is_space(c: u8) -> bool { c == S }
 
 /// Returns true if the given char is a line feed or carriage return
 #[inline]
-pub fn is_newline(c: u8) -> bool { c == N || c == R }
+#[must_use]
+pub const fn is_newline(c: u8) -> bool { c == N || c == R }
 
 /// Finds the position of the next character, starting at the given index. If a
 /// NUL character is reached before the target, the result is an None. Else, if
@@ -57,7 +60,8 @@ pub struct ByteLines<'a> {
 
 impl<'a> ByteLines<'a> {
     /// Instantiates a new iterator with the given source byte buffer
-    pub fn new(buffer: &'a [u8]) -> Self {
+    #[must_use]
+    pub const fn new(buffer: &'a [u8]) -> Self {
         ByteLines {
             buffer,
             position: 0,
@@ -76,25 +80,22 @@ impl<'a> Iterator for ByteLines<'a> {
             return None;
         }
 
-        match find_char(self.buffer, self.position, is_newline) {
-            Some(pos) => {
-                let result = Some((&self.buffer[self.position..pos], self.position));
-                self.position = pos + 1;
-                result
-            },
-            None => {
-                self.done = true;
-                // Attempt to return the remaining content on the last line
-                let remaining_len = content_len_raw(&self.buffer[self.position..]);
-                if remaining_len > 0 {
-                    Some((
-                        &self.buffer[self.position..(self.position + remaining_len)],
-                        self.position,
-                    ))
-                } else {
-                    None
-                }
-            },
+        if let Some(pos) = find_char(self.buffer, self.position, is_newline) {
+            let result = Some((&self.buffer[self.position..pos], self.position));
+            self.position = pos + 1;
+            result
+        } else {
+            self.done = true;
+            // Attempt to return the remaining content on the last line
+            let remaining_len = content_len_raw(&self.buffer[self.position..]);
+            if remaining_len > 0 {
+                Some((
+                    &self.buffer[self.position..(self.position + remaining_len)],
+                    self.position,
+                ))
+            } else {
+                None
+            }
         }
     }
 }
