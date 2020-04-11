@@ -13,6 +13,7 @@ env:
 jobs:
   check-linux-amd64:
     name: Check (Linux x64)
+    if: "!contains(github.event.head_commit.message, 'skip ci')"
     runs-on: ubuntu-latest
     env:
       # Share cache with other compatible jobs
@@ -54,6 +55,7 @@ jobs:
   # Build check for 64-bit windows
   check-windows-amd64:
     name: Check (Windows x64)
+    if: "!contains(github.event.head_commit.message, 'skip ci')"
     runs-on: windows-latest
     env:
       # Share cache with other compatible jobs
@@ -128,6 +130,7 @@ jobs:
   # Run test suite on Linux
   test:
     name: Test Suite (Linux x64)
+    if: "!contains(github.event.head_commit.message, 'skip ci')"
     runs-on: ubuntu-latest
     env:
       # Share cache with other compatible jobs
@@ -169,6 +172,7 @@ jobs:
   # Runs rustfmt, a code style checker
   fmt:
     name: Rustfmt
+    if: "!contains(github.event.head_commit.message, 'skip ci')"
     runs-on: ubuntu-latest
     env:
       # Share cache with other compatible jobs
@@ -202,6 +206,7 @@ jobs:
   # Runs clippy, a linter
   clippy:
     name: Clippy
+    if: "!contains(github.event.head_commit.message, 'skip ci')"
     runs-on: ubuntu-latest
     env:
       # Share cache with other compatible jobs

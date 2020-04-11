@@ -93,9 +93,11 @@ mod time {
         (file_time.dwLowDateTime as i64) + (file_time.dwHighDateTime as i64) << 32
     }
 
-    pub fn nano_ts() -> u128 { (file_timestamp() as u128) * TICK_LENGTH + NANO_EPOCH_DIFFERENCE }
+    pub fn nano_ts() -> u128 {
+        remap::<_, u128>(file_timestamp()) * TICK_LENGTH + NANO_EPOCH_DIFFERENCE
+    }
 
-    pub fn second_ts() -> u64 { (file_timestamp() / TICK) as u64 + EPOCH_DIFFERENCE }
+    pub fn second_ts() -> u64 { remap::<_, u64>(file_timestamp() / TICK) + EPOCH_DIFFERENCE }
 }
 
 #[cfg(target_os = "windows")]

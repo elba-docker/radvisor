@@ -1,9 +1,8 @@
 on:
   push:
-    branch: ci-test
-    # # Listen for semver-tagged pushes to generate releases
-    # tags:
-    #   - v[0-9]+.[0-9]+.[0-9]+
+    # Listen for semver-tagged pushes to generate releases
+    tags:
+      - v[0-9]+.[0-9]+.[0-9]+
 
 # Workflow for creating a new release and attaching clean-built artifacts
 name: release
@@ -50,15 +49,15 @@ jobs:
       - run: stat ${{ env.output-path }}-toolbox
       - run: ${{ env.output-path }}-toolbox --help
 
-      # # Upload artifacts and create new release if needed
-      # - name: Upload binaries to release
-      #   uses: svenstaro/upload-release-action@v1-release
-      #   with:
-      #     repo_token: ${{ secrets.GITHUB_TOKEN }}
-      #     file: ${{ env.output-path }}
-      #     asset_name: ${{ env.artifact-name }}
-      #     tag: ${{ github.ref }}
-      #     overwrite: true
+      # Upload artifacts and create new release if needed
+      - name: Upload binaries to release
+        uses: svenstaro/upload-release-action@v1-release
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: ${{ env.output-path }}
+          asset_name: ${{ env.artifact-name }}
+          tag: ${{ github.ref }}
+          overwrite: true
 
       # Create package files
       - name: Run toolbox generation
@@ -108,15 +107,15 @@ jobs:
       - run: stat ${{ steps.deb-location.outputs.path }}
       - run: dpkg -c ${{ steps.deb-location.outputs.path }}
 
-      # # Upload package artifacts and create new release if needed
-      # - name: Upload package to release
-      #   uses: svenstaro/upload-release-action@v1-release
-      #   with:
-      #     repo_token: ${{ secrets.GITHUB_TOKEN }}
-      #     file: ${{ steps.deb-location.outputs.path }}
-      #     asset_name: ${{ env.artifact-name }}.deb
-      #     tag: ${{ github.ref }}
-      #     overwrite: true
+      # Upload package artifacts and create new release if needed
+      - name: Upload package to release
+        uses: svenstaro/upload-release-action@v1-release
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: ${{ steps.deb-location.outputs.path }}
+          asset_name: ${{ env.artifact-name }}.deb
+          tag: ${{ github.ref }}
+          overwrite: true
 
   # Build for 64-bit windows and add .exe as an artifact to release
   windows-amd64:
@@ -168,15 +167,15 @@ jobs:
           OPENSSL_STATIC: 1
           RUSTFLAGS: -Ctarget-feature=+crt-static
 
-      # # Upload artifacts and create new release if needed
-      # - name: Upload binaries to release
-      #   uses: svenstaro/upload-release-action@v1-release
-      #   with:
-      #     repo_token: ${{ secrets.GITHUB_TOKEN }}
-      #     file: ${{ env.output-path }}
-      #     asset_name: ${{ env.artifact-name }}
-      #     tag: ${{ github.ref }}
-      #     overwrite: true
-
-      # TODO temp
+      # Make sure artifacts were created and run properly
       - run: ${{ env.output-path }} --help
+
+      # Upload artifacts and create new release if needed
+      - name: Upload binaries to release
+        uses: svenstaro/upload-release-action@v1-release
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: ${{ env.output-path }}
+          asset_name: ${{ env.artifact-name }}
+          tag: ${{ github.ref }}
+          overwrite: true
