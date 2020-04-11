@@ -122,8 +122,8 @@ fn collect_read(buffers: &mut WorkingBuffers) {
         Ok(n) => n,
         Err(_) => 0,
     };
-    buffers.record.push_field(&buffers.buffer.b);
-    buffers.buffer.clear();
+    buffers.record.push_field(&buffers.buffer.content());
+    buffers.buffer.clear_unmanaged();
 }
 
 /// Collects all stats for the pids subsystem
