@@ -9,7 +9,7 @@ use std::sync::Arc;
 
 /// Thread function that updates the target list each second by default
 pub fn run(
-    tx: Sender<CollectionEvent>,
+    tx: &Sender<CollectionEvent>,
     context: IntervalWorkerContext,
     provider: Box<dyn Provider>,
 ) {

@@ -33,8 +33,9 @@ impl ProcFileHandles {
     /// Initializes all file handles to /proc files, utilizing them over the
     /// entire timeline of the target monitoring. If a handle fails to
     /// open, the struct field will be None
+    #[must_use]
     pub fn new<C: AsRef<Path>>(cgroup: C) -> Self {
-        ProcFileHandles {
+        Self {
             current_pids:               open_proc_file(&cgroup, "pids", "pids.current"),
             max_pids:                   open_proc_file(&cgroup, "pids", "pids.max"),
             cpu_stat:                   open_proc_file(&cgroup, "cpu", "cpu.stat"),
@@ -95,6 +96,7 @@ impl ProcFileHandles {
 
 /// Opens a stats file in /proc for the cgroup corresponding to the given
 /// relative cgroup in the given subsystem
+#[must_use]
 fn open_proc_file<C: AsRef<Path>>(cgroup: C, subsystem: &str, file: &str) -> Option<File> {
     let mut path: PathBuf = PathBuf::from(CGROUP_V1_ROOT);
     path.push(subsystem);

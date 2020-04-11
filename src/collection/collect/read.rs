@@ -16,7 +16,7 @@ pub fn entry(file: &Option<File>, buffers: &mut WorkingBuffers) {
         // Buffer ended up empty; prevent writing NUL bytes
         buffers.record.push_field(&EMPTY_BUFFER[..]);
     } else {
-        buffers.record.push_field(&trimmed);
+        buffers.record.push_field(trimmed);
     }
 
     buffers.buffer.clear()
@@ -41,18 +41,15 @@ pub fn stat_file(file: &Option<File>, offsets: &[usize], buffers: &mut WorkingBu
                 break;
             }
             // Find the location of the newline
-            match util::find_char(&buffers.buffer.b, target, util::is_newline) {
-                Some(newline) => {
-                    // Push the parsed number as the next field
-                    let number_slice = &buffers.buffer.b[target..newline];
-                    buffers.record.push_field(util::trim_raw(number_slice));
-                    // Set line_start to the start of the next line (after newline)
-                    line_start = newline + 1;
-                    success_count += 1;
-                },
-                None => {
-                    break;
-                },
+            if let Some(newline) = util::find_char(&buffers.buffer.b, target, util::is_newline) {
+                // Push the parsed number as the next field
+                let number_slice = &buffers.buffer.b[target..newline];
+                buffers.record.push_field(util::trim_raw(number_slice));
+                // Set line_start to the start of the next line (after newline)
+                line_start = newline + 1;
+                success_count += 1;
+            } else {
+                break;
             }
         }
     }
@@ -89,6 +86,7 @@ pub struct StatFileLine {
 impl StatFileLayout {
     /// Examines the layout of a stat file, to determine on which lines
     /// predetermined entries exist for faster processing during collection
+    #[must_use]
     pub fn new(file: &Option<File>, entries: &[&[u8]]) -> Self {
         let mut buffer: Vec<u8> = Vec::new();
         let read_successful = match file {
@@ -107,7 +105,7 @@ impl StatFileLayout {
             let mut lines_to_entries: Vec<Option<StatFileLine>> = Vec::new();
             let lines = util::ByteLines::new(&buffer);
             for (line, _) in lines {
-                match util::find_char(&line, 0, util::is_space) {
+                match util::find_char(line, 0, util::is_space) {
                     None => {},
                     Some(space_pos) => {
                         let key = util::trim_raw(&line[0..space_pos]);
@@ -119,11 +117,11 @@ impl StatFileLayout {
                     },
                 }
             }
-            StatFileLayout {
+            Self {
                 lines: lines_to_entries,
             }
         } else {
-            StatFileLayout {
+            Self {
                 lines: Vec::with_capacity(0),
             }
         }
@@ -176,7 +174,7 @@ pub fn with_layout(file: &Option<File>, layout: &StatFileLayout, buffers: &mut W
     for i in 0..buffers.slices.len() {
         let slice: &[u8] = match buffers.slices[i].consume(&buffers.buffer.b) {
             Some(s) => s,
-            None => &EMPTY_BUFFER,
+            None => EMPTY_BUFFER,
         };
         buffers.record.push_field(slice);
     }
@@ -205,10 +203,10 @@ fn read_to_buffer(file: &Option<File>, buffers: &mut WorkingBuffers) -> Option<u
                 Err(_) => None,
                 Ok(len) => {
                     buffers.buffer.len += len;
-                    if len != 0 {
-                        Some(len)
-                    } else {
+                    if len == 0 {
                         None
+                    } else {
+                        Some(len)
                     }
                 },
             };
@@ -235,7 +233,7 @@ pub fn all(file: &Option<File>, buffers: &mut WorkingBuffers) {
         copy_lines_to_commas(&buffers.buffer, &mut buffers.copy_buffer);
         buffers
             .record
-            .push_field(&buffers.copy_buffer.content_unmanaged());
+            .push_field(buffers.copy_buffer.content_unmanaged());
     }
 
     buffers.buffer.clear();
@@ -258,7 +256,7 @@ fn copy_lines_to_commas<const S: usize, const T: usize>(
             return;
         }
 
-        target.b[start..end].clone_from_slice(&line);
+        target.b[start..end].clone_from_slice(line);
         target.b[end] = COMMA;
         start = end + 1;
         comma_at_end = true;
@@ -269,6 +267,6 @@ fn copy_lines_to_commas<const S: usize, const T: usize>(
 
     // if last was written to, reset comma to NUL terminator
     if comma_at_end {
-        target.b[start - 1] = 0u8;
+        target.b[start - 1] = 0_u8;
     }
 }

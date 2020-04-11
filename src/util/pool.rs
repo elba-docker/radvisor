@@ -11,16 +11,17 @@ pub struct ItemPool<T: Ord + Clone> {
 }
 
 impl<T: Ord + Clone> Default for ItemPool<T> {
-    fn default() -> Self {
+    fn default() -> Self { Self::new() }
+}
+
+impl<T: Ord + Clone> ItemPool<T> {
+    #[must_use]
+    pub fn new() -> Self {
         Self {
             items:       BTreeSet::new(),
             working_set: BTreeSet::new(),
         }
     }
-}
-
-impl<T: Ord + Clone> ItemPool<T> {
-    pub fn new() -> Self { Default::default() }
 
     /// Updates the internal pool map, returning two vectors of items `(added,
     /// removed)` that represent all new items that were added (items that

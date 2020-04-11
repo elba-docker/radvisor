@@ -1,3 +1,8 @@
+// Items in the util crate are imported at the root level, so repetition of the
+// module names isn't seen by users outside the crate (and is important for
+// context)
+#![allow(clippy::module_name_repetitions)]
+
 //! Contains utility methods for processing various data structures, such as
 //! bytes, buffers, or system-specific calls
 
@@ -23,6 +28,7 @@ pub struct AnonymousSlice {
 impl AnonymousSlice {
     /// Consumes a slice structure to narrow a larger slice to the specific
     /// slice the structure represents
+    #[must_use]
     pub fn consume<'a, 'b: 'a, T>(&self, slice: &'b [T]) -> Option<&'a [T]> {
         let end = self.start + self.length;
         if end >= slice.len() {

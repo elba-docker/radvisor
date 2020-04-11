@@ -1,5 +1,5 @@
 # ![rAdvisor](https://i.imgur.com/aYdn3MV.png)
-![build/test](https://github.com/elba-kubernetes/radvisor/workflows/build/test/badge.svg?branch=develop) [![security](https://github.com/elba-kubernetes/radvisor/workflows/security/badge.svg)](https://github.com/elba-kubernetes/radvisor/actions?query=workflow%3Asecurity) [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](/LICENSE) [![Latest release](https://img.shields.io/github/v/release/elba-kubernetes/radvisor?color=blueviolet)](https://github.com/elba-kubernetes/radvisor/releases) [![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2Felba-kubernetes%2Fradvisor.svg?type=shield)](https://app.fossa.io/projects/git%2Bgithub.com%2Felba-kubernetes%2Fradvisor?ref=badge_shield)
+![build/test](https://github.com/elba-kubernetes/radvisor/workflows/build/test/badge.svg?branch=develop) [![security](https://github.com/elba-kubernetes/radvisor/workflows/security/badge.svg)](https://github.com/elba-kubernetes/radvisor/actions?query=workflow%3Asecurity) [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](/LICENSE) [![Latest release](https://img.shields.io/github/v/release/elba-kubernetes/radvisor?color=2bab64)](https://github.com/elba-kubernetes/radvisor/releases) [![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2Felba-kubernetes%2Fradvisor.svg?type=shield)](https://app.fossa.io/projects/git%2Bgithub.com%2Felba-kubernetes%2Fradvisor?ref=badge_shield)
 
 > Monitors & collects system resource utilization on Linux for [Docker](https://www.docker.com/) containers and [Kubernetes](https://kubernetes.io/) pods with **fine granularity** and **low overhead**, emitting resource utilization logs in [CSVY](https://csvy.org/) (csv + yaml) format. Originally, developed in Rust as a custom tool to help detect and analyze millibottlenecks in containerized online systems, rAdvisor runs by polling the target provider (either the local Docker daemon or the Kubernetes API server) every 1 second to get a list of active, running containers/pods. From this list, rAdvisor runs a collection thread every 50ms to get resource utilization data for each active target using Linux [`cgroups`](https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/6/html/resource_management_guide/ch01), outputting the resultant logs in `/var/log/radvisor/stats`.
 
@@ -13,7 +13,7 @@
 
 ```yaml
 ---
-Version: 1.1.4
+Version: 1.1.7
 Provider: docker
 Created: "2020-03-24T07:27:49Z"
 Command: "bash -c 'while true; do sleep 2; done'"
@@ -45,7 +45,7 @@ More information about what each column represents can be found in the [docs pag
 
 ```yaml
 ---
-Version: 1.1.4
+Version: 1.1.7
 Provider: kubernetes
 Uid: 9f0b1893-15e7-442a-966a-b0d19a35fc1c
 Name: kube-proxy-hsplg
@@ -156,10 +156,10 @@ cargo build --release --bins \
    Compiling cfg-if v0.1.10
    ...
    Compiling shiplift v0.6.0
-   Compiling radvisor v1.1.4 (/home/jazev/dev/radvisor)
+   Compiling radvisor v1.1.7 (/home/jazev/dev/radvisor)
     Finished release [optimized] target(s) in 4m 52s
 $ ./radvisor --version
-radvisor 1.1.4
+radvisor 1.1.7
 ```
 
 ## ⚖️ License

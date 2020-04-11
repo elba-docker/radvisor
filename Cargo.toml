@@ -1,10 +1,51 @@
 [package]
 name = "radvisor"
-version = "1.1.4"
+version = "1.1.7"
 authors = ["Joseph Azevedo <joseph.az@gatech.edu>", "Bhanu Garg <bgarg6@gatech.edu>"]
+description = """\
+Resource utilization monitor for Docker containers & Kubernetes pods
+that operates with fine granularity and low overhead"""
 edition = "2018"
 readme = "README.md"
 license = "MIT"
+repository = "https://github.com/elba-kubernetes/radvisor"
+keywords = ["resource-monitor", "docker", "instrumentation", "cgroups", "kubernetes", "linux"]
+categories = ["command-line-utilities"]
+
+[package.metadata.deb]
+license-file = ["./LICENSE", "0"]
+extended-description="""\
+Monitors & collects system resource utilization on Linux for Docker containers and Kubernetes pods
+with fine granularity and low overhead, emitting resource utilization logs in CSVY (csv + yaml) format.
+Originally, developed in Rust as a custom tool to help detect and analyze millibottlenecks in containerized online systems,
+rAdvisor runs by polling the target provider (either the local Docker daemon or the Kubernetes API server)
+every 1 second to get a list of active, running containers/pods.
+From this list, rAdvisor runs a collection thread every 50ms to get resource utilization data for each active target using Linux cgroups,
+outputting the resultant logs in /var/log/radvisor/stats."""
+section = "util"
+priority = "optional"
+assets = [
+    # Docs files
+    ["out/docs/changelog.tar.gz", "usr/share/doc/radvisor/", "644"],
+    ["out/docs/docs.tar.gz", "usr/share/doc/radvisor/", "644"],
+    ["out/docs/readme.tar.gz", "usr/share/doc/radvisor/", "644"],
+    # Manpages
+    ["out/man/radvisor*.1.gz", "usr/share/man/man1/", "644"],
+    # Shell completion files
+    ["out/completion/bash", "usr/share/bash-completion/completions/radvisor", "644"],
+    ["out/completion/fish", "usr/share/fish/vendor_completions.d/radvisor.fish", "644"],
+    # Unsure where elvish/powershell completion files go
+    # Binary executables
+    ["out/radvisor", "usr/bin/", "755"],
+]
+
+[lib]
+name = "radvisor"
+path = "src/lib.rs"
+
+[[bin]]
+name = "radvisor"
+path = "src/main.rs"
 
 [dependencies]
 bus = "2.2.3"
@@ -42,7 +83,7 @@ shiplift = { version = "0.6", optional = true }
 
 # Windows-specific dependencies
 [target.'cfg(windows)'.dependencies]
-winapi = { version = "0.3.8", features = ["std"] }
+winapi = { version = "~0.3", features = ["std"] }
 shiplift = { version = "0.6", default-features = false, features = ["chrono", "tls"], optional = true }
 
 [features]
@@ -57,3 +98,7 @@ cargo-update = "3.0.0"
 [profile.release]
 lto = true
 codegen-units = 1
+
+[workspace]
+members = ["build"]
+

@@ -1,9 +1,13 @@
 //! Function interfaces that sit in front of system-specific implementations
 
+use std::convert::TryFrom;
+
 /// Gets the nanosecond unix timestamp for a stat read
+#[must_use]
 pub fn nano_ts() -> u128 { time::nano_ts() }
 
 /// Gets the second unix timestamp for the stat filename
+#[must_use]
 pub fn second_ts() -> u64 { time::second_ts() }
 
 /// Gets the total number of cores on the system. On Linux, this includes
@@ -11,6 +15,7 @@ pub fn second_ts() -> u64 { time::second_ts() }
 ///
 /// **Note**: Operates independently of the scheduling settings on the
 /// collection process
+#[must_use]
 pub fn num_cores() -> u64 { cpu::num_cores() }
 
 /// Gets the number of available cores on the system. On Linux, this excludes
@@ -18,14 +23,26 @@ pub fn num_cores() -> u64 { cpu::num_cores() }
 ///
 /// **Note**: Operates independently of the scheduling settings on the
 /// collection process
+#[must_use]
 pub fn num_available_cores() -> u64 { cpu::num_available_cores() }
 
 /// Attempts to get the width of the given terminal type (in characters),
 /// returning None if no applicable width can be found
+#[must_use]
 pub fn terminal_width(stream: atty::Stream) -> Option<usize> { terminal::width(stream) }
+
+/// Attempts to map a number range into another, falling back to 0 if the
+/// conversion failed
+fn remap<S, D: TryFrom<S> + From<bool>>(num: S) -> D {
+    match D::try_from(num) {
+        Ok(d) => d,
+        Err(_) => D::from(false),
+    }
+}
 
 #[cfg(target_os = "linux")]
 mod time {
+    use super::remap;
     use libc::{clock_gettime, timespec, CLOCK_REALTIME};
     use std::mem;
 
@@ -40,14 +57,15 @@ mod time {
 
     pub fn nano_ts() -> u128 {
         let tp = get_time();
-        (tp.tv_nsec as u128) + ((tp.tv_sec as u128) * 1_000_000_000)
+        remap::<_, u128>(tp.tv_nsec) + (remap::<_, u128>(tp.tv_sec) * 1_000_000_000)
     }
 
-    pub fn second_ts() -> u64 { get_time().tv_sec as u64 }
+    pub fn second_ts() -> u64 { remap::<_, u64>(get_time().tv_sec) }
 }
 
 #[cfg(target_os = "windows")]
 mod time {
+    use super::remap;
     use std::mem;
     use winapi::shared::minwindef::FILETIME;
     use winapi::um::sysinfoapi;
@@ -76,9 +94,11 @@ mod time {
         (file_time.dwLowDateTime as i64) + (file_time.dwHighDateTime as i64) << 32
     }
 
-    pub fn nano_ts() -> u128 { (file_timestamp() as u128) * TICK_LENGTH + NANO_EPOCH_DIFFERENCE }
+    pub fn nano_ts() -> u128 {
+        remap::<_, u128>(file_timestamp()) * TICK_LENGTH + NANO_EPOCH_DIFFERENCE
+    }
 
-    pub fn second_ts() -> u64 { (file_timestamp() / TICK) as u64 + EPOCH_DIFFERENCE }
+    pub fn second_ts() -> u64 { remap::<_, u64>(file_timestamp() / TICK) + EPOCH_DIFFERENCE }
 }
 
 #[cfg(target_os = "windows")]
@@ -101,16 +121,17 @@ mod cpu {
 
 #[cfg(target_os = "linux")]
 mod cpu {
+    use super::remap;
     use libc::{c_long, sysconf, _SC_NPROCESSORS_CONF, _SC_NPROCESSORS_ONLN};
 
     pub fn num_cores() -> u64 {
         let count: c_long = unsafe { sysconf(_SC_NPROCESSORS_CONF) };
-        count as u64
+        remap::<_, u64>(count)
     }
 
     pub fn num_available_cores() -> u64 {
         let count: c_long = unsafe { sysconf(_SC_NPROCESSORS_ONLN) };
-        count as u64
+        remap::<_, u64>(count)
     }
 }
 

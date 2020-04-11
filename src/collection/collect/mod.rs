@@ -59,6 +59,7 @@ lazy_static::lazy_static! {
 
 /// Gets an amortized byte record containing the entries for a header row in the
 /// stats CSV log files
+#[must_use]
 pub fn get_header() -> &'static ByteRecord { &HEADER }
 
 /// Length of the buffer for each row. Designed to be a reasonable upper limit
@@ -83,20 +84,25 @@ pub struct WorkingBuffers {
     slices:      [AnonymousSlice; SLICES_BUFFER_SIZE],
 }
 
+impl Default for WorkingBuffers {
+    fn default() -> Self { Self::new() }
+}
+
 impl WorkingBuffers {
     /// Allocates the working buffers using upper limits to avoid expensive heap
     /// allocations at runtime
+    #[must_use]
     pub fn new() -> Self {
-        WorkingBuffers {
+        Self {
             record:      ByteRecord::with_capacity(ROW_BUFFER_SIZE, *ROW_LENGTH),
             slices:      [<AnonymousSlice>::default(); SLICES_BUFFER_SIZE],
             buffer:      Buffer {
                 len: 0,
-                b:   [0u8; WORKING_BUFFER_SIZE],
+                b:   [0_u8; WORKING_BUFFER_SIZE],
             },
             copy_buffer: Buffer {
                 len: 0,
-                b:   [0u8; WORKING_BUFFER_SIZE],
+                b:   [0_u8; WORKING_BUFFER_SIZE],
             },
         }
     }
@@ -122,12 +128,12 @@ fn collect_read(buffers: &mut WorkingBuffers) {
         Ok(n) => n,
         Err(_) => 0,
     };
-    buffers.record.push_field(&buffers.buffer.content());
+    buffers.record.push_field(buffers.buffer.content());
     buffers.buffer.clear_unmanaged();
 }
 
 /// Collects all stats for the pids subsystem
-/// see https://www.kernel.org/doc/html/latest/admin-guide/cgroup-v1/pids.html
+/// see <https://www.kernel.org/doc/html/latest/admin-guide/cgroup-v1/pids.html>
 #[inline]
 fn collect_pids(buffers: &mut WorkingBuffers, handles: &ProcFileHandles) {
     read::entry(&handles.current_pids, buffers);
@@ -144,7 +150,7 @@ const CPU_STAT_OFFSETS: [usize; 3] = [
 ];
 
 /// Collects all stats for the cpu and cpuacct subsystems
-/// see https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/6/html/resource_management_guide/sec-cpuacct
+/// see <https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/6/html/resource_management_guide/sec-cpuacct>
 #[inline]
 fn collect_cpu(buffers: &mut WorkingBuffers, handles: &ProcFileHandles) {
     read::entry(&handles.cpuacct_usage, buffers);
@@ -177,12 +183,13 @@ const MEMORY_STAT_ENTRIES: &[&[u8]] = &[
 ];
 
 /// Generates a stat file layout struct for `memory.stat`
+#[must_use]
 pub fn examine_memory(handles: &ProcFileHandles) -> read::StatFileLayout {
-    read::StatFileLayout::new(&handles.memory_stat, &MEMORY_STAT_ENTRIES)
+    read::StatFileLayout::new(&handles.memory_stat, MEMORY_STAT_ENTRIES)
 }
 
 /// Collects all stats for the memory subsystem
-/// see https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/6/html/resource_management_guide/sec-memory
+/// see <https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/6/html/resource_management_guide/sec-memory>
 #[inline]
 fn collect_memory(
     buffers: &mut WorkingBuffers,
@@ -198,7 +205,7 @@ fn collect_memory(
 }
 
 /// Collects all stats for the blkio subsystem
-/// see https://www.kernel.org/doc/Documentation/cgroup-v1/blkio-controller.txt
+/// see <https://www.kernel.org/doc/Documentation/cgroup-v1/blkio-controller.txt>
 #[inline]
 fn collect_blkio(buffers: &mut WorkingBuffers, handles: &ProcFileHandles) {
     read::all(&handles.blkio_io_service_bytes, buffers);
