@@ -24,14 +24,16 @@ jobs:
       output-path: out/radvisor
     steps:
       - uses: actions/checkout@v2
-      - uses: actions-rs/toolchain@v1
+      - name: Install toolchain
+        uses: actions-rs/toolchain@v1
         with:
           profile: minimal
           toolchain: ${{ env.toolchain }}
           override: true
 
       # Build binary (cleanbuild for release)
-      - uses: actions-rs/cargo@v1
+      - name: Run cargo build
+        uses: actions-rs/cargo@v1
         with:
           command: build
           args: >-
@@ -54,12 +56,23 @@ jobs:
       # TODO temp
       - run: stat ${{ env.output-path }}
       - run: ${{ env.output-path }} --help
+      - run: stat ${{ env.output-path }}-toolbox
+      - run: ${{ env.output-path }}-toolbox --help
 
       # Create package files
       - name: Run toolbox generation
-        run: ${{ env.output-path }}-toolbox -v --color=never
+        run: >-
+          ${{ env.output-path }}-toolbox
+          -v --color=never
+          --repo-root .
       # Create .deb
-      - uses: actions-rs/cargo@v1
+      - name: Install cargo-deb
+        uses: actions-rs/cargo@v1
+        with:
+          command: install
+          args: cargo-deb
+      - name: Generate deb package with cargo-deb
+        uses: actions-rs/cargo@v1
         with:
           command: deb
           args: >-
@@ -98,14 +111,16 @@ jobs:
       - name: Install vcpkg integration
         run: .\vcpkg\vcpkg integrate install
         shell: pwsh
-      - uses: actions-rs/toolchain@v1
+      - name: Install toolchain
+        uses: actions-rs/toolchain@v1
         with:
           profile: minimal
           toolchain: ${{ env.toolchain }}
           override: true
 
       # Build binary
-      - uses: actions-rs/cargo@v1
+      - name: Run cargo build
+        uses: actions-rs/cargo@v1
         with:
           command: build
           # itarget lets us specify in Cargo.toml to disable hyperlocal
