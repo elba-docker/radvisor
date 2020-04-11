@@ -35,7 +35,7 @@ jobs:
         with:
           command: build
           args: >-
-            --release --bins
+            --release --bins --all
             -Z unstable-options
             --out-dir ${{ env.output-dir }}
             --target ${{ env.build-target }}
@@ -52,7 +52,28 @@ jobs:
       #     tag: ${{ github.ref }}
       #     overwrite: true
       # TODO temp
+      - run: stat ${{ env.output-path }}
       - run: ${{ env.output-path }} --help
+
+      # Create package files
+      - name: Run toolbox generation
+        run: ${{ env.output-path }}-toolbox -v --color=never
+      # Create .deb
+      - uses: actions-rs/cargo@v1
+        with:
+          command: deb
+          args: >-
+            --no-build
+            --target=${{ env.build-target }}
+      # Upload package artifacts and create new release if needed
+      - name: Upload package to release
+        uses: svenstaro/upload-release-action@v1-release
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: target/${{ env.build-targets }}/debian/radvisor.deb
+          asset_name: ${{ env.artifact-name }}.deb
+          tag: ${{ github.ref }}
+          overwrite: true
 
   # Build for 64-bit windows and add .exe as an artifact to release
   windows-amd64:
@@ -91,7 +112,7 @@ jobs:
           # (which targets unix).
           # Tracking issue: https://github.com/rust-lang/cargo/issues/7914
           args: >-
-            --release --bins --all
+            --release --bins
             -Z features=itarget
             -Z unstable-options
             --out-dir ${{ env.output-dir }}
@@ -111,26 +132,6 @@ jobs:
       #     asset_name: ${{ env.artifact-name }}
       #     tag: ${{ github.ref }}
       #     overwrite: true
-      # TODO temp
-      - run: stat ${{ env.output-path }}
-      - run: ${{ env.output-path }} --help
 
-      # Create package files
-      - name: Run toolbox generation
-        run: ${{ env.output-path }}-toolbox -v --color=never
-      # Create .deb
-      - uses: actions-rs/cargo@v1
-        with:
-          command: deb
-          args: >-
-            --no-build
-            --target=${{ env.build-target }}
-      # Upload package artifacts and create new release if needed
-      - name: Upload package to release
-        uses: svenstaro/upload-release-action@v1-release
-        with:
-          repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: target/${{ env.build-targets }}/debian/radvisor.deb
-          asset_name: ${{ env.artifact-name }}.deb
-          tag: ${{ github.ref }}
-          overwrite: true
+      # TODO temp
+      - run: ${{ env.output-path }} --help
