@@ -65,6 +65,7 @@ mod time {
 
 #[cfg(target_os = "windows")]
 mod time {
+    use super::remap;
     use std::mem;
     use winapi::shared::minwindef::FILETIME;
     use winapi::um::sysinfoapi;
