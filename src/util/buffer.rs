@@ -67,9 +67,7 @@ impl<const SIZE: usize> BufferLike for Buffer<SIZE> {
     }
 
     #[inline]
-    fn content(&self) -> &[u8] {
-        &self.b[0..self.len]
-    }
+    fn content(&self) -> &[u8] { &self.b[0..self.len] }
 
     #[inline]
     fn clear(&mut self) {

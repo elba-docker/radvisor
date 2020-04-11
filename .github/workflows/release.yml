@@ -68,6 +68,8 @@ jobs:
           --repo-root .
 
       # Compile manpages
+      - name: Install pandoc
+        run: apt-get install -y pandoc
       - name: Compiling manpages
         shell: bash
         run: >-
