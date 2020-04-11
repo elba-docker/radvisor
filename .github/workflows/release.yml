@@ -102,7 +102,7 @@ jobs:
             --no-build
       - name: Locate deb package
         id: deb-location
-        run: echo "::set-output name=path::./out/$(ls ./out | grep ".deb$" | head -1)"
+        run: echo "::set-output name=path::$(find ./ -type f -name "*.deb" | head -1)"
 
       # Make sure package was created and is valid
       - run: stat ${{ steps.deb-location.outputs.path }}
