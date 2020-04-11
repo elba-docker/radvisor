@@ -26,6 +26,9 @@ pub trait BufferLike {
     /// **(Unmanaged)** Finds the length of the buffer's contents, ended by a 0
     /// terminator
     fn unmanaged_len(&self) -> usize;
+    /// **(Managed)** Gets a sub-slice of the buffer that only includes
+    /// non-NUL characters
+    fn content(&self) -> &[u8];
     /// **(Unmanaged)** Gets a sub-slice of the buffer that only includes
     /// non-NUL characters
     fn content_unmanaged(&self) -> &[u8];
@@ -61,6 +64,11 @@ impl<const SIZE: usize> BufferLike for Buffer<SIZE> {
             end += 1;
         }
         &self.b[0..end]
+    }
+
+    #[inline]
+    fn content(&self) -> &[u8] {
+        &self.b[0..self.len]
     }
 
     #[inline]
