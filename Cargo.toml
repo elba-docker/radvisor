@@ -1,6 +1,6 @@
 [package]
 name = "radvisor"
-version = "1.1.4"
+version = "1.1.7"
 authors = ["Joseph Azevedo <joseph.az@gatech.edu>", "Bhanu Garg <bgarg6@gatech.edu>"]
 description = """\
 Resource utilization monitor for Docker containers & Kubernetes pods
@@ -29,6 +29,8 @@ assets = [
     ["out/docs/changelog.tar.gz", "usr/share/doc/radvisor/", "644"],
     ["out/docs/docs.tar.gz", "usr/share/doc/radvisor/", "644"],
     ["out/docs/readme.tar.gz", "usr/share/doc/radvisor/", "644"],
+    # Manpages
+    ["out/man/radvisor*.1.gz", "usr/share/man/man1/"],
     # Shell completion files
     ["out/completion/bash", "usr/share/bash-completion/completions/radvisor", "644"],
     ["out/completion/fish", "usr/share/fish/vendor_completions.d/radvisor.fish", "644"],

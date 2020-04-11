@@ -1,4 +1,4 @@
-% RADVISOR(1) Version 1.1.4 | radvisor User Manual
+% RADVISOR(1) Version 1.1.7 | radvisor User Manual
 
 NAME
 ====
