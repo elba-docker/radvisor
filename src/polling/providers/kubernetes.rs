@@ -39,19 +39,6 @@ pub struct Kubernetes {
     shell:          Option<Arc<Shell>>,
 }
 
-impl Default for Kubernetes {
-    fn default() -> Self {
-        Kubernetes {
-            cgroup_manager: CgroupManager::new(),
-            pod_uid_pool:   ItemPool::new(),
-            runtime:        RefCell::new(Runtime::new().unwrap()),
-            pod_reflector:  None,
-            client:         None,
-            shell:          None,
-        }
-    }
-}
-
 /// Possible errors that can occur during Kubernetes provider initialization
 #[derive(Debug)]
 enum KubernetesInitError {
@@ -69,37 +56,30 @@ impl Into<InitializationError> for KubernetesInitError {
         // Convert various Kubernetes init errors to their CLI suggestion message
         InitializationError {
             suggestion: match self {
-                KubernetesInitError::InvalidCgroupMount => {
-                    util::INVALID_CGROUP_MOUNT_MESSAGE.to_owned()
-                },
-                KubernetesInitError::InvalidHostnameError => {
-                    "Could not retrieve hostname to use for node detection: Invalid string returned"
-                        .to_owned()
-                },
-                KubernetesInitError::ConfigLoadError => {
-                    "Could not load kubernetes config. Make sure the current machine is a part of \
-                     a cluster and has the cluster configuration copied to the config directory."
-                        .to_owned()
-                },
-                KubernetesInitError::NodeDetectionError => {
-                    "Could not get the current node via the Kubernetes API. Make sure the current \
-                     machine is running its own node."
-                        .to_owned()
-                },
-                KubernetesInitError::NodeFetchError(err) => format!(
+                Self::InvalidCgroupMount => util::INVALID_CGROUP_MOUNT_MESSAGE.to_owned(),
+                Self::InvalidHostnameError => "Could not retrieve hostname to use for node \
+                                               detection: Invalid string returned"
+                    .to_owned(),
+                Self::ConfigLoadError => "Could not load kubernetes config. Make sure the current \
+                                          machine is a part of a cluster and has the cluster \
+                                          configuration copied to the config directory."
+                    .to_owned(),
+                Self::NodeDetectionError => "Could not get the current node via the Kubernetes \
+                                             API. Make sure the current machine is running its \
+                                             own node."
+                    .to_owned(),
+                Self::NodeFetchError(err) => format!(
                     "Could not get list of nodes in the Kubernetes cluster: {}",
                     err
                 ),
-                KubernetesInitError::InitialPodFetchError => {
-                    "Could not get the list of pods running on the current machine. Make sure the \
-                     node can access the API."
-                        .to_owned()
-                },
-                KubernetesInitError::MissingNodeNameError => {
-                    "The node running on the current host lacks a Name field. The pod polling \
-                     cannot function without this."
-                        .to_owned()
-                },
+                Self::InitialPodFetchError => "Could not get the list of pods running on the \
+                                               current machine. Make sure the node can access the \
+                                               API."
+                    .to_owned(),
+                Self::MissingNodeNameError => "The node running on the current host lacks a Name \
+                                               field. The pod polling cannot function without \
+                                               this."
+                    .to_owned(),
             },
         }
     }
@@ -122,7 +102,7 @@ impl QualityOfService {
             .as_ref()
             .and_then(|status| status.qos_class.as_ref())
             // Use EnumString macro's `from_str` implementation here
-            .and_then(|qos| Self::from_str(&qos).ok())
+            .and_then(|qos| Self::from_str(qos).ok())
     }
 }
 
@@ -142,20 +122,20 @@ impl StartCollectionError {
             .or_else(|| uid_option(pod))
             .unwrap_or(NONE_STR);
         match self {
-            StartCollectionError::CgroupNotFound => format!(
+            Self::CgroupNotFound => format!(
                 "Could not create pod metadata for pod {}: cgroup path could not be constructed \
                  or does not exist",
                 pod_display
             ),
-            StartCollectionError::MetadataSerializationError(cause) => format!(
+            Self::MetadataSerializationError(cause) => format!(
                 "Could not serialize metadata for pod {}: {}",
                 pod_display, cause
             ),
-            StartCollectionError::MissingPodUid => format!(
+            Self::MissingPodUid => format!(
                 "Could not get uid for node {}! This shouldn't happen",
                 pod_display
             ),
-            StartCollectionError::FailedQosParse => format!(
+            Self::FailedQosParse => format!(
                 "Could not parse quality of service class for pod {}: invalid value '{}'",
                 pod_display,
                 pod.status
@@ -191,7 +171,7 @@ impl Provider for Kubernetes {
             .into_iter()
             .flat_map(|p| {
                 let uid = uid_option(&p);
-                uid.map(|s| s.to_owned()).map(|id| (id, p))
+                uid.map(ToOwned::to_owned).map(|id| (id, p))
             })
             .collect::<BTreeMap<_, _>>();
 
@@ -249,8 +229,22 @@ impl Provider for Kubernetes {
     }
 }
 
+impl Default for Kubernetes {
+    fn default() -> Self { Self::new() }
+}
+
 impl Kubernetes {
-    pub fn new() -> Self { Default::default() }
+    #[must_use]
+    pub fn new() -> Self {
+        Self {
+            cgroup_manager: CgroupManager::new(),
+            pod_uid_pool:   ItemPool::new(),
+            runtime:        RefCell::new(Runtime::new().unwrap()),
+            pod_reflector:  None,
+            client:         None,
+            shell:          None,
+        }
+    }
 
     /// Executes a future on the internal runtime, blocking the current thread
     /// until it completes
@@ -301,7 +295,7 @@ impl Kubernetes {
         // Try to get a node with the given hostname
         nodes
             .into_iter()
-            .find(|node| self.hostname_eq(&node, &hostname))
+            .find(|node| self.hostname_eq(node, &hostname))
             .ok_or(KubernetesInitError::NodeDetectionError)
     }
 
@@ -389,16 +383,16 @@ impl Kubernetes {
         }
     }
 
-    /// Gets the group path for the given UID and QoS class, printing out a
-    /// message upon the first successful cgroup resolution
+    /// Gets the group path for the given UID and quality of service class,
+    /// printing out a message upon the first successful cgroup resolution
     fn get_cgroup(&mut self, uid: &str, qos_class: QualityOfService) -> Option<CgroupPath> {
         let pod_slice = String::from("pod") + uid;
         // Determine if the manager had a resolved group beforehand
         let had_driver = self.cgroup_manager.driver().is_some();
 
-        let cgroup_option: Option<CgroupPath> =
-            self.cgroup_manager
-                .get_cgroup(&[ROOT_CGROUP, qos_class.into(), &pod_slice]);
+        let cgroup_option: Option<CgroupPath> = self
+            .cgroup_manager
+            .get_cgroup(&[ROOT_CGROUP, qos_class.into(), &pod_slice], true);
 
         if !had_driver {
             if let Some(driver) = self.cgroup_manager.driver() {

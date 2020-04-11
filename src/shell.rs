@@ -11,7 +11,7 @@ use termcolor::{self, Color, ColorSpec, StandardStream, WriteColor};
 /// [cargo/core/shell.rs](https://github.com/rust-lang/cargo/blob/53094e32b11c57a917f3ec3a48f29f388583ca3b/src/cargo/core/shell.rs)
 
 /// Maximum length of status string when being justified
-const JUSTIFY_STATUS_LEN: usize = 12usize;
+const JUSTIFY_STATUS_LEN: usize = 12_usize;
 
 /// The requested verbosity of the program output
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -23,7 +23,7 @@ pub enum Verbosity {
 
 /// All clap-compatible configuration parameters for the Shell
 #[derive(Clap)]
-pub struct ShellOptions {
+pub struct Options {
     #[clap(
         short = "q",
         long = "quiet",
@@ -55,12 +55,12 @@ pub struct ShellOptions {
 impl Verbosity {
     /// Determines the appropriate verbosity setting for the specified CLI
     /// options
-    fn from_opts(opts: &ShellOptions) -> Self {
+    fn from_opts(opts: &Options) -> Self {
         match opts.quiet {
-            true => Verbosity::Quiet,
+            true => Self::Quiet,
             false => match opts.verbose {
-                true => Verbosity::Verbose,
-                false => Verbosity::Normal,
+                true => Self::Verbose,
+                false => Self::Normal,
             },
         }
     }
@@ -79,9 +79,9 @@ impl std::str::FromStr for ColorMode {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s.to_lowercase().as_str() {
-            "auto" => Ok(ColorMode::Auto),
-            "always" => Ok(ColorMode::Always),
-            "never" => Ok(ColorMode::Never),
+            "auto" => Ok(Self::Auto),
+            "always" => Ok(Self::Always),
+            "never" => Ok(Self::Never),
             _ => Err(ParseFailure::new(String::from("color mode"), s.to_owned())),
         }
     }
@@ -90,9 +90,9 @@ impl std::str::FromStr for ColorMode {
 impl ColorMode {
     fn into_termcolor(self, stream: atty::Stream) -> termcolor::ColorChoice {
         match self {
-            ColorMode::Always => termcolor::ColorChoice::Always,
-            ColorMode::Never => termcolor::ColorChoice::Never,
-            ColorMode::Auto => {
+            Self::Always => termcolor::ColorChoice::Always,
+            Self::Never => termcolor::ColorChoice::Never,
+            Self::Auto => {
                 if atty::is(stream) {
                     termcolor::ColorChoice::Auto
                 } else {
@@ -114,8 +114,9 @@ pub struct Shell {
 impl Shell {
     /// Creates a new instance of the Shell handle, initializing all fields from
     /// the CLI options as necessary. Should only be called once per process.
-    pub fn new(opts: &ShellOptions) -> Self {
-        Shell {
+    #[must_use]
+    pub fn new(opts: &Options) -> Self {
+        Self {
             verbosity: Verbosity::from_opts(opts),
             out:       Mutex::new(OutSink::Stream {
                 color_mode:  opts.color_mode,
@@ -138,8 +139,9 @@ impl Shell {
 
     /// Creates a shell from plain writable objects, with no color, and max
     /// verbosity.
+    #[must_use]
     pub fn from_write(stdout: Box<dyn Write + Send>, stderr: Box<dyn Write + Send>) -> Self {
-        Shell {
+        Self {
             out:       Mutex::new(OutSink::Write(stdout)),
             err:       Mutex::new(OutSink::Write(stderr)),
             verbosity: Verbosity::Verbose,
@@ -172,15 +174,12 @@ impl Shell {
         text_color: Option<Color>,
         justified: bool,
     ) {
-        match self.verbosity {
-            Verbosity::Quiet => (),
-            _ => {
-                let mut out = self
-                    .out
-                    .lock()
-                    .expect("Could not unwrap stdout lock: mutex poisoned");
-                let _ = out.print(status, message, status_color, text_color, justified);
-            },
+        if self.verbosity != Verbosity::Quiet {
+            let mut out = self
+                .out
+                .lock()
+                .expect("Could not unwrap stdout lock: mutex poisoned");
+            let _ = out.print(status, message, status_color, text_color, justified);
         }
     }
 
@@ -243,7 +242,7 @@ impl Shell {
     /// if the shell is in verbose mode
     pub fn verbose<F>(&self, callback: F)
     where
-        F: Fn(&Shell) -> (),
+        F: Fn(&Self) -> (),
     {
         if let Verbosity::Verbose = self.verbosity {
             callback(self);
@@ -264,7 +263,7 @@ enum OutSink {
 impl OutSink {
     /// Prints out a message with a status. The status comes first, and is bold
     /// plus the given color. The status can be justified, in which case the
-    /// max width that will right align is JUSTIFY_STATUS_LEN chars.
+    /// max width that will right align is `JUSTIFY_STATUS_LEN` chars.
     fn print(
         &mut self,
         status: &dyn fmt::Display,
@@ -275,7 +274,7 @@ impl OutSink {
     ) -> io::Result<()> {
         let width: Option<usize> = self.width();
         match *self {
-            OutSink::Stream {
+            Self::Stream {
                 ref mut stream,
                 is_tty,
                 ..
@@ -326,7 +325,7 @@ impl OutSink {
 
                 stream.reset()?;
             },
-            OutSink::Write(ref mut w) => {
+            Self::Write(ref mut w) => {
                 if justified {
                     write!(w, "{:width$}", status, width = JUSTIFY_STATUS_LEN)?;
                 } else {
@@ -342,9 +341,10 @@ impl OutSink {
     }
 
     /// Gets width of terminal, if applicable
+    #[must_use]
     fn width(&self) -> Option<usize> {
         match self {
-            OutSink::Stream {
+            Self::Stream {
                 is_tty: true,
                 stream_type,
                 ..

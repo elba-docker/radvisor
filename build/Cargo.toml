@@ -2,9 +2,15 @@
 name = "radvisor-toolbox"
 version = "1.1.4"
 authors = ["Joseph Azevedo <joseph.az@gatech.edu>"]
+description = """\
+Collection of related CLI tools for `rAdvisor`,
+such as generating the bash/zsh/fish completions or man-pages."""
 edition = "2018"
 readme = "README.md"
 license = "MIT"
+repository = "https://github.com/elba-kubernetes/radvisor"
+keywords = ["build-tools", "radvisor", "system-resource", "docker", "instrumentation"]
+categories = ["command-line-utilities"]
 
 [[bin]]
 name = "radvisor-toolbox"

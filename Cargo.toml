@@ -7,10 +7,13 @@ Resource utilization monitor for Docker containers & Kubernetes pods
 that operates with fine granularity and low overhead"""
 edition = "2018"
 readme = "README.md"
-license-file = "./LICENSE"
+license = "MIT"
 repository = "https://github.com/elba-kubernetes/radvisor"
+keywords = ["resource-monitor", "docker", "instrumentation", "cgroups", "kubernetes", "linux"]
+categories = ["command-line-utilities"]
 
 [package.metadata.deb]
+license-file = ["./LICENSE", "0"]
 extended-description="""\
 Monitors & collects system resource utilization on Linux for Docker containers and Kubernetes pods
 with fine granularity and low overhead, emitting resource utilization logs in CSVY (csv + yaml) format.
@@ -21,7 +24,6 @@ From this list, rAdvisor runs a collection thread every 50ms to get resource uti
 outputting the resultant logs in /var/log/radvisor/stats."""
 section = "util"
 priority = "optional"
-separate-debug-symbols = true
 assets = [
     # Docs files
     ["out/docs/changelog.tar.gz", "usr/share/doc/radvisor/", "644"],
@@ -33,8 +35,6 @@ assets = [
     # Unsure where elvish/powershell completion files go
     # Binary executables
     ["out/radvisor", "usr/bin/", "755"],
-    # Debug symbols
-    ["out/radvisor.d", "usr/bin/", "644"]
 ]
 
 [lib]
@@ -81,7 +81,7 @@ shiplift = { version = "0.6", optional = true }
 
 # Windows-specific dependencies
 [target.'cfg(windows)'.dependencies]
-winapi = { version = "0.3.8", features = ["std"] }
+winapi = { version = "~0.3", features = ["std"] }
 shiplift = { version = "0.6", default-features = false, features = ["chrono", "tls"], optional = true }
 
 [features]

@@ -76,17 +76,17 @@ jobs:
         with:
           command: deb
           args: >-
-            --no-build
             --target=${{ env.build-target }}
-      # Upload package artifacts and create new release if needed
-      - name: Upload package to release
-        uses: svenstaro/upload-release-action@v1-release
-        with:
-          repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: target/${{ env.build-targets }}/debian/radvisor.deb
-          asset_name: ${{ env.artifact-name }}.deb
-          tag: ${{ github.ref }}
-          overwrite: true
+            --no-build
+      # # Upload package artifacts and create new release if needed
+      # - name: Upload package to release
+      #   uses: svenstaro/upload-release-action@v1-release
+      #   with:
+      #     repo_token: ${{ secrets.GITHUB_TOKEN }}
+      #     file: target/${{ env.build-targets }}/debian/radvisor.deb
+      #     asset_name: ${{ env.artifact-name }}.deb
+      #     tag: ${{ github.ref }}
+      #     overwrite: true
 
   # Build for 64-bit windows and add .exe as an artifact to release
   windows-amd64:

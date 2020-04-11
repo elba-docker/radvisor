@@ -16,8 +16,8 @@ pub enum CgroupDriver {
 impl fmt::Display for CgroupDriver {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            CgroupDriver::Systemd => write!(f, "systemd"),
-            CgroupDriver::Cgroupfs => write!(f, "cgroupfs"),
+            Self::Systemd => write!(f, "systemd"),
+            Self::Cgroupfs => write!(f, "cgroupfs"),
         }
     }
 }
@@ -35,9 +35,14 @@ pub struct CgroupPath {
     pub driver: CgroupDriver,
 }
 
+impl Default for CgroupManager {
+    fn default() -> Self { Self::new() }
+}
+
 impl CgroupManager {
     /// Creates a new cgroup manager with an unknown driver type
-    pub fn new() -> Self { CgroupManager { driver: None } }
+    #[must_use]
+    pub const fn new() -> Self { Self { driver: None } }
 
     /// Joins together the given slices to make a target cgroup, performing
     /// formatting conversions as necessary to target the current cgroup
@@ -46,19 +51,22 @@ impl CgroupManager {
     /// any of the drivers currently exists in the cgroup filesystem. This
     /// existence check is also performed if the current driver is known; if the
     /// cgroup was constructed and exists, returns Some(constructed path), else
-    /// None
-    pub fn get_cgroup(&mut self, slices: &[&str]) -> Option<CgroupPath> {
+    /// None.
+    ///
+    /// To use the direct slices without transforming their formatting in any
+    /// way, set construct to false
+    pub fn get_cgroup(&mut self, slices: &[&str], construct: bool) -> Option<CgroupPath> {
         match self.driver {
             Some(driver) => {
-                let path = make(driver, slices);
+                let path = make(driver, slices, construct);
                 match cgroup_exists(&path) {
                     true => Some(CgroupPath { path, driver }),
                     false => None,
                 }
             },
             None => self
-                .try_resolve(CgroupDriver::Systemd, slices)
-                .or_else(|| self.try_resolve(CgroupDriver::Cgroupfs, slices)),
+                .try_resolve(CgroupDriver::Systemd, slices, construct)
+                .or_else(|| self.try_resolve(CgroupDriver::Cgroupfs, slices, construct)),
         }
     }
 
@@ -73,16 +81,20 @@ impl CgroupManager {
     ///
     /// Differs from `get_cgroup` in that it allows for different slices to be
     /// specified for each driver
+    ///
+    /// To use the direct slices without transforming their formatting in any
+    /// way, set construct to false
     pub fn get_cgroup_divided(
         &mut self,
         systemd_slices: &[&str],
         cgroupfs_slices: &[&str],
+        construct: bool,
     ) -> Option<CgroupPath> {
         match self.driver {
             Some(driver) => {
                 let path = match driver {
-                    CgroupDriver::Systemd => make(driver, systemd_slices),
-                    CgroupDriver::Cgroupfs => make(driver, cgroupfs_slices),
+                    CgroupDriver::Systemd { .. } => make(driver, systemd_slices, construct),
+                    CgroupDriver::Cgroupfs => make(driver, cgroupfs_slices, construct),
                 };
                 match cgroup_exists(&path) {
                     true => Some(CgroupPath { path, driver }),
@@ -90,15 +102,23 @@ impl CgroupManager {
                 }
             },
             None => self
-                .try_resolve(CgroupDriver::Systemd, systemd_slices)
-                .or_else(|| self.try_resolve(CgroupDriver::Cgroupfs, cgroupfs_slices)),
+                .try_resolve(CgroupDriver::Systemd, systemd_slices, construct)
+                .or_else(|| self.try_resolve(CgroupDriver::Cgroupfs, cgroupfs_slices, construct)),
         }
     }
 
     /// Attempts to resolve the cgroup driver, by making the cgroup path for the
     /// given driver and then testing whether it exists
-    fn try_resolve(&mut self, driver: CgroupDriver, slices: &[&str]) -> Option<CgroupPath> {
-        let path = make(driver, slices);
+    ///
+    /// To use the direct slices without transforming their formatting in any
+    /// way, set construct to false
+    fn try_resolve(
+        &mut self,
+        driver: CgroupDriver,
+        slices: &[&str],
+        construct: bool,
+    ) -> Option<CgroupPath> {
+        let path = make(driver, slices, construct);
         match cgroup_exists(&path) {
             false => None,
             true => {
@@ -109,15 +129,20 @@ impl CgroupManager {
     }
 
     /// Gets the current resolved driver for the manager
-    pub fn driver(&self) -> Option<CgroupDriver> { self.driver }
+    #[must_use]
+    pub const fn driver(&self) -> Option<CgroupDriver> { self.driver }
 }
 
 /// Constructs a cgroup absolute path according to the style expected by the
 /// given driver
-pub fn make(driver: CgroupDriver, slices: &[&str]) -> PathBuf {
+///
+/// To use the direct slices without transforming their formatting in any
+/// way, set construct to false
+#[must_use]
+pub fn make(driver: CgroupDriver, slices: &[&str], construct: bool) -> PathBuf {
     match driver {
         CgroupDriver::Cgroupfs => make_cgroupfs(slices),
-        CgroupDriver::Systemd => make_systemd(slices),
+        CgroupDriver::Systemd => make_systemd(slices, construct),
     }
 }
 
@@ -127,7 +152,11 @@ const SYSTEMD_SLICE_SUFFIX: &str = ".slice";
 /// "pod1234-5678"] into a systemd-style cgroup path such as "/kubepods.slice/
 /// kubepods-burstable.slice/kubepods-burstable-pod1234_5678.slice"
 /// see [`kubernetes/kubelet/cm/cgroup_manager_linux.go:ToSystemd()`](https://github.com/kubernetes/kubernetes/blob/bb5ed1b79709c865d9aa86008048f19331530041/pkg/kubelet/cm/cgroup_manager_linux.go#L87-L103)
-fn make_systemd(slices: &[&str]) -> PathBuf {
+///
+/// To use the direct slices without transforming their formatting in any
+/// way, set construct to false
+#[must_use]
+fn make_systemd(slices: &[&str], construct: bool) -> PathBuf {
     if slices.is_empty() || slices.len() == 1 && slices[0].is_empty() {
         return PathBuf::from("");
     }
@@ -135,36 +164,42 @@ fn make_systemd(slices: &[&str]) -> PathBuf {
     // First, escape systemd slices
     let escaped = slices.iter().map(|&s| escape_systemd(s));
 
-    // Aggregate each slice with all previous to build final path
-    let mut path: PathBuf = PathBuf::new();
-    // Previously accumulated slices like "kubepods-burstable-"
-    let mut accumulator: String = String::new();
-    // Re-usable working buffer
-    let mut working: String = String::new();
-    for slice in escaped {
-        // Add the current slice to the path
-        working += &accumulator;
-        working += &slice;
-        working += &SYSTEMD_SLICE_SUFFIX;
-        path.push(&working);
-        working.clear();
+    match construct {
+        false => escaped.collect::<PathBuf>(),
+        true => {
+            // Aggregate each slice with all previous to build final path
+            let mut path: PathBuf = PathBuf::new();
+            // Previously accumulated slices like "kubepods-burstable-"
+            let mut accumulator: String = String::new();
+            // Re-usable working buffer
+            let mut working: String = String::new();
+            for slice in escaped {
+                // Add the current slice to the path
+                working += &accumulator;
+                working += &slice;
+                working += SYSTEMD_SLICE_SUFFIX;
+                path.push(&working);
+                working.clear();
 
-        // Add the current slice to the accumulator
-        accumulator += &slice;
-        accumulator += "-";
+                // Add the current slice to the accumulator
+                accumulator += &slice;
+                accumulator += "-";
+            }
+
+            path
+        },
     }
-
-    path
 }
 
 /// Escapes a cgroup slice to be in the style of Systemd cgroups
 /// see [`kubernetes/kubelet/cm/cgroup_manager_linux.go:escapeSystemdCgroupName()`](https://github.com/kubernetes/kubernetes/blob/bb5ed1b79709c865d9aa86008048f19331530041/pkg/kubelet/cm/cgroup_manager_linux.go#L74-L76)
+#[must_use]
 pub fn escape_systemd(slice: &str) -> String { slice.replace("-", "_") }
 
 /// Converts a vec of slice names such as vec!["kubepods", "burstable",
-/// "pod1234-5678"] into a systemd-style cgroup path such as "/kubepods/
-/// burstable/pod1234_5678"
-/// see [`kubernetes/kubelet/cm/cgroup_manager_linux.go:ToCgroupfs()`](https://github.com/kubernetes/kubernetes/blob/bb5ed1b79709c865d9aa86008048f19331530041/pkg/kubelet/cm/cgroup_manager_linux.go#L116-L118)
+/// "pod1234-5678"] into a systemd-style cgroup path such as
+/// `/kubepods/burstable/pod1234_5678` see [`kubernetes/kubelet/cm/cgroup_manager_linux.go:ToCgroupfs()`](https://github.com/kubernetes/kubernetes/blob/bb5ed1b79709c865d9aa86008048f19331530041/pkg/kubelet/cm/cgroup_manager_linux.go#L116-L118)
+#[must_use]
 fn make_cgroupfs(slices: &[&str]) -> PathBuf { slices.iter().collect() }
 
 pub const INVALID_CGROUP_MOUNT_MESSAGE: &str =
@@ -173,6 +208,7 @@ pub const INVALID_CGROUP_MOUNT_MESSAGE: &str =
 
 /// Checks if cgroups are mounted in /sys/fs/cgroup and if the cpuacct subsystem
 /// is enabled (necessary for proper driver detection)
+#[must_use]
 pub fn cgroups_mounted_properly() -> bool {
     // Use the raw subsystem directory to see if the expected cgroup hierarchy
     // exists
@@ -184,6 +220,7 @@ pub const LINUX_CGROUP_ROOT: &str = "/sys/fs/cgroup";
 /// Determines whether the given (absolute) cgroup exists in the virtual
 /// filesystem **Note**: fails if cgroups aren't mounted in /sys/fs/cgroup or if
 /// the cpuacct subsystem isn't enabled.
+#[must_use]
 fn cgroup_exists<C: AsRef<Path>>(path: C) -> bool {
     let mut full_path: PathBuf = [LINUX_CGROUP_ROOT, "cpuacct"].iter().collect();
     full_path.push(path);

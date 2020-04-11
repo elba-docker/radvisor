@@ -48,7 +48,7 @@ fn main() {
     match opts.command {
         Command::Run(run_opts) => {
             // Resolve container metadata provider
-            let mut provider: Box<dyn Provider> = run_opts.provider.get_impl();
+            let mut provider: Box<dyn Provider> = run_opts.provider.into_impl();
 
             // Determine if the current process can connect to the provider source
             if let Err(err) = provider.initialize(&run_opts, Arc::clone(&shell)) {
@@ -88,9 +88,9 @@ fn run(opts: RunCommand, provider: Box<dyn Provider>, shell: Arc<Shell>) {
 
     // Spawn both threads
     let polling_thread: thread::JoinHandle<()> =
-        thread::spawn(move || polling::run(tx, polling_context, provider));
+        thread::spawn(move || polling::run(&tx, polling_context, provider));
     let collection_thread: thread::JoinHandle<()> =
-        thread::spawn(move || collection::run(rx, collection_context, directory));
+        thread::spawn(move || collection::run(&rx, collection_context, &directory));
 
     // Join the threads, which automatically exit upon termination
     collection_thread
