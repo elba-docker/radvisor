@@ -1,4 +1,4 @@
-use radvisor::shell::{Shell, ShellOptions};
+use radvisor::shell::Shell;
 use std::fs::{self, File};
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
@@ -8,6 +8,7 @@ use clap_generate::{generate, generators::*};
 use flate2::write::GzEncoder;
 use flate2::Compression;
 
+type ShellOptions = radvisor::shell::Options;
 type ParentOpts = radvisor::cli::Opts;
 
 /// CLI version loaded from Cargo, or none if not build with cargo
