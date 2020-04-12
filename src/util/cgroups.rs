@@ -161,12 +161,12 @@ fn make_systemd(slices: &[&str], construct: bool) -> PathBuf {
         return PathBuf::from("");
     }
 
-    // First, escape systemd slices
-    let escaped = slices.iter().map(|&s| escape_systemd(s));
-
     match construct {
-        false => escaped.collect::<PathBuf>(),
+        false => slices.iter().collect::<PathBuf>(),
         true => {
+            // First, escape systemd slices
+            let escaped = slices.iter().map(|&s| escape_systemd(s));
+
             // Aggregate each slice with all previous to build final path
             let mut path: PathBuf = PathBuf::new();
             // Previously accumulated slices like "kubepods-burstable-"
