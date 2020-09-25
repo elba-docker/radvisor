@@ -15,7 +15,7 @@ pub const VERSION: Option<&'static str> = option_env!("CARGO_PKG_VERSION");
 lazy_static::lazy_static! {
     /// Authors loaded from Cargo, or none if not build with cargo
     pub static ref AUTHORS: Option<String> = option_env!("CARGO_PKG_AUTHORS")
-        .map(|s| s.split(":").collect::<Vec<&str>>().join(", "));
+        .map(|s| s.split(':').collect::<Vec<&str>>().join(", "));
 }
 
 /// Parses and resolves defaults for all CLI arguments. Additionally, handles
@@ -115,7 +115,7 @@ mod command {
     // private module
     #![allow(unused_braces)]
 
-    use super::{RunCommand, VERSION, AUTHORS};
+    use super::{RunCommand, AUTHORS, VERSION};
     use clap::Clap;
 
     #[derive(Clap)]

@@ -1,12 +1,12 @@
 pub mod collect;
 pub mod collector;
-pub mod system_info;
 pub mod flush;
+pub mod system_info;
 
 use crate::cli::CollectionOptions;
 use crate::collection::collect::WorkingBuffers;
 use crate::collection::collector::Collector;
-use crate::collection::flush::{FlushLog};
+use crate::collection::flush::FlushLog;
 use crate::shared::{CollectionEvent, CollectionMethod, IntervalWorkerContext};
 use crate::shell::Shell;
 use crate::timer::{Stoppable, Timer};
