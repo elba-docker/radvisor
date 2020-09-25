@@ -19,7 +19,7 @@ pub struct FlushEvent {
 }
 
 impl FlushEvent {
-    /// Consumes an IO result to make a new FlushEvent,
+    /// Consumes an IO result to make a new `FlushEvent`,
     /// taking the current timestamp at the time of invocation
     /// and copying the given ID into the buffer
     #[must_use]

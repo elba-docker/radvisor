@@ -55,7 +55,7 @@ pub struct Options {
 impl Verbosity {
     /// Determines the appropriate verbosity setting for the specified CLI
     /// options
-    fn from_opts(opts: &Options) -> Self {
+    const fn from_opts(opts: &Options) -> Self {
         match opts.quiet {
             true => Self::Quiet,
             false => match opts.verbose {

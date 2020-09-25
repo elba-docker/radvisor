@@ -121,7 +121,7 @@ pub fn run(
             handle_event(
                 event,
                 &mut collectors,
-                &location,
+                location,
                 &event_log_ref,
                 &context.shell,
             );
