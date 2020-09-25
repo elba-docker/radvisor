@@ -242,7 +242,7 @@ impl Shell {
     /// if the shell is in verbose mode
     pub fn verbose<F>(&self, callback: F)
     where
-        F: Fn(&Self) -> (),
+        F: Fn(&Self),
     {
         if let Verbosity::Verbose = self.verbosity {
             callback(self);
