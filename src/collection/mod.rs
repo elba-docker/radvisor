@@ -1,13 +1,12 @@
-mod buffer_logger;
 pub mod collect;
 pub mod collector;
-mod event_log;
 pub mod system_info;
+pub mod flush;
 
 use crate::cli::CollectionOptions;
 use crate::collection::collect::WorkingBuffers;
 use crate::collection::collector::Collector;
-use crate::collection::event_log::EventLog;
+use crate::collection::flush::{FlushLog};
 use crate::shared::{CollectionEvent, CollectionMethod, IntervalWorkerContext};
 use crate::shell::Shell;
 use crate::timer::{Stoppable, Timer};
@@ -50,8 +49,8 @@ pub fn run(
     let collectors: CollectorMap = Arc::new(Mutex::new(HashMap::new()));
 
     // If we are monitoring events, initialize the event log
-    let event_log = match &options.event_log {
-        Some(log_path) => Some(Arc::new(Mutex::new(EventLog::new(
+    let flush_log = match &options.flush_log {
+        Some(log_path) => Some(Arc::new(Mutex::new(FlushLog::new(
             log_path,
             EVENT_BUFFER_LENGTH,
         )))),
@@ -68,7 +67,7 @@ pub fn run(
     let collectors_c = Arc::clone(&collectors);
     let status_mutex_c = Arc::clone(&status_mutex);
     let shell_c = Arc::clone(&context.shell);
-    let event_log_c = event_log.as_ref().map(|c| Arc::clone(c));
+    let flush_log_c = flush_log.as_ref().map(|c| Arc::clone(c));
     let stop_handle_c = stop_handle.clone();
     let mut term_rx = context.term_rx;
     std::thread::spawn(move || {
@@ -93,7 +92,7 @@ pub fn run(
 
                 // The collection thread is yielding to the sleep; flush the buffers now
                 let collectors = collectors_c.lock().unwrap();
-                flush_buffers(&collectors, &shell_c, event_log_c);
+                flush_buffers(&collectors, &shell_c, flush_log_c);
                 stop_handle_c.stop();
             },
         }
@@ -116,13 +115,13 @@ pub fn run(
         let mut collectors = collectors.lock().unwrap();
 
         // Check to see if update thread has sent any new start/stop events
-        let event_log_ref = event_log.as_ref().map(|r| Arc::clone(r));
+        let flush_log_ref = flush_log.as_ref().map(|r| Arc::clone(r));
         for event in rx.try_iter() {
             handle_event(
                 event,
                 &mut collectors,
                 location,
-                &event_log_ref,
+                &flush_log_ref,
                 &context.shell,
             );
         }
@@ -153,8 +152,8 @@ pub fn run(
 
             // If termination signaled during collection, then the collection thread
             // needs to tear down the buffers
-            let event_log_ref = event_log.map(|r| Arc::clone(&r));
-            flush_buffers(&collectors, &context.shell, event_log_ref);
+            let flush_log_ref = flush_log.map(|r| Arc::clone(&r));
+            flush_buffers(&collectors, &context.shell, flush_log_ref);
             stop_handle.stop();
             break;
         } else {
@@ -170,7 +169,7 @@ pub fn run(
 fn flush_buffers(
     collectors: &HashMap<String, RefCell<Collector>>,
     shell: &Arc<Shell>,
-    event_log_option: Option<Arc<Mutex<EventLog>>>,
+    flush_log_option: Option<Arc<Mutex<FlushLog>>>,
 ) {
     shell.status("Stopping", "collecting and flushing buffers");
 
@@ -185,16 +184,16 @@ fn flush_buffers(
     }
 
     // Write the event log if it's enabled
-    if let Some(event_log_lock) = event_log_option {
-        let mut event_log = event_log_lock.lock().unwrap();
-        let path_str = event_log
+    if let Some(flush_log_lock) = flush_log_option {
+        let mut flush_log = flush_log_lock.lock().unwrap();
+        let path_str = flush_log
             .path
             .clone()
             .into_os_string()
             .into_string()
             .ok()
             .unwrap_or_else(|| String::from("~"));
-        match event_log.write() {
+        match flush_log.write() {
             Ok(count) => shell.info(format!(
                 "Wrote {} buffer flush events to {}",
                 count, path_str
@@ -214,7 +213,7 @@ fn handle_event(
     event: CollectionEvent,
     collectors: &mut HashMap<String, RefCell<Collector>>,
     logs_location: &Path,
-    event_log: &Option<Arc<Mutex<EventLog>>>,
+    flush_log: &Option<Arc<Mutex<FlushLog>>>,
     shell: &Shell,
 ) {
     match event {
@@ -229,8 +228,8 @@ fn handle_event(
             match method {
                 CollectionMethod::LinuxCgroups(path) => {
                     let id = target.id.clone();
-                    let event_log_c = event_log.as_ref().map(|r| Arc::clone(r));
-                    match Collector::create(logs_location, target, &path, event_log_c) {
+                    let flush_log_c = flush_log.as_ref().map(|r| Arc::clone(r));
+                    match Collector::create(logs_location, target, &path, flush_log_c) {
                         Ok(new_collector) => {
                             collectors.insert(id, RefCell::new(new_collector));
                         },

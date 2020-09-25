@@ -26,7 +26,7 @@ pub struct Opts {
         parse(from_os_str),
         short = "o",
         long = "out-dir",
-        help = "target directory to place generated completions/manpages in",
+        help = "Target directory to place generated completions/manpages in",
         default_value = "./out"
     )]
     pub directory: PathBuf,
@@ -35,7 +35,7 @@ pub struct Opts {
         parse(from_os_str),
         short = "r",
         long = "repo-root",
-        help = "source directory which is the project root of the cloned git repo (needed for \
+        help = "Source directory which is the project root of the cloned git repo (needed for \
                 building docs)"
     )]
     pub repo_root: Option<PathBuf>,

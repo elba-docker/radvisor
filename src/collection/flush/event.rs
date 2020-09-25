@@ -35,13 +35,13 @@ impl FlushEvent {
     }
 }
 
-/// Stores a buffer of flush events
-pub struct EventLog {
+/// Stores a vec of flush events
+pub struct FlushLog {
     pub path:   PathBuf,
     pub events: Vec<FlushEvent>,
 }
 
-impl EventLog {
+impl FlushLog {
     #[must_use]
     pub fn new<A: AsRef<Path>>(event_log_path: A, capacity: usize) -> Self {
         Self {

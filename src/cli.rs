@@ -12,6 +12,12 @@ type ShellOptions = crate::shell::Options;
 /// CLI version loaded from Cargo, or none if not build with cargo
 pub const VERSION: Option<&'static str> = option_env!("CARGO_PKG_VERSION");
 
+lazy_static::lazy_static! {
+    /// Authors loaded from Cargo, or none if not build with cargo
+    pub static ref AUTHORS: Option<String> = option_env!("CARGO_PKG_AUTHORS")
+        .map(|s| s.split(":").collect::<Vec<&str>>().join(", "));
+}
+
 /// Parses and resolves defaults for all CLI arguments. Additionally, handles
 /// displaying help/version text if specified.
 #[allow(clippy::must_use_candidate)]
@@ -24,7 +30,7 @@ pub fn load() -> Opts {
 #[derive(Clap)]
 #[clap(
     version = VERSION.unwrap_or("unknown"),
-    author = "Joseph Azevedo and Bhanu Garg",
+    author = AUTHORS.as_deref().unwrap_or("contributors"),
     about = "Monitors container resource utilization with high granularity and low overhead"
 )]
 pub struct Opts {
@@ -39,7 +45,7 @@ pub struct Opts {
 
 #[derive(Clap)]
 pub struct RunCommand {
-    #[clap(help = "provider to use to generate collection targets (such as containers/pods)")]
+    #[clap(help = "Provider to use to generate collection targets (such as containers/pods)")]
     pub provider: ProviderType,
 
     // Polling-related options
@@ -56,9 +62,10 @@ pub struct CollectionOptions {
     /// Collection interval between log entries
     #[clap(
         parse(try_from_str = parse_duration),
+        name = "interval",
         short = "i",
         long = "interval",
-        help = "collection interval between log entries",
+        help = "Collection interval between log entries",
         default_value = "50ms",
         global = true
     )]
@@ -69,21 +76,21 @@ pub struct CollectionOptions {
         parse(from_os_str),
         short = "d",
         long = "directory",
-        help = "target directory to place log files in ({id}_{timestamp}.log)",
+        help = "Target directory to place log files in ({id}_{timestamp}.log)",
         default_value = "/var/log/radvisor/stats",
         global = true
     )]
     pub directory: PathBuf,
 
-    /// Target location to write an event log that contains buffer flushes
+    /// Target location to write an buffer flush event log
     #[clap(
         parse(from_os_str),
-        short = "e",
-        long = "event-log",
-        help = "target location to write an event log that contains buffer flushes",
+        short = "f",
+        long = "flush-log",
+        help = "(optional) Target location to write an buffer flush event log",
         global = true
     )]
-    pub event_log: Option<PathBuf>,
+    pub flush_log: Option<PathBuf>,
 }
 
 #[derive(Clap)]
@@ -91,9 +98,10 @@ pub struct PollingOptions {
     /// Interval between requests to providers to get targets
     #[clap(
         parse(try_from_str = parse_duration),
+        name = "polling-interval",
         short = "p",
         long = "poll",
-        help = "interval between requests to providers to get targets",
+        help = "Interval between requests to providers to get targets",
         default_value = "1000ms",
         global = true
     )]
@@ -107,13 +115,15 @@ mod command {
     // private module
     #![allow(unused_braces)]
 
-    use super::RunCommand;
+    use super::{RunCommand, VERSION, AUTHORS};
     use clap::Clap;
 
     #[derive(Clap)]
     pub enum Command {
         #[clap(
-            about = "runs a collection thread that writes resource statistics to output CSV files"
+            version = VERSION.unwrap_or("unknown"),
+            author = AUTHORS.as_deref().unwrap_or("contributors"),
+            about = "Runs a collection thread that writes resource statistics to output CSV files"
         )]
         Run(RunCommand),
     }

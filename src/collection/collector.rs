@@ -1,9 +1,8 @@
 use crate::cli;
-use crate::collection::buffer_logger::BufferLogger;
 use crate::collection::collect;
 use crate::collection::collect::files::ProcFileHandles;
 use crate::collection::collect::read::StatFileLayout;
-use crate::collection::event_log::EventLog;
+use crate::collection::flush::{FlushLog, FlushLogger};
 use crate::collection::system_info::SystemInfo;
 use crate::shared::CollectionTarget;
 use crate::util::{self, CgroupDriver, CgroupPath};
@@ -24,7 +23,7 @@ const BUFFER_LENGTH: usize = 4 * 1024 * 1024;
 /// used during difference resolution to mark inactive collectors for
 /// teardown/removal.
 pub struct Collector {
-    pub writer:        Writer<BufferLogger<File>>,
+    pub writer:        Writer<FlushLogger<File>>,
     pub file_handles:  ProcFileHandles,
     pub active:        bool,
     pub memory_layout: StatFileLayout,
@@ -53,7 +52,7 @@ impl Collector {
         logs_location: &Path,
         target: CollectionTarget,
         cgroup: &CgroupPath,
-        event_log: Option<Arc<Mutex<EventLog>>>,
+        event_log: Option<Arc<Mutex<FlushLog>>>,
     ) -> Result<Self, Error> {
         // Ensure directories exist before creating the collector
         fs::create_dir_all(logs_location)?;
@@ -83,7 +82,7 @@ impl Collector {
         file: File,
         target: CollectionTarget,
         cgroup: &CgroupPath,
-        event_log: Option<Arc<Mutex<EventLog>>>,
+        event_log: Option<Arc<Mutex<FlushLog>>>,
     ) -> Result<Self, Error> {
         let header = LogFileHeader {
             version:        cli::VERSION.unwrap_or("unknown"),
@@ -103,7 +102,7 @@ impl Collector {
         // Initialize the CSV writer and then write the header row
         let mut writer = WriterBuilder::new()
             .buffer_capacity(BUFFER_LENGTH)
-            .from_writer(BufferLogger::new(file, target.id.clone(), event_log));
+            .from_writer(FlushLogger::new(file, target.id.clone(), event_log));
         writer.write_byte_record(collect::get_header())?;
 
         let file_handles = ProcFileHandles::new(&cgroup.path);

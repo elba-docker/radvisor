@@ -21,13 +21,13 @@ pub enum Verbosity {
     Quiet,
 }
 
-/// All clap-compatible configuration parameters for the Shell
+// All clap-compatible configuration parameters for the Shell
 #[derive(Clap)]
 pub struct Options {
     #[clap(
         short = "q",
         long = "quiet",
-        help = "whether to run in quiet mode (minimal output)",
+        help = "Whether to run in quiet mode (minimal output)",
         global = true
     )]
     pub quiet: bool,
@@ -35,7 +35,7 @@ pub struct Options {
     #[clap(
         short = "v",
         long = "verbose",
-        help = "whether to run in verbose mode (maximum output)",
+        help = "Whether to run in verbose mode (maximum output)",
         global = true,
         conflicts_with = "quiet"
     )]
@@ -45,7 +45,7 @@ pub struct Options {
     #[clap(
         short = "c",
         long = "color",
-        help = "color display mode for stdout/stderr output",
+        help = "Color display mode for stdout/stderr output",
         default_value = "auto",
         global = true
     )]

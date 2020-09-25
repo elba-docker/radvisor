@@ -1,4 +1,4 @@
-use crate::collection::event_log::{EventLog, FlushEvent};
+use crate::collection::flush::event::{FlushEvent, FlushLog};
 use std::io::{Result, Write};
 use std::sync::{Arc, Mutex};
 
@@ -6,20 +6,20 @@ use std::sync::{Arc, Mutex};
 /// logging when the buffered writer flushes to its destination.
 /// This is useful to log when rAdvisor flushes its collection buffers to files,
 /// allowing it to note the time of these flushes
-pub struct BufferLogger<T: Write> {
-    log:    Option<Arc<Mutex<EventLog>>>,
+pub struct FlushLogger<T: Write> {
+    log:    Option<Arc<Mutex<FlushLog>>>,
     id:     String,
     writer: T,
 }
 
-impl<T: Write> BufferLogger<T> {
+impl<T: Write> FlushLogger<T> {
     #[must_use]
-    pub fn new(writer: T, id: String, log: Option<Arc<Mutex<EventLog>>>) -> Self {
+    pub fn new(writer: T, id: String, log: Option<Arc<Mutex<FlushLog>>>) -> Self {
         Self { log, id, writer }
     }
 }
 
-impl<T: Write> Write for BufferLogger<T> {
+impl<T: Write> Write for FlushLogger<T> {
     fn write(&mut self, buf: &[u8]) -> Result<usize> {
         let result = self.writer.write(buf);
         if let Some(log_lock) = &self.log {
