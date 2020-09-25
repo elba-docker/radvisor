@@ -18,7 +18,7 @@ use std::sync::mpsc::Receiver;
 use std::sync::{Arc, Mutex};
 
 /// Length of the buffer that contains buffer flush events
-const EVENT_BUFFER_LENGTH: usize = 4 * 1024 * 1024;
+const EVENT_BUFFER_LENGTH: usize = 8 * 1024;
 
 /// Synchronization status struct used to handle termination and buffer flushing
 struct CollectStatus {
