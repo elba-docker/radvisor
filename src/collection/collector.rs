@@ -2,26 +2,28 @@ use crate::cli;
 use crate::collection::collect;
 use crate::collection::collect::files::ProcFileHandles;
 use crate::collection::collect::read::StatFileLayout;
+use crate::collection::flush::{FlushLog, FlushLogger};
 use crate::collection::system_info::SystemInfo;
 use crate::shared::CollectionTarget;
 use crate::util::{self, CgroupDriver, CgroupPath};
 use std::fs::{self, File, OpenOptions};
 use std::io::{self, ErrorKind, Write};
 use std::path::{Path, PathBuf};
+use std::sync::{Arc, Mutex};
 
 use csv::{Writer, WriterBuilder};
 use failure::Error;
 use serde::Serialize;
 
 /// CSV writer buffer length
-const BUFFER_LENGTH: usize = 64 * 1024;
+const BUFFER_LENGTH: usize = 4 * 1024 * 1024;
 
 /// Contains the file handle for the open stats file as well as the file handles
 /// for /proc virtual files used during reading the system stats. `active` is
 /// used during difference resolution to mark inactive collectors for
 /// teardown/removal.
 pub struct Collector {
-    pub writer:        Writer<File>,
+    pub writer:        Writer<FlushLogger<File>>,
     pub file_handles:  ProcFileHandles,
     pub active:        bool,
     pub memory_layout: StatFileLayout,
@@ -50,6 +52,7 @@ impl Collector {
         logs_location: &Path,
         target: CollectionTarget,
         cgroup: &CgroupPath,
+        event_log: Option<Arc<Mutex<FlushLog>>>,
     ) -> Result<Self, Error> {
         // Ensure directories exist before creating the collector
         fs::create_dir_all(logs_location)?;
@@ -59,7 +62,7 @@ impl Collector {
             .create(true)
             .append(true)
             .open(path)?;
-        let collector = Self::new(file, target, cgroup)?;
+        let collector = Self::new(file, target, cgroup, event_log)?;
         Ok(collector)
     }
 
@@ -75,7 +78,12 @@ impl Collector {
     /// Initializes a new collector given the destination file and target
     /// metadata. Writes the file header and then opens up read file handles
     /// for all of the /proc cgroup virtual files
-    fn new(file: File, target: CollectionTarget, cgroup: &CgroupPath) -> Result<Self, Error> {
+    fn new(
+        file: File,
+        target: CollectionTarget,
+        cgroup: &CgroupPath,
+        event_log: Option<Arc<Mutex<FlushLog>>>,
+    ) -> Result<Self, Error> {
         let header = LogFileHeader {
             version:        cli::VERSION.unwrap_or("unknown"),
             provider:       target.provider,
@@ -94,7 +102,7 @@ impl Collector {
         // Initialize the CSV writer and then write the header row
         let mut writer = WriterBuilder::new()
             .buffer_capacity(BUFFER_LENGTH)
-            .from_writer(file);
+            .from_writer(FlushLogger::new(file, target.id.clone(), event_log));
         writer.write_byte_record(collect::get_header())?;
 
         let file_handles = ProcFileHandles::new(&cgroup.path);

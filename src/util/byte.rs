@@ -80,22 +80,25 @@ impl<'a> Iterator for ByteLines<'a> {
             return None;
         }
 
-        if let Some(pos) = find_char(self.buffer, self.position, is_newline) {
-            let result = Some((&self.buffer[self.position..pos], self.position));
-            self.position = pos + 1;
-            result
-        } else {
-            self.done = true;
-            // Attempt to return the remaining content on the last line
-            let remaining_len = content_len_raw(&self.buffer[self.position..]);
-            if remaining_len > 0 {
-                Some((
-                    &self.buffer[self.position..(self.position + remaining_len)],
-                    self.position,
-                ))
-            } else {
-                None
-            }
+        match find_char(self.buffer, self.position, is_newline) {
+            Some(pos) => {
+                let result = Some((&self.buffer[self.position..pos], self.position));
+                self.position = pos + 1;
+                result
+            },
+            None => {
+                self.done = true;
+                // Attempt to return the remaining content on the last line
+                let remaining_len = content_len_raw(&self.buffer[self.position..]);
+                if remaining_len > 0 {
+                    Some((
+                        &self.buffer[self.position..(self.position + remaining_len)],
+                        self.position,
+                    ))
+                } else {
+                    None
+                }
+            },
         }
     }
 }
