@@ -13,7 +13,7 @@
 
 ```yaml
 ---
-Version: 1.1.7
+Version: 1.2.0
 Provider: docker
 Created: "2020-03-24T07:27:49Z"
 Command: "bash -c 'while true; do sleep 2; done'"
@@ -45,7 +45,7 @@ More information about what each column represents can be found in the [docs pag
 
 ```yaml
 ---
-Version: 1.1.7
+Version: 1.2.0
 Provider: kubernetes
 Uid: 9f0b1893-15e7-442a-966a-b0d19a35fc1c
 Name: kube-proxy-hsplg
@@ -77,8 +77,8 @@ Many of the specific details of collection can be controlled via the command lin
 
 ```console
 $ radvisor help
-radvisor 1.1.2
-Joseph Azevedo and Bhanu Garg
+radvisor 1.1.7
+Joseph Azevedo <joseph.az@gatech.edu>, Bhanu Garg <bgarg6@gatech.edu>
 Monitors container resource utilization with high granularity and low overhead
 
 USAGE:
@@ -86,20 +86,16 @@ USAGE:
 
 FLAGS:
     -h, --help       Prints help information
-    -q, --quiet      whether to run in quiet mode (minimal output)
-    -v, --verbose    whether to run in verbose mode (maximum output)
+    -q, --quiet      Whether to run in quiet mode (minimal output)
+    -v, --verbose    Whether to run in verbose mode (maximum output)
     -V, --version    Prints version information
 
 OPTIONS:
-    -c, --color <color-mode>         color display mode for stdout/stderr output [default: auto]
-    -d, --directory <directory>      target directory to place log files in ({id}_{timestamp}.log) [default:
-                                     /var/log/radvisor/stats]
-    -i, --interval <interval>        collection interval between log entries [default: 50ms]
-    -p, --poll <polling-interval>    interval between requests to providers to get targets [default: 1000ms]
+    -c, --color <color-mode>    Color display mode for stdout/stderr output [default: auto]
 
 SUBCOMMANDS:
     help    Prints this message or the help of the given subcommand(s)
-    run     runs a collection thread that writes resource statistics to output CSV files
+    run     Runs a collection thread that writes resource statistics to output CSV files
 ```
 
 ### 📇 Subcommands
@@ -156,10 +152,10 @@ cargo build --release --bins \
    Compiling cfg-if v0.1.10
    ...
    Compiling shiplift v0.6.0
-   Compiling radvisor v1.1.7 (/home/jazev/dev/radvisor)
+   Compiling radvisor v1.2.0 (/home/jazev/dev/radvisor)
     Finished release [optimized] target(s) in 4m 52s
 $ ./radvisor --version
-radvisor 1.1.7
+radvisor 1.2.0
 ```
 
 ## ⚖️ License

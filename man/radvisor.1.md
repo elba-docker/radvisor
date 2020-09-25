@@ -35,11 +35,11 @@ FLAGS:
 
 **-q**, **\--quiet**
 
-:   whether to run in quiet mode (minimal output)
+:   Whether to run in quiet mode (minimal output)
 
 **-v**, **\--verbose**
 
-:   whether to run in verbose mode (maximum output)
+:   Whether to run in verbose mode (maximum output)
 
 **-V**, **\--version**
 
@@ -50,7 +50,7 @@ OPTIONS:
 
 **-c**, **\--color** \<color-mode\>
 
-:   color display mode for stdout/stderr output \[default: auto\]
+:   Color display mode for stdout/stderr output \[default: auto\]
 
 SUBCOMMANDS:
 ------------
@@ -61,7 +61,7 @@ help
 
 run
 
-:   runs a collection thread that writes resource statistics to output CSV files
+:   Runs a collection thread that writes resource statistics to output CSV files
 
 BUGS
 ====

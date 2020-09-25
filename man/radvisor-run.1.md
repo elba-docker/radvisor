@@ -28,7 +28,7 @@ ARGS:
 
 \<provider\>
 
-:   provider to use to generate collection targets (such as
+:   Provider to use to generate collection targets (such as
     containers/pods)
 
 FLAGS:
@@ -40,11 +40,11 @@ FLAGS:
 
 **-q**, **\--quiet**
 
-:   whether to run in quiet mode (minimal output)
+:   Whether to run in quiet mode (minimal output)
 
 **-v**, **\--verbose**
 
-:   whether to run in verbose mode (maximum output)
+:   Whether to run in verbose mode (maximum output)
 
 **-V**, **\--version**
 
@@ -55,26 +55,30 @@ OPTIONS:
 
 **-c**, **\--color** \<color-mode\>
 
-> color display mode for stdout/stderr output \[default: auto\]
+> Color display mode for stdout/stderr output \[default: auto\]
 
 **-d**, **\--directory** \<directory\>
 
-> target directory to place log files in ({id}\_{timestamp}.log) \[default: /var/log/radvisor/stats\]
+> Target directory to place log files in ({id}\_{timestamp}.log) \[default: /var/log/radvisor/stats\]
 
 **-i**, **\--interval** \<interval\>
 
-> collection interval between log entries \[default: 50ms\]
+> Collection interval between log entries \[default: 50ms\]
 
 **-p**, **\--poll** \<polling-interval\>
 
-> interval between requests to providers to get targets \[default: 1000ms\]
+> Interval between requests to providers to get targets \[default: 1000ms\]
+
+**-f**, **\--flush-log** \<flush-log\>
+
+> (optional) Target location to write an buffer flush event log
 
 ENVIRONMENT
 ===========
 
 **DOCKER_HOST**
 
-:   Url of the docker daemon to use when running the **docker** provider.
+:   URL of the docker daemon to use when running the **docker** provider.
     Defaults to `unix:///var/run/docker.sock`
 
 BUGS
