@@ -42,6 +42,17 @@ pub struct RunCommand {
     #[clap(help = "provider to use to generate collection targets (such as containers/pods)")]
     pub provider: ProviderType,
 
+    // Polling-related options
+    #[clap(flatten)]
+    pub polling: PollingOptions,
+
+    // Collection-related options
+    #[clap(flatten)]
+    pub collection: CollectionOptions,
+}
+
+#[derive(Clap)]
+pub struct CollectionOptions {
     /// Collection interval between log entries
     #[clap(
         parse(try_from_str = parse_duration),
@@ -53,17 +64,6 @@ pub struct RunCommand {
     )]
     pub interval: Duration,
 
-    /// Interval between requests to providers to get targets
-    #[clap(
-        parse(try_from_str = parse_duration),
-        short = "p",
-        long = "poll",
-        help = "interval between requests to providers to get targets",
-        default_value = "1000ms",
-        global = true
-    )]
-    pub polling_interval: Duration,
-
     /// Target directory to place log files in ({id}_{timestamp}.log)
     #[clap(
         parse(from_os_str),
@@ -74,6 +74,30 @@ pub struct RunCommand {
         global = true
     )]
     pub directory: PathBuf,
+
+    /// Target location to write an event log that contains buffer flushes
+    #[clap(
+        parse(from_os_str),
+        short = "e",
+        long = "event-log",
+        help = "target location to write an event log that contains buffer flushes",
+        global = true
+    )]
+    pub event_log: Option<PathBuf>,
+}
+
+#[derive(Clap)]
+pub struct PollingOptions {
+    /// Interval between requests to providers to get targets
+    #[clap(
+        parse(try_from_str = parse_duration),
+        short = "p",
+        long = "poll",
+        help = "interval between requests to providers to get targets",
+        default_value = "1000ms",
+        global = true
+    )]
+    pub interval: Duration,
 }
 
 pub use command::Command;

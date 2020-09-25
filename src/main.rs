@@ -72,25 +72,26 @@ fn run(opts: RunCommand, provider: Box<dyn Provider>, shell: Arc<Shell>) {
     let term_bus = initialize_term_handler(Arc::clone(&shell));
     let mut term_bus_handle = term_bus.lock().unwrap();
     let polling_context = IntervalWorkerContext {
-        interval: opts.polling_interval,
+        interval: opts.polling.interval,
         term_rx:  term_bus_handle.add_rx(),
         shell:    Arc::clone(&shell),
     };
     let collection_context = IntervalWorkerContext {
-        interval: opts.interval,
+        interval: opts.collection.interval,
         term_rx:  term_bus_handle.add_rx(),
         shell:    Arc::clone(&shell),
     };
     drop(term_bus_handle);
 
-    // Unwrap the directory from the resolved opts to prevent the move of opts
-    let directory = opts.directory;
+    // Unwrap the collection options from the resolved opts to prevent the move of
+    // opts
+    let collection_options = opts.collection;
 
     // Spawn both threads
     let polling_thread: thread::JoinHandle<()> =
         thread::spawn(move || polling::run(&tx, polling_context, provider));
     let collection_thread: thread::JoinHandle<()> =
-        thread::spawn(move || collection::run(&rx, collection_context, &directory));
+        thread::spawn(move || collection::run(&rx, collection_context, &collection_options));
 
     // Join the threads, which automatically exit upon termination
     collection_thread

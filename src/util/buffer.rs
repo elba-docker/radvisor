@@ -2,10 +2,14 @@
 //! additionally include length when in managed mode.
 
 use crate::util::byte::is_whitespace;
+use std::str::from_utf8;
+
+use serde::{Serialize, Serializer};
 
 /// Working buffer of raw bytes. Can operate both in **managed** mode (where it
 /// keeps track of length) and **unmanaged** mode (where it acts) as a plain
 /// byte buffer.
+#[derive(Debug)]
 pub struct Buffer<const SIZE: usize> {
     pub len: usize,
     pub b:   [u8; SIZE],
@@ -32,6 +36,46 @@ pub trait BufferLike {
     /// **(Unmanaged)** Gets a sub-slice of the buffer that only includes
     /// non-NUL characters
     fn content_unmanaged(&self) -> &[u8];
+}
+
+impl<const SIZE: usize> Buffer<SIZE> {
+    pub fn from_str_truncate<A: AsRef<str>>(src: A) -> Self {
+        // Copy the ID into the buffer
+        let mut buffer = Self::default();
+        let mut len = 0;
+        for (i, b) in src.as_ref().bytes().enumerate() {
+            // Make sure we don't copy too far
+            if i >= SIZE {
+                break;
+            }
+            buffer.b[i] = b;
+            len += 1;
+        }
+        buffer.len = len;
+        buffer
+    }
+}
+
+impl<const SIZE: usize> Default for Buffer<SIZE> {
+    fn default() -> Self {
+        Self {
+            len: 0,
+            b:   [0; SIZE],
+        }
+    }
+}
+
+impl<const SIZE: usize> Serialize for Buffer<SIZE> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        use serde::ser::Error;
+        match from_utf8(self.content()) {
+            Ok(string) => serializer.serialize_str(string),
+            Err(err) => Err(Error::custom(err)),
+        }
+    }
 }
 
 impl<const SIZE: usize> BufferLike for Buffer<SIZE> {
