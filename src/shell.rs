@@ -24,31 +24,16 @@ pub enum Verbosity {
 // All clap-compatible configuration parameters for the Shell
 #[derive(Clap)]
 pub struct Options {
-    #[clap(
-        short = "q",
-        long = "quiet",
-        help = "Whether to run in quiet mode (minimal output)",
-        global = true
-    )]
+    /// Whether to run in quiet mode (minimal output)
+    #[clap(short = 'q', long = "quiet", global = true)]
     pub quiet: bool,
 
-    #[clap(
-        short = "v",
-        long = "verbose",
-        help = "Whether to run in verbose mode (maximum output)",
-        global = true,
-        conflicts_with = "quiet"
-    )]
+    /// Whether to run in verbose mode (maximum output)
+    #[clap(short = 'v', long = "verbose", global = true, conflicts_with = "quiet")]
     pub verbose: bool,
 
-    /// Mode of the color output of the process
-    #[clap(
-        short = "c",
-        long = "color",
-        help = "Color display mode for stdout/stderr output",
-        default_value = "auto",
-        global = true
-    )]
+    /// Color display mode for stdout/stderr output
+    #[clap(short = 'c', long = "color", default_value = "auto", global = true)]
     pub color_mode: ColorMode,
 }
 

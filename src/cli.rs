@@ -5,6 +5,7 @@ use std::path::PathBuf;
 use std::str::FromStr;
 use std::time::Duration;
 
+use byte_unit::{Byte, ByteError};
 use clap::Clap;
 
 type ShellOptions = crate::shell::Options;
@@ -45,7 +46,8 @@ pub struct Opts {
 
 #[derive(Clap)]
 pub struct RunCommand {
-    #[clap(help = "Provider to use to generate collection targets (such as containers/pods)")]
+    #[clap()]
+    /// Provider to use to generate collection targets (such as containers/pods)
     pub provider: ProviderType,
 
     // Polling-related options
@@ -63,9 +65,8 @@ pub struct CollectionOptions {
     #[clap(
         parse(try_from_str = parse_duration),
         name = "interval",
-        short = "i",
+        short = 'i',
         long = "interval",
-        help = "Collection interval between log entries",
         default_value = "50ms",
         global = true
     )]
@@ -74,23 +75,27 @@ pub struct CollectionOptions {
     /// Target directory to place log files in ({id}_{timestamp}.log)
     #[clap(
         parse(from_os_str),
-        short = "d",
+        short = 'd',
         long = "directory",
-        help = "Target directory to place log files in ({id}_{timestamp}.log)",
         default_value = "/var/log/radvisor/stats",
         global = true
     )]
     pub directory: PathBuf,
 
-    /// Target location to write an buffer flush event log
+    /// (optional) Target location to write an buffer flush event log
+    #[clap(parse(from_os_str), short = 'f', long = "flush-log", global = true)]
+    pub flush_log: Option<PathBuf>,
+
+    /// Size (in bytes) of the heap-allocated buffer to use to write collection
+    /// records in
     #[clap(
-        parse(from_os_str),
-        short = "f",
-        long = "flush-log",
-        help = "(optional) Target location to write an buffer flush event log",
+        parse(try_from_str = parse_byte),
+        short = 'b',
+        long = "buffer",
+        default_value = "16MiB",
         global = true
     )]
-    pub flush_log: Option<PathBuf>,
+    pub buffer_size: Byte,
 }
 
 #[derive(Clap)]
@@ -99,9 +104,8 @@ pub struct PollingOptions {
     #[clap(
         parse(try_from_str = parse_duration),
         name = "polling-interval",
-        short = "p",
+        short = 'p',
         long = "poll",
-        help = "Interval between requests to providers to get targets",
         default_value = "1000ms",
         global = true
     )]
@@ -153,3 +157,5 @@ impl error::Error for ParseFailure {
 fn parse_duration(raw: &str) -> Result<Duration, humantime::DurationError> {
     humantime::Duration::from_str(raw).map(|d| d.into())
 }
+
+fn parse_byte(raw: &str) -> Result<Byte, ByteError> { Byte::from_str(raw) }

@@ -12,6 +12,7 @@ use crate::shell::Shell;
 use crate::timer::{Stoppable, Timer};
 use std::cell::RefCell;
 use std::collections::HashMap;
+use std::convert::TryFrom;
 use std::path::Path;
 use std::sync::mpsc::Receiver;
 use std::sync::{Arc, Mutex};
@@ -36,6 +37,7 @@ pub fn run(
     options: &CollectionOptions,
 ) {
     let location = &options.directory;
+    let buffer_size = usize::try_from(options.buffer_size.get_bytes()).unwrap();
 
     context.shell.status(
         "Beginning",
@@ -121,6 +123,7 @@ pub fn run(
                 event,
                 &mut collectors,
                 location,
+                buffer_size,
                 &flush_log_ref,
                 &context.shell,
             );
@@ -213,6 +216,7 @@ fn handle_event(
     event: CollectionEvent,
     collectors: &mut HashMap<String, RefCell<Collector>>,
     logs_location: &Path,
+    buffer_capacity: usize,
     flush_log: &Option<Arc<Mutex<FlushLog>>>,
     shell: &Shell,
 ) {
@@ -229,7 +233,13 @@ fn handle_event(
                 CollectionMethod::LinuxCgroups(path) => {
                     let id = target.id.clone();
                     let flush_log_c = flush_log.as_ref().map(|r| Arc::clone(r));
-                    match Collector::create(logs_location, target, &path, flush_log_c) {
+                    match Collector::create(
+                        logs_location,
+                        target,
+                        &path,
+                        buffer_capacity,
+                        flush_log_c,
+                    ) {
                         Ok(new_collector) => {
                             collectors.insert(id, RefCell::new(new_collector));
                         },

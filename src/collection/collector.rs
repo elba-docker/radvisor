@@ -15,9 +15,6 @@ use csv::{Writer, WriterBuilder};
 use failure::Error;
 use serde::Serialize;
 
-/// CSV writer buffer length
-const BUFFER_LENGTH: usize = 4 * 1024 * 1024;
-
 /// Contains the file handle for the open stats file as well as the file handles
 /// for /proc virtual files used during reading the system stats. `active` is
 /// used during difference resolution to mark inactive collectors for
@@ -52,6 +49,7 @@ impl Collector {
         logs_location: &Path,
         target: CollectionTarget,
         cgroup: &CgroupPath,
+        buffer_capacity: usize,
         event_log: Option<Arc<Mutex<FlushLog>>>,
     ) -> Result<Self, Error> {
         // Ensure directories exist before creating the collector
@@ -62,7 +60,7 @@ impl Collector {
             .create(true)
             .append(true)
             .open(path)?;
-        let collector = Self::new(file, target, cgroup, event_log)?;
+        let collector = Self::new(file, target, cgroup, buffer_capacity, event_log)?;
         Ok(collector)
     }
 
@@ -82,6 +80,7 @@ impl Collector {
         file: File,
         target: CollectionTarget,
         cgroup: &CgroupPath,
+        buffer_capacity: usize,
         event_log: Option<Arc<Mutex<FlushLog>>>,
     ) -> Result<Self, Error> {
         let header = LogFileHeader {
@@ -101,7 +100,7 @@ impl Collector {
 
         // Initialize the CSV writer and then write the header row
         let mut writer = WriterBuilder::new()
-            .buffer_capacity(BUFFER_LENGTH)
+            .buffer_capacity(buffer_capacity)
             .from_writer(FlushLogger::new(file, target.id.clone(), event_log));
         writer.write_byte_record(collect::get_header())?;
 

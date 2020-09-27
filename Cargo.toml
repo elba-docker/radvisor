@@ -66,11 +66,11 @@ atty = "0.2.14"
 humantime = "2.0.0"
 strum = "0.18.0"
 strum_macros = "0.18.0"
+byte-unit = "4.0.9"
 # TODO: remove github link and migrate to stable version once
 # https://github.com/FillZpp/sys-info-rs/pull/54 is merged
 sys-info = { git = "https://github.com/jazevedo620/sys-info-rs" }
-# TODO: remove github link and migrate to stable version once 3.0 is released
-clap = { git = "https://github.com/clap-rs/clap/", default-features = false, features = [ "std", "suggestions", "color", "derive", "wrap_help" ] }
+clap = { version = "3.0.0-beta.2", default-features = false, features = [ "std", "suggestions", "color", "derive", "wrap_help" ] }
 # Kubernetes-specific dependencies
 kube = { version = "0.31.0", optional = true }
 kube-derive = { version = "0.31.0", optional = true }

@@ -21,23 +21,18 @@ pub const VERSION: Option<&'static str> = option_env!("CARGO_PKG_VERSION");
     about = "Build tools for rAdvisor"
 )]
 pub struct Opts {
-    /// target directory to place generated completions/manpages in
+    /// Target directory to place generated completions/manpages in
     #[clap(
         parse(from_os_str),
-        short = "o",
+        short = 'o',
         long = "out-dir",
-        help = "Target directory to place generated completions/manpages in",
         default_value = "./out"
     )]
     pub directory: PathBuf,
 
-    #[clap(
-        parse(from_os_str),
-        short = "r",
-        long = "repo-root",
-        help = "Source directory which is the project root of the cloned git repo (needed for \
-                building docs)"
-    )]
+    /// Source directory which is the project root of the cloned git repo
+    /// (needed for \ building docs)
+    #[clap(parse(from_os_str), short = 'r', long = "repo-root")]
     pub repo_root: Option<PathBuf>,
 
     // Shell output-related options
