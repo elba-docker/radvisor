@@ -1,6 +1,6 @@
 [package]
 name = "radvisor"
-version = "1.2.0"
+version = "1.2.1"
 authors = ["Joseph Azevedo <joseph.az@gatech.edu>", "Bhanu Garg <bgarg6@gatech.edu>"]
 description = """\
 Resource utilization monitor for Docker containers & Kubernetes pods

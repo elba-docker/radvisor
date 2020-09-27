@@ -13,7 +13,7 @@
 
 ```yaml
 ---
-Version: 1.2.0
+Version: 1.2.1
 Provider: docker
 Created: "2020-03-24T07:27:49Z"
 Command: "bash -c 'while true; do sleep 2; done'"
@@ -45,7 +45,7 @@ More information about what each column represents can be found in the [docs pag
 
 ```yaml
 ---
-Version: 1.2.0
+Version: 1.2.1
 Provider: kubernetes
 Uid: 9f0b1893-15e7-442a-966a-b0d19a35fc1c
 Name: kube-proxy-hsplg
@@ -152,10 +152,10 @@ cargo build --release --bins \
    Compiling cfg-if v0.1.10
    ...
    Compiling shiplift v0.6.0
-   Compiling radvisor v1.2.0 (/home/jazev/dev/radvisor)
+   Compiling radvisor v1.2.1 (/home/jazev/dev/radvisor)
     Finished release [optimized] target(s) in 4m 52s
 $ ./radvisor --version
-radvisor 1.2.0
+radvisor 1.2.1
 ```
 
 ## ⚖️ License

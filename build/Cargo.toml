@@ -1,6 +1,6 @@
 [package]
 name = "radvisor-toolbox"
-version = "1.2.0"
+version = "1.2.1"
 authors = ["Joseph Azevedo <joseph.az@gatech.edu>"]
 description = """\
 Collection of related CLI tools for `rAdvisor`,
