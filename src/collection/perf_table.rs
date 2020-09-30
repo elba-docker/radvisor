@@ -12,9 +12,11 @@ pub struct TableMetadata {
 
 /// Contains the definitions for a single column
 #[derive(Clone, Debug, PartialEq, Serialize)]
-#[serde(untagged, rename_all = "PascalCase")]
+#[serde(untagged)]
 pub enum Column {
+    #[serde(rename_all = "PascalCase")]
     Scalar { r#type: ColumnType },
+    #[serde(rename_all = "PascalCase")]
     Vector { r#type: ColumnType, count: usize },
 }
 
