@@ -33,7 +33,7 @@ pub fn terminal_width(stream: atty::Stream) -> Option<usize> { terminal::width(s
 
 /// Attempts to map a number range into another, falling back to 0 if the
 /// conversion failed
-fn remap<S, D: TryFrom<S> + From<bool>>(num: S) -> D {
+pub fn remap<S, D: TryFrom<S> + From<bool>>(num: S) -> D {
     match D::try_from(num) {
         Ok(d) => d,
         Err(_) => D::from(false),

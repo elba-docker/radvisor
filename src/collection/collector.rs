@@ -3,6 +3,7 @@ use crate::collection::collect;
 use crate::collection::collect::files::ProcFileHandles;
 use crate::collection::collect::read::StatFileLayout;
 use crate::collection::flush::{FlushLog, FlushLogger};
+use crate::collection::perf_table::TableMetadata;
 use crate::collection::system_info::SystemInfo;
 use crate::shared::CollectionTarget;
 use crate::util::{self, CgroupDriver, CgroupPath};
@@ -34,6 +35,7 @@ struct LogFileHeader<'a> {
     version:        &'static str,
     provider:       &'static str,
     metadata:       &'a Option<serde_yaml::Value>,
+    perf_table:     &'a TableMetadata,
     system:         SystemInfo,
     cgroup:         &'a PathBuf,
     cgroup_driver:  &'a CgroupDriver,
@@ -50,6 +52,7 @@ impl Collector {
         target: CollectionTarget,
         cgroup: &CgroupPath,
         buffer_capacity: usize,
+        perf_table: &Arc<TableMetadata>,
         event_log: Option<Arc<Mutex<FlushLog>>>,
     ) -> Result<Self, Error> {
         // Ensure directories exist before creating the collector
@@ -60,7 +63,7 @@ impl Collector {
             .create(true)
             .append(true)
             .open(path)?;
-        let collector = Self::new(file, target, cgroup, buffer_capacity, event_log)?;
+        let collector = Self::new(file, target, cgroup, buffer_capacity, perf_table, event_log)?;
         Ok(collector)
     }
 
@@ -81,16 +84,18 @@ impl Collector {
         target: CollectionTarget,
         cgroup: &CgroupPath,
         buffer_capacity: usize,
+        perf_table: &Arc<TableMetadata>,
         event_log: Option<Arc<Mutex<FlushLog>>>,
     ) -> Result<Self, Error> {
         let header = LogFileHeader {
-            version:        cli::VERSION.unwrap_or("unknown"),
-            provider:       target.provider,
-            metadata:       &target.metadata,
-            system:         SystemInfo::get(),
-            cgroup:         &cgroup.path,
-            cgroup_driver:  &cgroup.driver,
+            version: cli::VERSION.unwrap_or("unknown"),
+            provider: target.provider,
+            metadata: &target.metadata,
+            system: SystemInfo::get(),
+            cgroup: &cgroup.path,
+            cgroup_driver: &cgroup.driver,
             initialized_at: util::nano_ts(),
+            perf_table,
         };
 
         // Write the YAML header to the file before initializing the CSV writer

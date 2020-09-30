@@ -1,6 +1,8 @@
 use crate::collection::collect::files::ProcFileHandles;
 use crate::collection::collector::Collector;
+use crate::collection::perf_table::{Column, ColumnType, TableMetadata};
 use crate::util::{self, AnonymousSlice, Buffer, BufferLike};
+use std::collections::BTreeMap;
 
 use csv::{ByteRecord, Error};
 
@@ -55,6 +57,27 @@ lazy_static::lazy_static! {
 
     /// Length of each row of the collected stats
     static ref ROW_LENGTH: usize = HEADER.len();
+}
+
+/// Gets the perf table metadata for this collection setup
+/// (currently static)
+#[must_use]
+pub fn get_table_metadata() -> TableMetadata {
+    let mut columns: BTreeMap<String, Column> = BTreeMap::new();
+    // Include metadata on the read (timestamp) column
+    columns.insert(String::from("read"), Column::Scalar {
+        r#type: ColumnType::Epoch19,
+    });
+    // Include metadata on the cpu.usage.percpu column,
+    // which is a vector column that contains a space-delimited entry per CPU
+    columns.insert(String::from("cpu.usage.percpu"), Column::Vector {
+        r#type: ColumnType::Int,
+        count:  util::remap::<_, usize>(util::num_cores()),
+    });
+    TableMetadata {
+        delimiter: ",",
+        columns,
+    }
 }
 
 /// Gets an amortized byte record containing the entries for a header row in the

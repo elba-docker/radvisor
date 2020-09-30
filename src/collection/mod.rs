@@ -1,12 +1,14 @@
 pub mod collect;
 pub mod collector;
 pub mod flush;
+mod perf_table;
 pub mod system_info;
 
 use crate::cli::CollectionOptions;
 use crate::collection::collect::WorkingBuffers;
 use crate::collection::collector::Collector;
 use crate::collection::flush::FlushLog;
+use crate::collection::perf_table::TableMetadata;
 use crate::shared::{CollectionEvent, CollectionMethod, IntervalWorkerContext};
 use crate::shell::Shell;
 use crate::timer::{Stoppable, Timer};
@@ -31,6 +33,7 @@ type CollectorMap = Arc<Mutex<HashMap<String, RefCell<Collector>>>>;
 
 /// Thread function that collects all active targets and updates the active
 /// list, if possible
+#[allow(clippy::too_many_lines)]
 pub fn run(
     rx: &Receiver<CollectionEvent>,
     context: IntervalWorkerContext,
@@ -49,6 +52,9 @@ pub fn run(
 
     let (timer, stop_handle) = Timer::new(context.interval);
     let collectors: CollectorMap = Arc::new(Mutex::new(HashMap::new()));
+
+    // Initialize the table metadata
+    let table_metadata = Arc::new(collect::get_table_metadata());
 
     // If we are monitoring events, initialize the event log
     let flush_log = match &options.flush_log {
@@ -124,6 +130,7 @@ pub fn run(
                 &mut collectors,
                 location,
                 buffer_size,
+                &table_metadata,
                 &flush_log_ref,
                 &context.shell,
             );
@@ -217,6 +224,7 @@ fn handle_event(
     collectors: &mut HashMap<String, RefCell<Collector>>,
     logs_location: &Path,
     buffer_capacity: usize,
+    table_metadata: &Arc<TableMetadata>,
     flush_log: &Option<Arc<Mutex<FlushLog>>>,
     shell: &Shell,
 ) {
@@ -238,6 +246,7 @@ fn handle_event(
                         target,
                         &path,
                         buffer_capacity,
+                        &Arc::clone(table_metadata),
                         flush_log_c,
                     ) {
                         Ok(new_collector) => {
