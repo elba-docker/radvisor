@@ -39,6 +39,7 @@ struct LogFileHeader<'a> {
     system:         SystemInfo,
     cgroup:         &'a PathBuf,
     cgroup_driver:  &'a CgroupDriver,
+    polled_at:      u128,
     initialized_at: u128,
 }
 
@@ -94,6 +95,7 @@ impl Collector {
             system: SystemInfo::get(),
             cgroup: &cgroup.path,
             cgroup_driver: &cgroup.driver,
+            polled_at: target.poll_time,
             initialized_at: util::nano_ts(),
             perf_table,
         };

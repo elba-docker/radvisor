@@ -38,11 +38,13 @@ pub enum CollectionMethod {
 #[serde(rename_all = "PascalCase")]
 pub struct CollectionTarget {
     /// Provider type that generated the collection target
-    pub provider: &'static str,
+    pub provider:  &'static str,
     /// Unique ID
-    pub id:       Id,
+    pub id:        Id,
     /// Human-readable entity string
-    pub name:     String,
+    pub name:      String,
     /// Optional partially serialized metadata
-    pub metadata: Option<serde_yaml::Value>,
+    pub metadata:  Option<serde_yaml::Value>,
+    /// Time of polling
+    pub poll_time: u128,
 }
