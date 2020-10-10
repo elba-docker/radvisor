@@ -38,6 +38,7 @@ PerfTable:
 System:
   OsType: Linux
   OsRelease: 5.8.10-arch1-1
+  Distribution: ~
   MemoryTotal: 24597676
   SwapTotal: 24641532
   Hostname: test-machine
@@ -74,11 +75,40 @@ Metadata:
     k8s-app: kube-proxy
     pod-template-generation: "1"
   Namespace: kube-system
-  NodeName: node2.radvisor-sandbox.infosphere-pg0.clemson.cloudlab.us
+  NodeName: node-0.sandbox.infosphere.emulab.net
   HostIp: 130.127.133.26
   Phase: Running
   QosClass: BestEffort
   StartedAt: "2020-03-29T04:32:36Z"
+PerfTable:
+  Delimiter: ","
+  Columns:
+    cpu.usage.percpu:
+      Type: int
+      Count: 32
+    read:
+      Type: epoch19
+System:
+  OsType: Linux
+  OsRelease: 4.15.0
+  Distribution:
+    Id: ubuntu
+    IdLike: debian
+    Name: Ubuntu
+    PrettyName: Ubuntu 18.04.1 LTS
+    Version: 18.04.1 LTS (Bionic Beaver)
+    VersionId: "18.04"
+    VersionCodename: bionic
+    CpeName: ~
+    BuildId: ~
+    Variant: ~
+    VariantId: ~
+  MemoryTotal: 65870408
+  SwapTotal: 3145724
+  Hostname: node-0.sandbox.infosphere.emulab.net
+  CpuCount: 32
+  CpuOnlineCount: 32
+  CpuSpeed: 1198
 PolledAt: 1585470948008442929
 Cgroup: /kubepods.slice/kubepods-besteffort.slice/kubepods-besteffort-pod9f0b1893_15e7_442a_966a_b0d19a35fc1c.slice
 CgroupDriver: systemd
