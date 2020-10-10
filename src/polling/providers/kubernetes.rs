@@ -43,11 +43,11 @@ pub struct Kubernetes {
 #[derive(Debug)]
 enum KubernetesInitError {
     InvalidCgroupMount,
-    InvalidHostnameError,
-    ConfigLoadError,
+    InvalidHostnameError(std::ffi::OsString),
+    ConfigLoadError(Error),
     NodeDetectionError,
     NodeFetchError(Error),
-    InitialPodFetchError,
+    InitialPodFetchError(Error),
     MissingNodeNameError,
 }
 
@@ -57,12 +57,12 @@ impl Into<InitializationError> for KubernetesInitError {
         InitializationError {
             suggestion: match self {
                 Self::InvalidCgroupMount => util::INVALID_CGROUP_MOUNT_MESSAGE.to_owned(),
-                Self::InvalidHostnameError => "Could not retrieve hostname to use for node \
-                                               detection: Invalid string returned"
+                Self::InvalidHostnameError(_) => "Could not retrieve hostname to use for node \
+                                                  detection: Invalid string returned"
                     .to_owned(),
-                Self::ConfigLoadError => "Could not load kubernetes config. Make sure the current \
-                                          machine is a part of a cluster and has the cluster \
-                                          configuration copied to the config directory."
+                Self::ConfigLoadError(_) => "Could not load kubernetes config. Make sure the \
+                                             current machine is a part of a cluster and has the \
+                                             cluster configuration copied to the config directory."
                     .to_owned(),
                 Self::NodeDetectionError => "Could not get the current node via the Kubernetes \
                                              API. Make sure the current machine is running its \
@@ -72,9 +72,9 @@ impl Into<InitializationError> for KubernetesInitError {
                     "Could not get list of nodes in the Kubernetes cluster: {}",
                     err
                 ),
-                Self::InitialPodFetchError => "Could not get the list of pods running on the \
-                                               current machine. Make sure the node can access the \
-                                               API."
+                Self::InitialPodFetchError(_) => "Could not get the list of pods running on the \
+                                                  current machine. Make sure the node can access \
+                                                  the API."
                     .to_owned(),
                 Self::MissingNodeNameError => "The node running on the current host lacks a Name \
                                                field. The pod polling cannot function without \
@@ -265,7 +265,7 @@ impl Kubernetes {
 
         let config = self
             .exec(config::load_kube_config())
-            .map_err(|_| KubernetesInitError::ConfigLoadError)?;
+            .map_err(|err| KubernetesInitError::ConfigLoadError(Error::from(err)))?;
         self.client = Some(Client::from(config));
 
         // Get current node by hostname and store in provider
@@ -290,7 +290,7 @@ impl Kubernetes {
 
         let hostname = gethostname()
             .into_string()
-            .map_err(|_| KubernetesInitError::InvalidHostnameError)?;
+            .map_err(KubernetesInitError::InvalidHostnameError)?;
 
         // Try to get a node with the given hostname
         nodes
@@ -311,7 +311,7 @@ impl Kubernetes {
         let lp = ListParams::default().fields(&selector).timeout(10);
 
         self.exec(Reflector::new(self.client().clone(), lp, resource).init())
-            .map_err(|_| KubernetesInitError::InitialPodFetchError)
+            .map_err(|err| KubernetesInitError::InitialPodFetchError(Error::from(err)))
     }
 
     /// Determines whether the node's hostname is equal to the given hostname

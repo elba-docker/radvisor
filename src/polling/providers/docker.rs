@@ -22,16 +22,16 @@ pub struct Docker {
 }
 
 /// Possible errors that can occur during Docker provider initialization
-#[derive(Clone, Copy, Debug)]
+#[derive(Debug)]
 enum DockerInitError {
-    ConnectionFailed,
+    ConnectionFailed(shiplift::Error),
     InvalidCgroupMount,
 }
 
 impl Into<InitializationError> for DockerInitError {
     fn into(self) -> InitializationError {
         match self {
-            Self::ConnectionFailed => InitializationError {
+            Self::ConnectionFailed(_) => InitializationError {
                 suggestion: String::from(
                     "Could not connect to the docker socket. Are you running rAdvisor as \
                      root?\nIf running at a non-standard URL, set DOCKER_HOST to the correct URL.",
@@ -180,7 +180,7 @@ impl Docker {
         let future = self.client.ping();
         self.runtime
             .block_on(future)
-            .map_err(|_| DockerInitError::ConnectionFailed)?;
+            .map_err(DockerInitError::ConnectionFailed)?;
 
         // Make sure cgroups are mounted properly
         if !util::cgroups_mounted_properly() {
