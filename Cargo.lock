@@ -1617,7 +1617,7 @@ dependencies = [
 
 [[package]]
 name = "radvisor"
-version = "1.2.1"
+version = "1.2.2"
 dependencies = [
  "atty",
  "bus",
@@ -1651,7 +1651,7 @@ dependencies = [
 
 [[package]]
 name = "radvisor-toolbox"
-version = "1.2.1"
+version = "1.2.2"
 dependencies = [
  "clap 3.0.0-beta.2",
  "clap_generate",
