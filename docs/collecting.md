@@ -282,7 +282,7 @@ More information: [Kernel docs](https://www.kernel.org/doc/html/latest/admin-gui
 
 #### `blkio.io_service_bytes_recursive`
 
-reports the number of bytes transferred to or from specific devices by a cgroup as seen by the CFQ scheduler. Entries have four fields: *major*, *minor*, *operation*, and *bytes*. *Major* and *minor* are device types and node numbers specified in *Linux Allocated Devices*, *operation* represents the type of operation (`read`, `write`, `sync`, or `async`) and *bytes* is theMajor and minor are device types and node numbers specified in Linux Allocated Devices, operation represents the type of operation (read, write, sync, or async) and 
+reports the number of bytes transferred to or from specific devices by a cgroup as seen by the CFQ scheduler. Entries have four fields: *major*, *minor*, *operation*, and *bytes*. *Major* and *minor* are device types and node numbers specified in *Linux Allocated Devices*, *operation* represents the type of operation (`read`, `write`, `sync`, or `async`) and *bytes* is theMajor and minor are device types and node numbers specified in Linux Allocated Devices, operation represents the type of operation (read, write, sync, or async) and
 
 Source: [Red Hat Customer Portal](https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/6/html/resource_management_guide/ch-subsystems_and_tunable_parameters#sec-blkio)
 
@@ -296,6 +296,16 @@ Source: [Red Hat Customer Portal](https://access.redhat.com/documentation/en-us/
 8:0 Total 109191168
 Total 109191168
 ```
+
+##### rAdvisor Representation
+
+The previous snippet turns into a CSV entry that looks like:
+
+```
+"8:0 Read 34787328,8:0 Write 74403840,8:0 Sync 37494784,8:0 Async 71696384,8:0 Total 109191168,Total 109191168"
+```
+
+**Note that this is a single CSV cell**
 
 #### `blkio.io_serviced_recursive`
 
@@ -372,7 +382,7 @@ Total 183392434610
 
 #### `blkio.io_merged_recursive`
 
-reports the number of BIOS requests merged into requests for I/O operations by a cgroup. Entries have two fields: *number* and *operation*. *Number* is the number of requests, and *operation* represents the type of operation (`read`, `write`, `sync`, or `async`). 
+reports the number of BIOS requests merged into requests for I/O operations by a cgroup. Entries have two fields: *number* and *operation*. *Number* is the number of requests, and *operation* represents the type of operation (`read`, `write`, `sync`, or `async`).
 
 Source: [Red Hat Customer Portal](https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/6/html/resource_management_guide/ch-subsystems_and_tunable_parameters#sec-blkio)
 
@@ -410,3 +420,18 @@ Source: [Red Hat Customer Portal](https://access.redhat.com/documentation/en-us/
 ```
 8:0 213264
 ```
+
+#### Additional `blkio` entries
+
+There are four additional entries in the rAdvisor logfiles:
+
+```
+blkio.throttle.service.bytes,
+blkio.throttle.service.ios,
+blkio.bfq.service.bytes,
+blkio.bfq.service.ios
+```
+
+These correspond to `blkio.service.bytes` and `blkio.service.ios` but for slightly different statistics (since the presence of these files depends on system configuration). See [the Red Hat Customer Portal article on throttled blkio](https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/6/html/resource_management_guide/ch-subsystems_and_tunable_parameters#blkio-throttling) for more information on the `.throttle` entries. For the `.bfq` entries, these are likely related to the [Budget Fair Queueing I/O scheduler](https://www.kernel.org/doc/html/latest/block/bfq-iosched.html) in the Linux kernel.
+
+**Note: these files are not always present.**

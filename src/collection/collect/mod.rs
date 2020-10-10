@@ -52,7 +52,11 @@ lazy_static::lazy_static! {
         "blkio.wait",
         "blkio.merged",
         "blkio.time",
-        "blkio.sectors"
+        "blkio.sectors",
+        "blkio.throttle.service.bytes",
+        "blkio.throttle.service.ios",
+        "blkio.bfq.service.bytes",
+        "blkio.bfq.service.ios",
     ]);
 
     /// Length of each row of the collected stats
@@ -239,4 +243,8 @@ fn collect_blkio(buffers: &mut WorkingBuffers, handles: &ProcFileHandles) {
     read::all(&handles.blkio_io_merged, buffers);
     read::all(&handles.blkio_time, buffers);
     read::all(&handles.blkio_sectors, buffers);
+    read::all(&handles.blkio_throttle_io_service_bytes, buffers);
+    read::all(&handles.blkio_throttle_io_serviced, buffers);
+    read::all(&handles.blkio_bfq_io_service_bytes, buffers);
+    read::all(&handles.blkio_bfq_io_serviced, buffers);
 }
