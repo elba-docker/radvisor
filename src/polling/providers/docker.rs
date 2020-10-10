@@ -209,10 +209,11 @@ impl Docker {
         Ok(CollectionEvent::Start {
             method,
             target: CollectionTarget {
-                provider: PROVIDER_TYPE,
-                metadata: Some(metadata),
-                name:     container.names.get(0).unwrap_or(&container.id).clone(),
-                id:       container.id.clone(),
+                provider:  PROVIDER_TYPE,
+                metadata:  Some(metadata),
+                name:      container.names.get(0).unwrap_or(&container.id).clone(),
+                poll_time: util::nano_ts(),
+                id:        container.id.clone(),
             },
         })
     }

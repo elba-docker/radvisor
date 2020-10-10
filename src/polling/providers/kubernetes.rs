@@ -356,10 +356,11 @@ impl Kubernetes {
         Ok(CollectionEvent::Start {
             method,
             target: CollectionTarget {
-                provider: PROVIDER_TYPE,
-                metadata: Some(metadata),
-                name:     name(pod).to_owned(),
-                id:       uid.to_owned(),
+                provider:  PROVIDER_TYPE,
+                metadata:  Some(metadata),
+                name:      name(pod).to_owned(),
+                poll_time: util::nano_ts(),
+                id:        uid.to_owned(),
             },
         })
     }
@@ -440,7 +441,6 @@ struct PodInfo<'a> {
     phase:      &'a Option<String>,
     qos_class:  &'a Option<String>,
     started_at: &'a Option<Time>,
-    polled_at:  u128,
 }
 
 impl<'a> PodInfo<'a> {
@@ -482,7 +482,6 @@ impl<'a> PodInfo<'a> {
             phase,
             qos_class,
             started_at,
-            polled_at: util::nano_ts(),
         }
     }
 }
