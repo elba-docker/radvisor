@@ -1,7 +1,12 @@
 use crate::collection::collect::{AnonymousSlice, WorkingBuffers};
 use crate::util::{self, Buffer, BufferLike};
 use std::fs::File;
-use std::io::{Read, Seek, SeekFrom};
+use std::io::{self, Read, Seek, SeekFrom, Write};
+
+use atoi::{atoi, FromRadix10Checked};
+use csv::ByteRecord;
+use itoa::{self, Integer};
+use num_traits::ops::saturating::SaturatingAdd;
 
 const EMPTY_BUFFER: &[u8] = &[];
 
@@ -269,4 +274,206 @@ fn copy_lines_to_commas<const S: usize, const T: usize>(
     if comma_at_end {
         target.b[start - 1] = 0_u8;
     }
+}
+
+enum LazyQuantity<'a, T: FromRadix10Checked + SaturatingAdd + Integer> {
+    /// Contains a zero quantity (result of no aggregation)
+    Zero,
+    /// Contains a single quantity in its textual form
+    Single(&'a [u8]),
+    /// Contains an aggregated quantity in its numeric form
+    Aggregate(T),
+}
+
+impl<'a, T: FromRadix10Checked + SaturatingAdd + Integer> LazyQuantity<'a, T> {
+    /// Adds the given quantity to this one
+    fn add<'b: 'a>(self, quantity: &'b [u8]) -> Self {
+        match self {
+            Self::Zero => Self::Single(quantity),
+            Self::Single(current) => {
+                match atoi::<T>(current) {
+                    // If the conversion failed, downgrade
+                    None => Self::Single(quantity),
+                    // Otherwise, call the number + number case
+                    Some(as_int) => Self::Aggregate(as_int).add(quantity),
+                }
+            },
+            Self::Aggregate(ref current_int) => match atoi::<T>(quantity) {
+                None => self,
+                Some(as_int) => Self::Aggregate(current_int.saturating_add(&as_int)),
+            },
+        }
+    }
+
+    /// Writes the quantity into the buffer
+    fn write_to<const SIZE: usize>(self, dest: &mut Buffer<SIZE>) -> io::Result<usize> {
+        match self {
+            Self::Zero => dest.write(b"0"),
+            Self::Single(current) => dest.write(current),
+            Self::Aggregate(current_int) => itoa::write(dest, current_int),
+        }
+    }
+
+    /// Writes the quantity to a record, using the working buffer as an
+    /// intermediate
+    fn write_to_record<const SIZE: usize>(
+        self,
+        working: &mut Buffer<SIZE>,
+        record: &mut ByteRecord,
+    ) {
+        // Write the quantity to to the temporary copy buffer
+        working.len = match self.write_to(working) {
+            Ok(n) => n,
+            Err(_) => 0,
+        };
+
+        // Write to the record
+        record.push_field(working.content());
+        working.clear();
+    }
+}
+
+impl<'a, T: FromRadix10Checked + SaturatingAdd + Integer> Default for LazyQuantity<'a, T> {
+    fn default() -> Self { Self::Zero }
+}
+
+/// Group of I/O quantities that are added up
+#[derive(Default)]
+struct IoQuantities<'a> {
+    read_total:  LazyQuantity<'a, u64>,
+    write_total: LazyQuantity<'a, u64>,
+    sync_total:  LazyQuantity<'a, u64>,
+    async_total: LazyQuantity<'a, u64>,
+}
+
+/// Tries to read an IO file and creates aggregate stats for
+/// read, write, sync, and async.
+/// The original files are in the form of:
+/// ```
+/// 8:0 Read 4272128
+/// 8:0 Write 0
+/// 8:0 Sync 4272128
+/// 8:0 Async 0
+/// 8:0 Discard 0
+/// 8:0 Total 4272128
+/// 11:0 Read 1073152
+/// 11:0 Write 0
+/// 11:0 Sync 1073152
+/// 11:0 Async 0
+/// 11:0 Discard 0
+/// 11:0 Total 1073152
+/// Total 5345280
+/// ```
+pub fn io(file: &Option<File>, buffers: &mut WorkingBuffers) {
+    // Ignore errors: the buffer will just remain empty
+    read_to_buffer(file, buffers);
+
+    let trimmed = buffers.buffer.trim();
+    if util::content_len_raw(trimmed) == 0 {
+        // Buffer ended up empty; prevent writing NUL bytes
+        buffers.record.push_field(&EMPTY_BUFFER[..]);
+    } else {
+        // Scan each line and aggregate into 4 records
+        aggregate_lines(buffers);
+    }
+
+    buffers.buffer.clear();
+}
+
+/// Scans each line in the buffer and aggregates the trailing numbers
+/// to make entries for read, write, sync, and async
+fn aggregate_lines<'a>(buffers: &'a mut WorkingBuffers) {
+    // File contained contents:
+    // parse each line and keep track of each total
+    let mut quantities: IoQuantities<'a> = IoQuantities::default();
+    let lines = util::ByteLines::new(&buffers.buffer.b);
+    for (line, _) in lines {
+        // Get the category in the middle
+        if let Some(space) = util::find_char(line, 0, util::is_space) {
+            let category_to_end = &line[(space + 1)..];
+            if let Some(number_slice) = parse_category(category_to_end, b"Read") {
+                quantities.read_total = quantities.read_total.add(number_slice);
+            } else if let Some(number_slice) = parse_category(category_to_end, b"Write") {
+                quantities.write_total = quantities.write_total.add(number_slice);
+            } else if let Some(number_slice) = parse_category(category_to_end, b"Sync") {
+                quantities.sync_total = quantities.sync_total.add(number_slice);
+            } else if let Some(number_slice) = parse_category(category_to_end, b"Async") {
+                quantities.async_total = quantities.async_total.add(number_slice);
+            }
+        }
+    }
+
+    // Add each quantity to the record (consuming them)
+    let IoQuantities {
+        read_total,
+        write_total,
+        sync_total,
+        async_total,
+    } = quantities;
+    read_total.write_to_record(&mut buffers.copy_buffer, &mut buffers.record);
+    write_total.write_to_record(&mut buffers.copy_buffer, &mut buffers.record);
+    sync_total.write_to_record(&mut buffers.copy_buffer, &mut buffers.record);
+    async_total.write_to_record(&mut buffers.copy_buffer, &mut buffers.record);
+}
+
+/// Determines if the slice starts with the given category prefix,
+/// and if it does, parses the number at the end of the slice
+fn parse_category<'a>(slice: &'a [u8], prefix: &[u8]) -> Option<&'a [u8]> {
+    if slice.len() < prefix.len() {
+        return None;
+    }
+
+    // Make sure that the slice starts with the category prefix
+    for (i, b) in prefix.iter().enumerate() {
+        if slice[i] != *b {
+            return None;
+        }
+    }
+
+    // Search for the second delimiter
+    if let Some(space) = util::find_char(slice, 0, util::is_space) {
+        return Some(&slice[(space + 1)..]);
+    }
+
+    None
+}
+
+/// Tries to read a simple IO file and aggregates to make a total.
+/// The original files are in the form of:
+/// ```
+/// 8:0 213264
+/// 11:0 0
+/// ```
+pub fn simple_io(file: &Option<File>, buffers: &mut WorkingBuffers) {
+    // Ignore errors: the buffer will just remain empty
+    read_to_buffer(file, buffers);
+
+    let trimmed = buffers.buffer.trim();
+    if util::content_len_raw(trimmed) == 0 {
+        // Buffer ended up empty; prevent writing NUL bytes
+        buffers.record.push_field(&EMPTY_BUFFER[..]);
+    } else {
+        // Scan each line and aggregate into a single record
+        aggregate_lines_simple(buffers);
+    }
+
+    buffers.buffer.clear();
+}
+
+/// Scans each line in the buffer and aggregates the trailing numbers
+/// to make a single entry, which is written to the record
+fn aggregate_lines_simple<'a>(buffers: &'a mut WorkingBuffers) {
+    // File contained contents:
+    // parse each line and keep track of total
+    let mut quantity: LazyQuantity<'a, u64> = LazyQuantity::default();
+    let lines = util::ByteLines::new(&buffers.buffer.b);
+    for (line, _) in lines {
+        // Get the number at the end
+        if let Some(space) = util::find_char(line, 0, util::is_space) {
+            let number_slice = &line[(space + 1)..];
+            quantity = quantity.add(number_slice);
+        }
+    }
+
+    quantity.write_to_record(&mut buffers.copy_buffer, &mut buffers.record);
 }

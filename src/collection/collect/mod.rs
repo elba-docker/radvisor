@@ -11,7 +11,15 @@ pub mod read;
 
 lazy_static::lazy_static! {
     /// CSV header for the stats collector
-    static ref HEADER: ByteRecord = ByteRecord::from(vec![
+    static ref HEADER: ByteRecord = ByteRecord::from(get_headers());
+
+    /// Length of each row of the collected stats
+    static ref ROW_LENGTH: usize = HEADER.len();
+}
+
+/// Creates the headers for the logfiles
+fn get_headers() -> Vec<String> {
+    let mut headers = (vec![
         "read",
         "pids.current",
         "pids.max",
@@ -45,22 +53,35 @@ lazy_static::lazy_static! {
         "memory.file.inactive",
         "memory.file.active",
         "memory.unevictable",
-        "blkio.service.bytes",
-        "blkio.service.ios",
-        "blkio.service.time",
-        "blkio.queued",
-        "blkio.wait",
-        "blkio.merged",
         "blkio.time",
         "blkio.sectors",
-        "blkio.throttle.service.bytes",
-        "blkio.throttle.service.ios",
-        "blkio.bfq.service.bytes",
-        "blkio.bfq.service.ios",
-    ]);
+    ])
+    .into_iter()
+    .map(String::from)
+    .collect::<Vec<_>>();
 
-    /// Length of each row of the collected stats
-    static ref ROW_LENGTH: usize = HEADER.len();
+    // Add in the IO 4-part headers
+    append_io_headers(&mut headers, "blkio.service.bytes");
+    append_io_headers(&mut headers, "blkio.service.ios");
+    append_io_headers(&mut headers, "blkio.service.time");
+    append_io_headers(&mut headers, "blkio.queued");
+    append_io_headers(&mut headers, "blkio.wait");
+    append_io_headers(&mut headers, "blkio.merged");
+    append_io_headers(&mut headers, "blkio.throttle.service.bytes");
+    append_io_headers(&mut headers, "blkio.throttle.service.ios");
+    append_io_headers(&mut headers, "blkio.bfq.service.bytes");
+    append_io_headers(&mut headers, "blkio.bfq.service.ios");
+
+    headers
+}
+
+/// Expands a single I/O prefix to the 4 headers that will end up in the logfile
+/// (read, write, sync, async)
+pub fn append_io_headers(headers: &mut Vec<String>, base: &'static str) {
+    headers.push(base.to_owned() + ".read");
+    headers.push(base.to_owned() + ".write");
+    headers.push(base.to_owned() + ".sync");
+    headers.push(base.to_owned() + ".async");
 }
 
 /// Gets the perf table metadata for this collection setup
@@ -235,16 +256,16 @@ fn collect_memory(
 /// see <https://www.kernel.org/doc/Documentation/cgroup-v1/blkio-controller.txt>
 #[inline]
 fn collect_blkio(buffers: &mut WorkingBuffers, handles: &ProcFileHandles) {
-    read::all(&handles.blkio_io_service_bytes, buffers);
-    read::all(&handles.blkio_io_serviced, buffers);
-    read::all(&handles.blkio_io_service_time, buffers);
-    read::all(&handles.blkio_io_queued, buffers);
-    read::all(&handles.blkio_io_wait_time, buffers);
-    read::all(&handles.blkio_io_merged, buffers);
-    read::all(&handles.blkio_time, buffers);
-    read::all(&handles.blkio_sectors, buffers);
-    read::all(&handles.blkio_throttle_io_service_bytes, buffers);
-    read::all(&handles.blkio_throttle_io_serviced, buffers);
-    read::all(&handles.blkio_bfq_io_service_bytes, buffers);
-    read::all(&handles.blkio_bfq_io_serviced, buffers);
+    read::simple_io(&handles.blkio_time, buffers);
+    read::simple_io(&handles.blkio_sectors, buffers);
+    read::io(&handles.blkio_io_service_bytes, buffers);
+    read::io(&handles.blkio_io_serviced, buffers);
+    read::io(&handles.blkio_io_service_time, buffers);
+    read::io(&handles.blkio_io_queued, buffers);
+    read::io(&handles.blkio_io_wait_time, buffers);
+    read::io(&handles.blkio_io_merged, buffers);
+    read::io(&handles.blkio_throttle_io_service_bytes, buffers);
+    read::io(&handles.blkio_throttle_io_serviced, buffers);
+    read::io(&handles.blkio_bfq_io_service_bytes, buffers);
+    read::io(&handles.blkio_bfq_io_serviced, buffers);
 }
