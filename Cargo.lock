@@ -81,6 +81,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "atoi"
+version = "0.3.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e0afb7287b68575f5ca0e5c7e40191cbd4be59d325781f46faa603e176eaef47"
+dependencies = [
+ "num-traits",
+]
+
+[[package]]
 name = "atomic-option"
 version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1619,6 +1628,7 @@ dependencies = [
 name = "radvisor"
 version = "1.2.2"
 dependencies = [
+ "atoi",
  "atty",
  "bus",
  "byte-unit",
@@ -1636,6 +1646,7 @@ dependencies = [
  "kube-derive",
  "lazy_static",
  "libc",
+ "num-traits",
  "serde",
  "serde_yaml",
  "shiplift",

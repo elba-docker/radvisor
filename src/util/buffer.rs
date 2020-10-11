@@ -2,6 +2,7 @@
 //! additionally include length when in managed mode.
 
 use crate::util::byte::is_whitespace;
+use std::io;
 use std::str::from_utf8;
 
 use serde::{Serialize, Serializer};
@@ -40,7 +41,7 @@ pub trait BufferLike {
 
 impl<const SIZE: usize> Buffer<SIZE> {
     pub fn from_str_truncate<A: AsRef<str>>(src: A) -> Self {
-        // Copy the ID into the buffer
+        // Copy the string into the buffer
         let mut buffer = Self::default();
         let mut len = 0;
         for (i, b) in src.as_ref().bytes().enumerate() {
@@ -76,6 +77,24 @@ impl<const SIZE: usize> Serialize for Buffer<SIZE> {
             Err(err) => Err(Error::custom(err)),
         }
     }
+}
+
+impl<const SIZE: usize> io::Write for Buffer<SIZE> {
+    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+        let mut len = 0;
+        for (i, b) in buf.iter().enumerate() {
+            // Make sure we don't copy too far
+            if i >= SIZE {
+                break;
+            }
+            self.b[i] = *b;
+            len += 1;
+        }
+        self.len = len;
+        Ok(len)
+    }
+
+    fn flush(&mut self) -> io::Result<()> { Ok(()) }
 }
 
 impl<const SIZE: usize> BufferLike for Buffer<SIZE> {
