@@ -349,7 +349,7 @@ struct IoQuantities<'a> {
 /// Tries to read an IO file and creates aggregate stats for
 /// read, write, sync, and async.
 /// The original files are in the form of:
-/// ```
+/// ```txt
 /// 8:0 Read 4272128
 /// 8:0 Write 0
 /// 8:0 Sync 4272128
@@ -371,6 +371,9 @@ pub fn io(file: &Option<File>, buffers: &mut WorkingBuffers) {
     let trimmed = buffers.buffer.trim();
     if util::content_len_raw(trimmed) == 0 {
         // Buffer ended up empty; prevent writing NUL bytes
+        buffers.record.push_field(&EMPTY_BUFFER[..]);
+        buffers.record.push_field(&EMPTY_BUFFER[..]);
+        buffers.record.push_field(&EMPTY_BUFFER[..]);
         buffers.record.push_field(&EMPTY_BUFFER[..]);
     } else {
         // Scan each line and aggregate into 4 records
@@ -440,7 +443,7 @@ fn parse_category<'a>(slice: &'a [u8], prefix: &[u8]) -> Option<&'a [u8]> {
 
 /// Tries to read a simple IO file and aggregates to make a total.
 /// The original files are in the form of:
-/// ```
+/// ```txt
 /// 8:0 213264
 /// 11:0 0
 /// ```
