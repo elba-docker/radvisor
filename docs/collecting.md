@@ -299,13 +299,12 @@ Total 109191168
 
 ##### rAdvisor Representation
 
-The previous snippet turns into a CSV entry that looks like:
+The previous snippet gets broken into 4 different cells that end up at `blkio.service.bytes.*`:
 
+```csv
+blkio.service.bytes.read,blkio.service.bytes.write,blkio.service.bytes.sync,blkio.service.bytes.async
+34787328,74403840,37494784,71696384
 ```
-"8:0 Read 34787328,8:0 Write 74403840,8:0 Sync 37494784,8:0 Async 71696384,8:0 Total 109191168,Total 109191168"
-```
-
-**Note that this is a single CSV cell**
 
 #### `blkio.io_serviced_recursive`
 
@@ -423,7 +422,7 @@ Source: [Red Hat Customer Portal](https://access.redhat.com/documentation/en-us/
 
 #### Additional `blkio` entries
 
-There are four additional entries in the rAdvisor logfiles:
+There are four additional categories in the rAdvisor logfiles (each of which get the split into 4 other subcategories for read, write, sync, and async):
 
 ```
 blkio.throttle.service.bytes,
