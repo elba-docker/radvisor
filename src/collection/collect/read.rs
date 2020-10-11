@@ -1,12 +1,7 @@
 use crate::collection::collect::{AnonymousSlice, WorkingBuffers};
-use crate::util::{self, Buffer, BufferLike};
+use crate::util::{self, BufferLike, LazyQuantity};
 use std::fs::File;
-use std::io::{self, Read, Seek, SeekFrom, Write};
-
-use atoi::{atoi, FromRadix10Checked};
-use csv::ByteRecord;
-use itoa::{self, Integer};
-use num_traits::ops::saturating::SaturatingAdd;
+use std::io::{Read, Seek, SeekFrom};
 
 const EMPTY_BUFFER: &[u8] = &[];
 
@@ -224,119 +219,6 @@ fn read_to_buffer(file: &Option<File>, buffers: &mut WorkingBuffers) -> Option<u
     }
 }
 
-/// Tries to read the entire file, moving each line to a comma-separated string
-pub fn all(file: &Option<File>, buffers: &mut WorkingBuffers) {
-    // Ignore errors: the buffer will just remain empty
-    read_to_buffer(file, buffers);
-
-    let trimmed = buffers.buffer.trim();
-    if util::content_len_raw(trimmed) == 0 {
-        // Buffer ended up empty; prevent writing NUL bytes
-        buffers.record.push_field(&EMPTY_BUFFER[..]);
-    } else {
-        // Copy over to temporary buffer
-        copy_lines_to_commas(&buffers.buffer, &mut buffers.copy_buffer);
-        buffers
-            .record
-            .push_field(buffers.copy_buffer.content_unmanaged());
-    }
-
-    buffers.buffer.clear();
-    buffers.copy_buffer.clear();
-}
-
-pub static COMMA: u8 = b',';
-
-/// Copies lines from the incoming buffer to the target buffer
-fn copy_lines_to_commas<const S: usize, const T: usize>(
-    source: &Buffer<S>,
-    target: &mut Buffer<T>,
-) {
-    let mut start = 0;
-    let mut comma_at_end = false;
-    let lines = util::ByteLines::new(&source.b);
-    for (line, _) in lines {
-        let end = start + line.len();
-        if end >= target.b.len() {
-            return;
-        }
-
-        target.b[start..end].clone_from_slice(line);
-        target.b[end] = COMMA;
-        start = end + 1;
-        comma_at_end = true;
-
-        // Update length of target buffer
-        target.len = end - 1;
-    }
-
-    // if last was written to, reset comma to NUL terminator
-    if comma_at_end {
-        target.b[start - 1] = 0_u8;
-    }
-}
-
-enum LazyQuantity<'a, T: FromRadix10Checked + SaturatingAdd + Integer> {
-    /// Contains a zero quantity (result of no aggregation)
-    Zero,
-    /// Contains a single quantity in its textual form
-    Single(&'a [u8]),
-    /// Contains an aggregated quantity in its numeric form
-    Aggregate(T),
-}
-
-impl<'a, T: FromRadix10Checked + SaturatingAdd + Integer> LazyQuantity<'a, T> {
-    /// Adds the given quantity to this one
-    fn add<'b: 'a>(self, quantity: &'b [u8]) -> Self {
-        match self {
-            Self::Zero => Self::Single(quantity),
-            Self::Single(current) => {
-                match atoi::<T>(current) {
-                    // If the conversion failed, downgrade
-                    None => Self::Single(quantity),
-                    // Otherwise, call the number + number case
-                    Some(as_int) => Self::Aggregate(as_int).add(quantity),
-                }
-            },
-            Self::Aggregate(ref current_int) => match atoi::<T>(quantity) {
-                None => self,
-                Some(as_int) => Self::Aggregate(current_int.saturating_add(&as_int)),
-            },
-        }
-    }
-
-    /// Writes the quantity into the buffer
-    fn write_to<const SIZE: usize>(self, dest: &mut Buffer<SIZE>) -> io::Result<usize> {
-        match self {
-            Self::Zero => dest.write(b"0"),
-            Self::Single(current) => dest.write(current),
-            Self::Aggregate(current_int) => itoa::write(dest, current_int),
-        }
-    }
-
-    /// Writes the quantity to a record, using the working buffer as an
-    /// intermediate
-    fn write_to_record<const SIZE: usize>(
-        self,
-        working: &mut Buffer<SIZE>,
-        record: &mut ByteRecord,
-    ) {
-        // Write the quantity to to the temporary copy buffer
-        working.len = match self.write_to(working) {
-            Ok(n) => n,
-            Err(_) => 0,
-        };
-
-        // Write to the record
-        record.push_field(working.content());
-        working.clear();
-    }
-}
-
-impl<'a, T: FromRadix10Checked + SaturatingAdd + Integer> Default for LazyQuantity<'a, T> {
-    fn default() -> Self { Self::Zero }
-}
-
 /// Group of I/O quantities that are added up
 #[derive(Default)]
 struct IoQuantities<'a> {
@@ -395,13 +277,13 @@ fn aggregate_lines<'a>(buffers: &'a mut WorkingBuffers) {
         if let Some(space) = util::find_char(line, 0, util::is_space) {
             let category_to_end = &line[(space + 1)..];
             if let Some(number_slice) = parse_category(category_to_end, b"Read") {
-                quantities.read_total = quantities.read_total.add(number_slice);
+                quantities.read_total = quantities.read_total.plus(number_slice);
             } else if let Some(number_slice) = parse_category(category_to_end, b"Write") {
-                quantities.write_total = quantities.write_total.add(number_slice);
+                quantities.write_total = quantities.write_total.plus(number_slice);
             } else if let Some(number_slice) = parse_category(category_to_end, b"Sync") {
-                quantities.sync_total = quantities.sync_total.add(number_slice);
+                quantities.sync_total = quantities.sync_total.plus(number_slice);
             } else if let Some(number_slice) = parse_category(category_to_end, b"Async") {
-                quantities.async_total = quantities.async_total.add(number_slice);
+                quantities.async_total = quantities.async_total.plus(number_slice);
             }
         }
     }
@@ -474,7 +356,7 @@ fn aggregate_lines_simple<'a>(buffers: &'a mut WorkingBuffers) {
         // Get the number at the end
         if let Some(space) = util::find_char(line, 0, util::is_space) {
             let number_slice = &line[(space + 1)..];
-            quantity = quantity.add(number_slice);
+            quantity = quantity.plus(number_slice);
         }
     }
 
