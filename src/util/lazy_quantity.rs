@@ -52,10 +52,7 @@ impl<'a, T: FromRadix10Checked + SaturatingAdd + Integer> LazyQuantity<'a, T> {
         record: &mut ByteRecord,
     ) {
         // Write the quantity to to the temporary copy buffer
-        working.len = match self.write_to(working) {
-            Ok(n) => n,
-            Err(_) => 0,
-        };
+        working.len = self.write_to(working).unwrap_or(0);
 
         // Write to the record
         record.push_field(working.content());

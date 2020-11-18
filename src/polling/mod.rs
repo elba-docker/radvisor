@@ -6,6 +6,7 @@ use crate::timer::{Stoppable, Timer};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::Sender;
 use std::sync::Arc;
+use std::thread;
 
 /// Thread function that updates the target list each second by default
 pub fn run(
@@ -21,19 +22,22 @@ pub fn run(
         ),
     );
 
-    let (timer, stop_handle) = Timer::new(context.interval);
+    let (timer, stop_handle) = Timer::new(context.interval, "poll");
     let has_stopped = Arc::new(AtomicBool::new(false));
 
     // Handle SIGINT/SIGTERMs by stopping the timer
     let mut term_rx = context.term_rx;
     let has_stopped_c = Arc::clone(&has_stopped);
     let shell_c = Arc::clone(&context.shell);
-    std::thread::spawn(move || {
-        term_rx.recv().unwrap();
-        shell_c.status("Stopping", "polling");
-        stop_handle.stop();
-        has_stopped_c.store(true, Ordering::SeqCst);
-    });
+    thread::Builder::new()
+        .name(String::from("poll-term"))
+        .spawn(move || {
+            term_rx.recv().unwrap();
+            shell_c.status("Stopping", "polling");
+            stop_handle.stop();
+            has_stopped_c.store(true, Ordering::SeqCst);
+        })
+        .unwrap();
     // Move to mutable
     let mut provider = provider;
 

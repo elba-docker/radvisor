@@ -6,7 +6,6 @@ pub mod kubernetes;
 use crate::cli::RunCommand;
 use crate::shared::CollectionEvent;
 use crate::shell::Shell;
-use std::marker::Send;
 use std::sync::Arc;
 use strum_macros::EnumString;
 
@@ -19,11 +18,12 @@ use serde::Serialize;
 #[derive(Debug, Fail)]
 #[fail(display = "{}", suggestion)]
 pub struct InitializationError {
-    suggestion: String,
+    pub suggestion: String,
+    pub original:   Option<Error>,
 }
 
 /// A target metadata provider
-pub trait Provider: Send {
+pub trait Provider {
     /// Performs initialization/a connection check to see if the current process
     /// can access the necessary resources to later retrieve lists of
     /// targets metadata and generate collection events

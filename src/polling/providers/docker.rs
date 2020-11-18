@@ -3,22 +3,24 @@ use crate::polling::providers::{InitializationError, Provider};
 use crate::shared::{CollectionEvent, CollectionMethod, CollectionTarget};
 use crate::shell::Shell;
 use crate::util::{self, CgroupManager, CgroupPath, ItemPool};
+use std::cell::RefCell;
 use std::collections::BTreeMap;
 use std::sync::Arc;
 
 use failure::Error;
+use futures_01::future::Future;
 use shiplift::builder::ContainerListOptions;
 use shiplift::rep::Container;
-use tokio_compat::runtime::Runtime;
+use tokio_01::runtime::current_thread::Runtime;
 
 const PROVIDER_TYPE: &str = "docker";
 
 pub struct Docker {
     container_id_pool: ItemPool<String>,
     cgroup_manager:    CgroupManager,
-    runtime:           Runtime,
     client:            shiplift::Docker,
     shell:             Option<Arc<Shell>>,
+    runtime:           RefCell<Runtime>,
 }
 
 /// Possible errors that can occur during Docker provider initialization
@@ -31,13 +33,15 @@ enum DockerInitError {
 impl Into<InitializationError> for DockerInitError {
     fn into(self) -> InitializationError {
         match self {
-            Self::ConnectionFailed(_) => InitializationError {
+            Self::ConnectionFailed(error) => InitializationError {
+                original:   Some(error.into()),
                 suggestion: String::from(
                     "Could not connect to the docker socket. Are you running rAdvisor as \
                      root?\nIf running at a non-standard URL, set DOCKER_HOST to the correct URL.",
                 ),
             },
             Self::InvalidCgroupMount => InitializationError {
+                original:   None,
                 suggestion: String::from(util::INVALID_CGROUP_MOUNT_MESSAGE),
             },
         }
@@ -72,7 +76,7 @@ impl Provider for Docker {
             .client
             .containers()
             .list(&ContainerListOptions::default());
-        let containers = self.runtime.block_on(future)?;
+        let containers = self.exec(future)?;
 
         let original_num = containers.len();
         let to_collect: BTreeMap<String, Container> = containers
@@ -142,15 +146,17 @@ impl Provider for Docker {
         let processed_num = start_events.len();
         events.extend(start_events);
 
-        self.shell().verbose(|sh| {
-            sh.info(format!(
-                "Received {} -> {} (+{}, -{}) containers from the Docker API",
-                original_num,
-                to_collect.len(),
-                processed_num,
-                removed_len
-            ))
-        });
+        if processed_num != 0 || removed_len != 0 {
+            self.shell().verbose(|sh| {
+                sh.info(format!(
+                    "Received {} -> {} (+{}, -{}) containers from the Docker API",
+                    original_num,
+                    to_collect.len(),
+                    processed_num,
+                    removed_len
+                ))
+            });
+        }
 
         Ok(events)
     }
@@ -163,13 +169,24 @@ impl Default for Docker {
 impl Docker {
     #[must_use]
     pub fn new() -> Self {
+        // Use a single-threaded runtime so that Tokio doesn't create
+        // a thread pool and instead executes futures in the current thread
+        // (emulating synchronous I/O)
+        let runtime = Runtime::new().unwrap();
         Self {
             container_id_pool: ItemPool::new(),
             cgroup_manager:    CgroupManager::new(),
-            runtime:           Runtime::new().unwrap(),
             client:            shiplift::Docker::new(),
             shell:             None,
+            runtime:           RefCell::new(runtime),
         }
+    }
+
+    /// Executes a future on the internal runtime, blocking the current thread
+    /// until it completes
+    fn exec<I, E>(&self, future: impl Future<Item = I, Error = E>) -> Result<I, E> {
+        let mut rt = self.runtime.borrow_mut();
+        rt.block_on(future)
     }
 
     /// Attempts to initialize the Docker provider, failing if the connection
@@ -178,8 +195,7 @@ impl Docker {
     fn try_init(&mut self) -> Result<(), DockerInitError> {
         // Ping the Docker API to make sure the current process can connect
         let future = self.client.ping();
-        self.runtime
-            .block_on(future)
+        self.exec(future)
             .map_err(DockerInitError::ConnectionFailed)?;
 
         // Make sure cgroups are mounted properly

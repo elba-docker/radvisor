@@ -28,7 +28,7 @@ pub fn load() -> Opts {
 }
 
 /// Auto-parsed CLI options for rAdvisor, generated via clap
-#[derive(Clap)]
+#[derive(Clap, Clone)]
 #[clap(
     version = VERSION.unwrap_or("unknown"),
     author = AUTHORS.as_deref().unwrap_or("contributors"),
@@ -44,7 +44,7 @@ pub struct Opts {
     pub command: Command,
 }
 
-#[derive(Clap)]
+#[derive(Clap, Clone)]
 pub struct RunCommand {
     #[clap()]
     /// Provider to use to generate collection targets (such as containers/pods)
@@ -59,7 +59,7 @@ pub struct RunCommand {
     pub collection: CollectionOptions,
 }
 
-#[derive(Clap)]
+#[derive(Clap, Clone)]
 pub struct CollectionOptions {
     /// Collection interval between log entries
     #[clap(
@@ -98,7 +98,7 @@ pub struct CollectionOptions {
     pub buffer_size: Byte,
 }
 
-#[derive(Clap)]
+#[derive(Clap, Clone)]
 pub struct PollingOptions {
     /// Interval between requests to providers to get targets
     #[clap(
@@ -122,7 +122,7 @@ mod command {
     use super::{RunCommand, AUTHORS, VERSION};
     use clap::Clap;
 
-    #[derive(Clap)]
+    #[derive(Clap, Clone)]
     pub enum Command {
         #[clap(
             version = VERSION.unwrap_or("unknown"),

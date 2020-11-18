@@ -39,7 +39,7 @@ pub trait Stoppable {
 
 impl Timer {
     #[must_use]
-    pub fn new(dur: Duration) -> (Self, Stopper) {
+    pub fn new<A: AsRef<str>>(dur: Duration, name: A) -> (Self, Stopper) {
         let (tx_stop, rx_stop): (Sender<()>, Receiver<()>) = mpsc::channel();
         let shared = Arc::new(SharedTimerState {
             stopping:    AtomicBool::new(false),
@@ -50,26 +50,29 @@ impl Timer {
 
         // Spawn the timer thread
         let shared_c = Arc::clone(&shared);
-        thread::spawn(move || {
-            loop {
-                // Signal the receiving thread to wake up and perform the timer
-                // action (without stopping)
-                let mut signal = shared_c.lock.lock().unwrap();
-                *signal = true;
-                shared_c.signal_tick.notify_one();
-                // Drop the mutex to prevent deadlock
-                drop(signal);
+        thread::Builder::new()
+            .name(format!("timer-{}", name.as_ref()))
+            .spawn(move || {
+                loop {
+                    // Signal the receiving thread to wake up and perform the timer
+                    // action (without stopping)
+                    let mut signal = shared_c.lock.lock().unwrap();
+                    *signal = true;
+                    shared_c.signal_tick.notify_one();
+                    // Drop the mutex to prevent deadlock
+                    drop(signal);
 
-                // Use recv_timeout as the sleep mechanism to allow for early
-                // waking
-                let recv_result = rx_stop.recv_timeout(dur);
-                if recv_result.is_ok() {
-                    // An empty message was sent on rx_stop, so stop the timer
-                    // immediately
-                    break;
+                    // Use recv_timeout as the sleep mechanism to allow for early
+                    // waking
+                    let recv_result = rx_stop.recv_timeout(dur);
+                    if recv_result.is_ok() {
+                        // An empty message was sent on rx_stop, so stop the timer
+                        // immediately
+                        break;
+                    }
                 }
-            }
-        });
+            })
+            .unwrap();
 
         let shared_c = Arc::clone(&shared);
         (

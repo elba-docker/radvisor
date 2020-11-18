@@ -172,10 +172,7 @@ pub fn run(collector: &mut Collector, buffers: &mut WorkingBuffers) -> Result<()
 /// Collects the nanosecond unix timestamp read time
 #[inline]
 fn collect_read(buffers: &mut WorkingBuffers) {
-    buffers.buffer.len = match itoa::write(&mut buffers.buffer.b[..], util::nano_ts()) {
-        Ok(n) => n,
-        Err(_) => 0,
-    };
+    buffers.buffer.len = itoa::write(&mut buffers.buffer.b[..], util::nano_ts()).unwrap_or(0);
     buffers.record.push_field(buffers.buffer.content());
     buffers.buffer.clear_unmanaged();
 }

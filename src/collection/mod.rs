@@ -18,6 +18,7 @@ use std::convert::TryFrom;
 use std::path::Path;
 use std::sync::mpsc::Receiver;
 use std::sync::{Arc, Mutex};
+use std::thread;
 
 /// Length of the buffer that contains buffer flush events
 const EVENT_BUFFER_LENGTH: usize = 8 * 1024;
@@ -50,7 +51,7 @@ pub fn run(
         ),
     );
 
-    let (timer, stop_handle) = Timer::new(context.interval);
+    let (timer, stop_handle) = Timer::new(context.interval, "collect");
     let collectors: CollectorMap = Arc::new(Mutex::new(HashMap::new()));
 
     // Initialize the table metadata
@@ -78,33 +79,36 @@ pub fn run(
     let flush_log_c = flush_log.as_ref().map(|c| Arc::clone(c));
     let stop_handle_c = stop_handle.clone();
     let mut term_rx = context.term_rx;
-    std::thread::spawn(move || {
-        term_rx.recv().unwrap();
-        let mut status = status_mutex_c.lock().unwrap();
-        match status.collecting {
-            true => {
-                // Set terminating and let the collector thread flush the buffers
-                // as it ends collection for the current tick
-                status.terminating = true;
-                shell_c.verbose(|sh| {
-                    sh.info(
-                        "Currently collecting: stopping & flushing buffers at the end of the next \
-                         collector tick",
-                    )
-                });
-            },
-            false => {
-                shell_c.verbose(|sh| {
-                    sh.info("Currently yielding: stopping & flushing buffers right now")
-                });
+    thread::Builder::new()
+        .name(String::from("collect-term"))
+        .spawn(move || {
+            term_rx.recv().unwrap();
+            let mut status = status_mutex_c.lock().unwrap();
+            match status.collecting {
+                true => {
+                    // Set terminating and let the collector thread flush the buffers
+                    // as it ends collection for the current tick
+                    status.terminating = true;
+                    shell_c.verbose(|sh| {
+                        sh.info(
+                            "Currently collecting: stopping & flushing buffers at the end of the \
+                             next collector tick",
+                        )
+                    });
+                },
+                false => {
+                    shell_c.verbose(|sh| {
+                        sh.info("Currently yielding: stopping & flushing buffers right now")
+                    });
 
-                // The collection thread is yielding to the sleep; flush the buffers now
-                let collectors = collectors_c.lock().unwrap();
-                flush_buffers(&collectors, &shell_c, flush_log_c);
-                stop_handle_c.stop();
-            },
-        }
-    });
+                    // The collection thread is yielding to the sleep; flush the buffers now
+                    let collectors = collectors_c.lock().unwrap();
+                    flush_buffers(&collectors, &shell_c, flush_log_c);
+                    stop_handle_c.stop();
+                },
+            }
+        })
+        .unwrap();
 
     // Re-use working buffers
     let mut working_buffers = WorkingBuffers::new();

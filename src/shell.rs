@@ -22,7 +22,7 @@ pub enum Verbosity {
 }
 
 // All clap-compatible configuration parameters for the Shell
-#[derive(Clap)]
+#[derive(Clap, Clone)]
 pub struct Options {
     /// Whether to run in quiet mode (minimal output)
     #[clap(short = 'q', long = "quiet", global = true)]
@@ -90,9 +90,9 @@ impl ColorMode {
 
 /// Thread-safe handle to formatted stderr/stdout output (implements `Sync`)
 pub struct Shell {
-    verbosity: Verbosity,
-    out:       Mutex<OutSink>,
-    err:       Mutex<OutSink>,
+    pub verbosity: Verbosity,
+    out:           Mutex<OutSink>,
+    err:           Mutex<OutSink>,
 }
 
 #[allow(dead_code)]
@@ -227,7 +227,7 @@ impl Shell {
     /// if the shell is in verbose mode
     pub fn verbose<F>(&self, callback: F)
     where
-        F: Fn(&Self),
+        F: FnOnce(&Self),
     {
         if let Verbosity::Verbose = self.verbosity {
             callback(self);

@@ -47,23 +47,14 @@ fn main() {
 
     match opts.command {
         Command::Run(run_opts) => {
-            // Resolve container metadata provider
-            let mut provider: Box<dyn Provider> = run_opts.provider.into_impl();
-
-            // Determine if the current process can connect to the provider source
-            if let Err(err) = provider.initialize(&run_opts, Arc::clone(&shell)) {
-                shell.error(format!("{}", err));
-                std::process::exit(1);
-            }
-
-            run(run_opts, provider, shell);
+            run(run_opts, shell);
         },
     }
 }
 
 /// Bootstraps the two worker threads, preparing the necessary communication
 /// between them
-fn run(opts: RunCommand, provider: Box<dyn Provider>, shell: Arc<Shell>) {
+fn run(opts: RunCommand, shell: Arc<Shell>) {
     // Used to send collection events from the polling thread to the collection
     // thread
     let (tx, rx): (Sender<CollectionEvent>, Receiver<CollectionEvent>) = mpsc::channel();
@@ -83,15 +74,38 @@ fn run(opts: RunCommand, provider: Box<dyn Provider>, shell: Arc<Shell>) {
     };
     drop(term_bus_handle);
 
-    // Unwrap the collection options from the resolved opts to prevent the move of
-    // opts
-    let collection_options = opts.collection;
+    // Unwrap the collection options from the resolved opts
+    let collection_options = opts.collection.clone();
 
     // Spawn both threads
-    let polling_thread: thread::JoinHandle<()> =
-        thread::spawn(move || polling::run(&tx, polling_context, provider));
-    let collection_thread: thread::JoinHandle<()> =
-        thread::spawn(move || collection::run(&rx, collection_context, &collection_options));
+    let polling_thread: thread::JoinHandle<()> = thread::Builder::new()
+        .name(String::from("poll"))
+        .spawn(move || {
+            // Resolve container metadata provider
+            let mut provider: Box<dyn Provider> = opts.provider.into_impl();
+
+            // Determine if the current process can connect to the provider source
+            let provider_shell = Arc::clone(&polling_context.shell);
+            if let Err(err) = provider.initialize(&opts, provider_shell) {
+                let mut message = err.suggestion.clone();
+                // Print the reason for the error in verbose mode
+                if let Some(original) = err.original {
+                    polling_context.shell.verbose(|_| {
+                        let formatted = format!("\n\n{}", original);
+                        message.push_str(&formatted);
+                    });
+                }
+                polling_context.shell.error(message);
+                std::process::exit(1);
+            }
+
+            polling::run(&tx, polling_context, provider)
+        })
+        .unwrap();
+    let collection_thread: thread::JoinHandle<()> = thread::Builder::new()
+        .name(String::from("collect"))
+        .spawn(move || collection::run(&rx, collection_context, &collection_options))
+        .unwrap();
 
     // Join the threads, which automatically exit upon termination
     collection_thread

@@ -3,7 +3,6 @@ use crate::polling::providers::{InitializationError, Provider};
 use crate::shared::{CollectionEvent, CollectionMethod, CollectionTarget};
 use crate::shell::Shell;
 use crate::util::{self, CgroupManager, CgroupPath, ItemPool};
-use std::cell::RefCell;
 use std::collections::BTreeMap;
 use std::fmt::Debug;
 use std::future::Future;
@@ -20,7 +19,6 @@ use kube::config;
 use kube::runtime::Reflector;
 use serde::Serialize;
 use strum_macros::{EnumString, IntoStaticStr};
-use tokio::runtime::Runtime;
 
 /// String representation for "None"
 const NONE_STR: &str = "~";
@@ -33,7 +31,7 @@ const PROVIDER_TYPE: &str = "kubernetes";
 pub struct Kubernetes {
     cgroup_manager: CgroupManager,
     pod_uid_pool:   ItemPool<String>,
-    runtime:        RefCell<Runtime>,
+    runtime:        tokio_03::runtime::Runtime,
     pod_reflector:  Option<Reflector<Pod>>,
     client:         Option<Client>,
     shell:          Option<Arc<Shell>>,
@@ -53,33 +51,50 @@ enum KubernetesInitError {
 
 impl Into<InitializationError> for KubernetesInitError {
     fn into(self) -> InitializationError {
-        // Convert various Kubernetes init errors to their CLI suggestion message
-        InitializationError {
-            suggestion: match self {
-                Self::InvalidCgroupMount => util::INVALID_CGROUP_MOUNT_MESSAGE.to_owned(),
-                Self::InvalidHostnameError(_) => "Could not retrieve hostname to use for node \
-                                                  detection: Invalid string returned"
-                    .to_owned(),
-                Self::ConfigLoadError(_) => "Could not load kubernetes config. Make sure the \
-                                             current machine is a part of a cluster and has the \
-                                             cluster configuration copied to the config directory."
-                    .to_owned(),
-                Self::NodeDetectionError => "Could not get the current node via the Kubernetes \
-                                             API. Make sure the current machine is running its \
-                                             own node."
-                    .to_owned(),
-                Self::NodeFetchError(err) => format!(
-                    "Could not get list of nodes in the Kubernetes cluster: {}",
-                    err
+        match self {
+            Self::InvalidCgroupMount => InitializationError {
+                original:   None,
+                suggestion: String::from(util::INVALID_CGROUP_MOUNT_MESSAGE),
+            },
+            Self::InvalidHostnameError(hostname) => InitializationError {
+                original:   None,
+                suggestion: format!(
+                    "Could not retrieve hostname to use for node detection: Invalid string '{:?}' \
+                     returned",
+                    hostname
                 ),
-                Self::InitialPodFetchError(_) => "Could not get the list of pods running on the \
-                                                  current machine. Make sure the node can access \
-                                                  the API."
-                    .to_owned(),
-                Self::MissingNodeNameError => "The node running on the current host lacks a Name \
-                                               field. The pod polling cannot function without \
-                                               this."
-                    .to_owned(),
+            },
+            Self::ConfigLoadError(error) => InitializationError {
+                original:   Some(error),
+                suggestion: String::from(
+                    "Could not load kubernetes config. Make sure the current machine is a part of \
+                     a cluster \nand has the cluster configuration copied to the config directory.",
+                ),
+            },
+            Self::NodeDetectionError => InitializationError {
+                original:   None,
+                suggestion: String::from(
+                    "Could not get the current node via the Kubernetes API. \nMake sure the \
+                     current machine is running its own node.",
+                ),
+            },
+            Self::NodeFetchError(error) => InitializationError {
+                original:   Some(error),
+                suggestion: String::from("Could not get list of nodes in the Kubernetes cluster"),
+            },
+            Self::InitialPodFetchError(error) => InitializationError {
+                original:   Some(error),
+                suggestion: String::from(
+                    "Could not get the list of pods running on the current machine. \nMake sure \
+                     the node can access the API.",
+                ),
+            },
+            Self::MissingNodeNameError => InitializationError {
+                original:   None,
+                suggestion: String::from(
+                    "The node running on the current host lacks a Name field. \nThe pod polling \
+                     cannot function without this.",
+                ),
             },
         }
     }
@@ -236,22 +251,25 @@ impl Default for Kubernetes {
 impl Kubernetes {
     #[must_use]
     pub fn new() -> Self {
+        // Use a single-threaded runtime so that Tokio doesn't create
+        // a thread pool and instead executes futures in the current thread
+        // (emulating synchronous I/O)
+        let runtime = tokio_03::runtime::Builder::new_current_thread()
+            .build()
+            .unwrap();
         Self {
             cgroup_manager: CgroupManager::new(),
-            pod_uid_pool:   ItemPool::new(),
-            runtime:        RefCell::new(Runtime::new().unwrap()),
-            pod_reflector:  None,
-            client:         None,
-            shell:          None,
+            pod_uid_pool: ItemPool::new(),
+            runtime,
+            pod_reflector: None,
+            client: None,
+            shell: None,
         }
     }
 
     /// Executes a future on the internal runtime, blocking the current thread
     /// until it completes
-    fn exec<F: Future>(&self, future: F) -> F::Output {
-        let mut runtime = self.runtime.borrow_mut();
-        runtime.block_on(future)
-    }
+    fn exec<F: Future>(&self, future: F) -> F::Output { self.runtime.block_on(future) }
 
     /// Attempts to initialize the Kubernetes provider, failing if one of the
     /// following conditions happens:   1. Invalid hostname from system
