@@ -99,6 +99,7 @@ jobs:
       # Make sure package was created and is valid
       - run: stat ${{ steps.deb-location.outputs.path }}
       - run: dpkg -c ${{ steps.deb-location.outputs.path }}
+      - run: dpkg-deb -c ${{ steps.deb-location.outputs.path }}
 
       # Upload package artifacts and create new release if needed
       - name: Upload package to release

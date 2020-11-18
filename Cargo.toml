@@ -3,8 +3,8 @@ name = "radvisor"
 version = "1.3.1"
 authors = ["Joseph Azevedo <joseph.az@gatech.edu>", "Bhanu Garg <bgarg6@gatech.edu>"]
 description = """\
-Resource utilization monitor for Docker containers & Kubernetes pods
-that operates with fine granularity and low overhead"""
+Resource utilization monitor for Docker containers & Kubernetes pods \
+that operates with fine granularity and low overhead."""
 edition = "2018"
 readme = "README.md"
 license = "MIT"
@@ -15,12 +15,12 @@ categories = ["command-line-utilities"]
 [package.metadata.deb]
 license-file = ["./LICENSE", "0"]
 extended-description="""\
-Monitors & collects system resource utilization on Linux for Docker containers and Kubernetes pods
-with fine granularity and low overhead, emitting resource utilization logs in CSVY (csv + yaml) format.
-Originally, developed in Rust as a custom tool to help detect and analyze millibottlenecks in containerized online systems,
-rAdvisor runs by polling the target provider (either the local Docker daemon or the Kubernetes API server)
-every 1 second to get a list of active, running containers/pods.
-From this list, rAdvisor runs a collection thread every 50ms to get resource utilization data for each active target using Linux cgroups,
+Monitors & collects system resource utilization on Linux for Docker containers and Kubernetes pods \
+with fine granularity and low overhead, emitting resource utilization logs in CSVY (csv + yaml) format. \
+Originally, developed in Rust as a custom tool to help detect and analyze millibottlenecks in containerized online systems, \
+rAdvisor runs by polling the target provider (either the local Docker daemon or the Kubernetes API server) \
+every 1 second to get a list of active, running containers/pods. \
+From this list, rAdvisor runs a collection thread every 50ms to get resource utilization data for each active target using Linux cgroups, \
 outputting the resultant logs in /var/log/radvisor/stats."""
 section = "util"
 priority = "optional"
