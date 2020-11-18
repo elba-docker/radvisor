@@ -1,4 +1,4 @@
-% RADVISOR(1) Version 1.1.7 | radvisor User Manual
+% RADVISOR(1) Version 1.3.1 | radvisor User Manual
 
 NAME
 ====
@@ -8,7 +8,7 @@ NAME
 SYNOPSIS
 ========
 
-| **radvisor** \[FLAGS\] \[OPTIONS\] \<SUBCOMMAND\>
+**radvisor** \[FLAGS\] \[OPTIONS\] \<SUBCOMMAND\>
 
 DESCRIPTION
 ===========
@@ -18,13 +18,24 @@ for [Docker](https://www.docker.com/) containers and [Kubernetes](https://kubern
 with **fine granularity** and **low overhead**,
 emitting resource utilization logs in [CSVY](https://csvy.org/) (csv + yaml) format.
 Originally developed in Rust as a custom tool to help detect and analyze millibottlenecks in containerized online systems,
-rAdvisor runs by polling the target provider (either the local Docker daemon or the Kubernetes API server)
+rAdvisor runs by polling the target *provider* (either the local Docker daemon or the Kubernetes API server)
 every 1 second to get a list of active, running containers/pods.
 From this list, rAdvisor runs a collection thread every 50ms to get resource utilization data for each active target
 using Linux [`cgroups`](https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/6/html/resource_management_guide/ch01),
 outputting the resultant logs in `/var/log/radvisor/stats`.
 
 The primary command is `radvisor run`, which has its own man page at **radvisor-run(1)**.
+
+SUBCOMMANDS:
+------------
+
+help
+
+:   Prints this message or the help of the given subcommand(s)
+
+run
+
+:   Runs a collection thread that writes resource statistics to output CSV files
 
 FLAGS:
 ------
@@ -52,22 +63,11 @@ OPTIONS:
 
 :   Color display mode for stdout/stderr output \[default: auto\]
 
-SUBCOMMANDS:
-------------
-
-help
-
-:   Prints this message or the help of the given subcommand(s)
-
-run
-
-:   Runs a collection thread that writes resource statistics to output CSV files
-
 BUGS
 ====
 
 To report bugs found in rAdvisor, feel free to make a new issue on the GitHub repository:
-<https://github.com/elba-kubernetes/radvisor/issues/new>
+<https://github.com/elba-docker/radvisor/issues/new>
 
 AUTHOR
 ======
@@ -78,8 +78,10 @@ SEE ALSO
 ========
 
 **radvisor-run(1)**
+**radvisor-run-docker(1)**
+**radvisor-run-kubernetes(1)**
 
 LICENSE
 =======
 
-This project is licensed under the MIT License <https://github.com/elba-kubernetes/radvisor/blob/develop/LICENSE>.
+This project is licensed under the MIT License <https://github.com/elba-docker/radvisor/blob/develop/LICENSE>.

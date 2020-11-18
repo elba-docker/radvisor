@@ -30,16 +30,9 @@ jobs:
           toolchain: ${{ env.toolchain }}
           override: true
 
-      # Build binary (cleanbuild for release)
+      # Build binaries (cleanbuild for release)
       - name: Run cargo build
-        uses: actions-rs/cargo@v1
-        with:
-          command: build
-          args: >-
-            --release --bins --all
-            -Z unstable-options
-            --out-dir ${{ env.output-dir }}
-            --target ${{ env.build-target }}
+        run: make all BUILD_TARGET=${{ env.build-target }} OUT_DIR=${{ env.output-dir }}
       - name: Strip binary
         run: strip ${{ env.output-path }}
 

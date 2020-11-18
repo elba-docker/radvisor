@@ -16,7 +16,7 @@ use bus::Bus;
 fn target_check() {
     compile_error!(
         "rAdvisor only compiles for Linux targets. To request support for additional \
-         platforms, feel free to file an issue at https://github.com/elba-kubernetes/radvisor/issues/new"
+         platforms, feel free to file an issue at https://github.com/elba-docker/radvisor/issues/new"
     );
 }
 
@@ -27,7 +27,7 @@ fn main() {
         name:     env!("CARGO_PKG_NAME").into(),
         version:  env!("CARGO_PKG_VERSION").into(),
         authors:  env!("CARGO_PKG_AUTHORS").into(),
-        homepage: "https://github.com/elba-kubernetes/radvisor/issues/new".into(),
+        homepage: "https://github.com/elba-docker/radvisor/issues/new".into(),
     });
 
     // Parse command line arguments

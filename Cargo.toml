@@ -8,7 +8,7 @@ that operates with fine granularity and low overhead"""
 edition = "2018"
 readme = "README.md"
 license = "MIT"
-repository = "https://github.com/elba-kubernetes/radvisor"
+repository = "https://github.com/elba-docker/radvisor"
 keywords = ["resource-monitor", "docker", "instrumentation", "cgroups", "kubernetes", "linux"]
 categories = ["command-line-utilities"]
 

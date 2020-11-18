@@ -9,8 +9,9 @@
 .vscode
 .vs
 
-# Utility symlink created during development
+# Binaries created using `make compile` and `make compile-toolbox`
 radvisor
+radvisor-toolbox
 
 # Valgrind's heap analysis tool
 massif.out.*

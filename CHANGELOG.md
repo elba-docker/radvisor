@@ -5,13 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased](https://github.com/elba-kubernetes/radvisor/compare/v1.1.7...HEAD)
+## [Unreleased](https://github.com/elba-docker/radvisor/compare/v1.1.7...HEAD)
 
 ---
 
-## [1.1.7](https://github.com/elba-kubernetes/radvisor/compare/v1.1.6...v1.1.7) - 2020-04-11
+## [1.1.7](https://github.com/elba-docker/radvisor/compare/v1.1.6...v1.1.7) - 2020-04-11
 
-[![v1.1.7](https://img.shields.io/badge/release-v1.1.7-2bab64)](https://github.com/elba-kubernetes/radvisor/releases/tag/v1.1.7)
+[![v1.1.7](https://img.shields.io/badge/release-v1.1.7-2bab64)](https://github.com/elba-docker/radvisor/releases/tag/v1.1.7)
 
 ### Added
 
@@ -22,9 +22,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [1.1.6](https://github.com/elba-kubernetes/radvisor/compare/v1.1.5...v1.1.6) - 2020-04-10
+## [1.1.6](https://github.com/elba-docker/radvisor/compare/v1.1.5...v1.1.6) - 2020-04-10
 
-[![v1.1.6](https://img.shields.io/badge/release-v1.1.6-2bab64)](https://github.com/elba-kubernetes/radvisor/releases/tag/v1.1.6)
+[![v1.1.6](https://img.shields.io/badge/release-v1.1.6-2bab64)](https://github.com/elba-docker/radvisor/releases/tag/v1.1.6)
 
 ### Fixed
 
@@ -32,9 +32,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [1.1.5](https://github.com/elba-kubernetes/radvisor/compare/v1.1.6...v1.1.5) (YANKED) - 2020-04-10
+## [1.1.5](https://github.com/elba-docker/radvisor/compare/v1.1.6...v1.1.5) (YANKED) - 2020-04-10
 
-[![v1.1.5](https://img.shields.io/badge/release-v1.1.5-red)](https://github.com/elba-kubernetes/radvisor/releases/tag/v1.1.5)
+[![v1.1.5](https://img.shields.io/badge/release-v1.1.5-red)](https://github.com/elba-docker/radvisor/releases/tag/v1.1.5)
 
 ### Added
 
@@ -47,9 +47,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [1.1.4](https://github.com/elba-kubernetes/radvisor/compare/tail...v1.1.4) - 2020-04-04
+## [1.1.4](https://github.com/elba-docker/radvisor/compare/tail...v1.1.4) - 2020-04-04
 
-[![v1.1.4](https://img.shields.io/badge/release-v1.1.4-2bab64)](https://github.com/elba-kubernetes/radvisor/releases/tag/v1.1.4)
+[![v1.1.4](https://img.shields.io/badge/release-v1.1.4-2bab64)](https://github.com/elba-docker/radvisor/releases/tag/v1.1.4)
 
 ### Added
 

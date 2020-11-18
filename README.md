@@ -1,5 +1,5 @@
 # ![rAdvisor](https://i.imgur.com/aYdn3MV.png)
-![build/test](https://github.com/elba-kubernetes/radvisor/workflows/build/test/badge.svg?branch=master) ![security](https://github.com/elba-kubernetes/radvisor/workflows/security/badge.svg?branch=master) [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](/LICENSE) [![Latest release](https://img.shields.io/github/v/release/elba-kubernetes/radvisor?color=2bab64)](https://github.com/elba-kubernetes/radvisor/releases) [![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2Felba-kubernetes%2Fradvisor.svg?type=shield)](https://app.fossa.io/projects/git%2Bgithub.com%2Felba-kubernetes%2Fradvisor?ref=badge_shield)
+![build/test](https://github.com/elba-docker/radvisor/workflows/build/test/badge.svg?branch=master) ![security](https://github.com/elba-docker/radvisor/workflows/security/badge.svg?branch=master) [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](/LICENSE) [![Latest release](https://img.shields.io/github/v/release/elba-docker/radvisor?color=2bab64)](https://github.com/elba-docker/radvisor/releases) [![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2Felba-docker%2Fradvisor.svg?type=shield)](https://app.fossa.io/projects/git%2Bgithub.com%2Felba-docker%2Fradvisor?ref=badge_shield)
 
 > Monitors & collects system resource utilization on Linux for [Docker](https://www.docker.com/) containers and [Kubernetes](https://kubernetes.io/) pods with **fine granularity** and **low overhead**, emitting resource utilization logs in [CSVY](https://csvy.org/) (csv + yaml) format. Originally, developed in Rust as a custom tool to help detect and analyze millibottlenecks in containerized online systems, rAdvisor runs by polling the target provider (either the local Docker daemon or the Kubernetes API server) every 1 second to get a list of active, running containers/pods. From this list, rAdvisor runs a collection thread every 50ms to get resource utilization data for each active target using Linux [`cgroups`](https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/6/html/resource_management_guide/ch01), outputting the resultant logs in `/var/log/radvisor/stats`.
 
@@ -67,7 +67,7 @@ read,pids.current,pids.max,cpu.usage.total,cpu.usage.system,cpu.usage.user,cpu.u
 ...
 ```
 
-More information about what each column represents can be found in the [docs page](https://github.com/elba-kubernetes/radvisor/blob/master/docs/collecting.md).
+More information about what each column represents can be found in the [docs page](https://github.com/elba-docker/radvisor/blob/master/docs/collecting.md).
 
 ### ⚓ Kubernetes
 
@@ -177,7 +177,7 @@ Identified cgroupfs as cgroup driver
 
 ### ☑️ Supported Operating Systems
 
-At the moment, rAdvisor only supports Linux (due to its heavy reliance on cgroups), though there is a tracking issue for extending its functionality to work with Window's own first-party containerization API, HCS: [radvisor/issues/#3](https://github.com/elba-kubernetes/radvisor/issues/3).
+At the moment, rAdvisor only supports Linux (due to its heavy reliance on cgroups), though there is a tracking issue for extending its functionality to work with Window's own first-party containerization API, HCS: [radvisor/issues/#3](https://github.com/elba-docker/radvisor/issues/3).
 
 ## 🏗️ Building
 
@@ -189,7 +189,7 @@ To build rAdvisor using Docker, run the following command (needs to have `docker
 $ sudo make
 ```
 
-For the Docker build method, the Rust stable image is used ([rustlang/rust](https://hub.docker.com/r/rustlang/rust/)) to run a Docker container with the necessary toolchains pre-installed.
+For the Docker build method, the Rust stable image is used ([rust](https://hub.docker.com/_/rust)) to run a Docker container with the necessary toolchains pre-installed.
 
 ### 💽 Directly From Source
 
@@ -218,4 +218,4 @@ This project is licensed under the [MIT license](/LICENSE).
 
 ### 🔍 FOSSA Status
 
-[![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2Felba-kubernetes%2Fradvisor.svg?type=large)](https://app.fossa.io/projects/git%2Bgithub.com%2Felba-kubernetes%2Fradvisor?ref=badge_large)
+[![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2Felba-docker%2Fradvisor.svg?type=large)](https://app.fossa.io/projects/git%2Bgithub.com%2Felba-docker%2Fradvisor?ref=badge_large)

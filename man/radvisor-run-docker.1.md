@@ -3,42 +3,20 @@
 NAME
 ====
 
-**radvisor run** - runs radvisor to collect statistics for a updating set of targets
+**radvisor run docker** - runs radvisor to collect statistics for all active containers on the current machine
 
 SYNOPSIS
 ========
 
-**radvisor run** \[FLAGS\] \[OPTIONS\] *\<provider\>*
+**radvisor run docker** \[FLAGS\] \[OPTIONS\]
 
 DESCRIPTION
 ===========
 
-**radvisor run** runs a collection thread that writes resource statistics to
-output CSV files using configurable intervals. It has two modes of operation (*providers*) as subcommands:
+**radvisor run docker** runs a collection thread that writes resource statistics to
+output CSV files using configurable intervals. While running, it collects statistics for containers by polling the docker daemon to get a list of active running containers (every 1s by default) and using their cgroups to read information on their system resource utilization.
 
-1. **docker** - Collects statistics for containers, polling the docker daemon to get a list of active running containers (every 1s by default)
-and using their cgroups to read information on their system resource utilization.
-
-  Likely needs to be run as root.
-2. **kubernetes** - Collects statistics for Kubernetes pods, polling the Kubernetes API server to get a list of all active running pods
-that have been scheduled on the current machine's node, using the cgroups for each pod.
-
-  Needs to be a part of an active cluster and needs to be able to find the Kubernetes config file.
-
-SUBCOMMANDS:
-------------
-
-docker
-
-:   Runs collection using Docker as the backing target *provider*
-
-kubernetes
-
-:   Runs collection using Kubernetes as the backing target *provider*
-
-help
-
-:   Prints this message or the help of the given subcommand(s)
+Likely needs to be run as root.
 
 FLAGS:
 ------
@@ -82,6 +60,14 @@ OPTIONS:
 
 > (optional) Target location to write an buffer flush event log
 
+ENVIRONMENT
+===========
+
+**DOCKER_HOST**
+
+:   URL of the docker daemon to use.
+    Defaults to `unix:///var/run/docker.sock`
+
 BUGS
 ====
 
@@ -96,7 +82,7 @@ Joseph Azevedo <https://jazevedo.me>
 SEE ALSO
 ========
 
-**radvisor-run-docker(1)**
+**radvisor-run(1)**
 **radvisor-run-kubernetes(1)**
 
 LICENSE
