@@ -137,7 +137,7 @@ Many of the specific details of collection can be controlled via the command lin
 
 ```console
 $ radvisor help
-radvisor 1.1.7
+radvisor 1.3.1
 Joseph Azevedo <joseph.az@gatech.edu>, Bhanu Garg <bgarg6@gatech.edu>
 Monitors container resource utilization with high granularity and low overhead
 
