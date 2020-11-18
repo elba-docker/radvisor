@@ -170,7 +170,9 @@ impl Provider for Kubernetes {
         // Load the inner options
         let inner_opts = match opts.provider.clone() {
             ProviderType::Kubernetes(opts) => opts,
-            ProviderType::Docker => panic!("Invalid provider given to Kubernetes initialization"),
+            ProviderType::Docker(_) => {
+                panic!("Invalid provider given to Kubernetes initialization")
+            },
         };
 
         match self.try_init(inner_opts.kube_config) {

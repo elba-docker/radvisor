@@ -59,17 +59,9 @@ pub struct RunCommand {
     #[clap(subcommand)]
     /// Provider to use to generate collection targets (such as containers/pods)
     pub provider: ProviderType,
-
-    // Polling-related options
-    #[clap(flatten)]
-    pub polling: PollingOptions,
-
-    // Collection-related options
-    #[clap(flatten)]
-    pub collection: CollectionOptions,
 }
 
-#[derive(Clap, Clone)]
+#[derive(Clap, Clone, Debug, PartialEq)]
 pub struct CollectionOptions {
     /// Collection interval between log entries
     #[clap(
@@ -108,7 +100,7 @@ pub struct CollectionOptions {
     pub buffer_size: Byte,
 }
 
-#[derive(Clap, Clone)]
+#[derive(Clap, Clone, Debug, PartialEq)]
 pub struct PollingOptions {
     /// Interval between requests to providers to get targets
     #[clap(

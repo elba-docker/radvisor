@@ -59,30 +59,30 @@ fn run(opts: RunCommand, shell: Arc<Shell>) {
     // thread
     let (tx, rx): (Sender<CollectionEvent>, Receiver<CollectionEvent>) = mpsc::channel();
 
+    let polling_opts = opts.provider.polling().clone();
+    let collection_opts = opts.provider.collection().clone();
+
     // Create the thread worker contexts using the term bus lock
     let term_bus = initialize_term_handler(Arc::clone(&shell));
     let mut term_bus_handle = term_bus.lock().unwrap();
     let polling_context = IntervalWorkerContext {
-        interval: opts.polling.interval,
+        interval: polling_opts.interval,
         term_rx:  term_bus_handle.add_rx(),
         shell:    Arc::clone(&shell),
     };
     let collection_context = IntervalWorkerContext {
-        interval: opts.collection.interval,
+        interval: collection_opts.interval,
         term_rx:  term_bus_handle.add_rx(),
         shell:    Arc::clone(&shell),
     };
     drop(term_bus_handle);
-
-    // Unwrap the collection options from the resolved opts
-    let collection_options = opts.collection.clone();
 
     // Spawn both threads
     let polling_thread: thread::JoinHandle<()> = thread::Builder::new()
         .name(String::from("poll"))
         .spawn(move || {
             // Resolve container metadata provider
-            let mut provider: Box<dyn Provider> = opts.provider.clone().into_impl();
+            let mut provider: Box<dyn Provider> = opts.provider.get_impl();
 
             // Determine if the current process can connect to the provider source
             let provider_shell = Arc::clone(&polling_context.shell);
@@ -104,7 +104,7 @@ fn run(opts: RunCommand, shell: Arc<Shell>) {
         .unwrap();
     let collection_thread: thread::JoinHandle<()> = thread::Builder::new()
         .name(String::from("collect"))
-        .spawn(move || collection::run(&rx, collection_context, &collection_options))
+        .spawn(move || collection::run(&rx, collection_context, &collection_opts))
         .unwrap();
 
     // Join the threads, which automatically exit upon termination

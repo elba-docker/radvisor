@@ -3,7 +3,7 @@ pub mod docker;
 #[cfg(feature = "kubernetes")]
 pub mod kubernetes;
 
-use crate::cli::RunCommand;
+use crate::cli::{CollectionOptions, PollingOptions, RunCommand};
 use crate::shared::CollectionEvent;
 use crate::shell::Shell;
 use std::path::PathBuf;
@@ -11,7 +11,6 @@ use std::sync::Arc;
 
 use clap::Clap;
 use failure::{Error, Fail};
-use serde::Serialize;
 
 /// An error that occurred during provider initialization/connection check,
 /// including a suggestion message printed to stdout
@@ -44,12 +43,13 @@ mod provider_type {
     // private module
     #![allow(clippy::default_trait_access)]
 
-    use super::KubernetesOptions;
+    use super::{DockerOptions, KubernetesOptions};
     use crate::cli::{AUTHORS, VERSION};
     use clap::Clap;
     use serde::{Serialize, Serializer};
     use strum_macros::IntoStaticStr;
 
+    /// Type of provider to use to generate collection events
     #[derive(IntoStaticStr, Clap, Clone, Debug, PartialEq)]
     #[strum(serialize_all = "snake_case")]
     pub enum ProviderType {
@@ -61,7 +61,7 @@ mod provider_type {
             about = "Runs collection using docker as the target backend; collecting stats for \
             each container"
         )]
-        Docker,
+        Docker(DockerOptions),
 
         #[cfg(feature = "kubernetes")]
         #[clap(
@@ -84,25 +84,67 @@ mod provider_type {
     }
 }
 
-/// Type of provider to use to generate collection events
-#[allow(clippy::default_trait_access)]
+// Note that both DockerOptions and KubernetesOptions include duplicate flags.
+// This is needed due to a bug in Clap https://github.com/clap-rs/clap/issues/2053
+#[cfg(feature = "docker")]
+#[derive(Clap, Clone, Debug, PartialEq)]
+pub struct DockerOptions {
+    // Polling-related options
+    #[clap(flatten)]
+    pub polling: PollingOptions,
+
+    // Collection-related options
+    #[clap(flatten)]
+    pub collection: CollectionOptions,
+}
+
 #[cfg(feature = "kubernetes")]
-#[derive(Default, Clap, Clone, Debug, PartialEq, Serialize)]
+#[derive(Clap, Clone, Debug, PartialEq)]
 pub struct KubernetesOptions {
     /// Location of kubernetes config file (used to connect to the cluster)
     #[clap(parse(from_os_str), short = 'k', long = "kube-config")]
     pub kube_config: Option<PathBuf>,
+
+    // Polling-related options
+    #[clap(flatten)]
+    pub polling: PollingOptions,
+
+    // Collection-related options
+    #[clap(flatten)]
+    pub collection: CollectionOptions,
 }
 
 impl ProviderType {
     /// Gets the corresponding provider for the CLI polling mode
     #[must_use]
-    pub fn into_impl(self) -> Box<dyn Provider> {
+    pub fn get_impl(&self) -> Box<dyn Provider> {
         match self {
             #[cfg(feature = "docker")]
-            Self::Docker => Box::new(docker::Docker::new()),
+            Self::Docker(_) => Box::new(docker::Docker::new()),
             #[cfg(feature = "kubernetes")]
             Self::Kubernetes(_) => Box::new(kubernetes::Kubernetes::new()),
+        }
+    }
+
+    /// Gets the collection options
+    #[must_use]
+    pub const fn collection(&self) -> &CollectionOptions {
+        match self {
+            #[cfg(feature = "docker")]
+            Self::Docker(opts) => &opts.collection,
+            #[cfg(feature = "kubernetes")]
+            Self::Kubernetes(opts) => &opts.collection,
+        }
+    }
+
+    /// Gets the polling options
+    #[must_use]
+    pub const fn polling(&self) -> &PollingOptions {
+        match self {
+            #[cfg(feature = "docker")]
+            Self::Docker(opts) => &opts.polling,
+            #[cfg(feature = "kubernetes")]
+            Self::Kubernetes(opts) => &opts.polling,
         }
     }
 }
