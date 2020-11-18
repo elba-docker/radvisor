@@ -7,11 +7,14 @@ use std::str::from_utf8;
 
 use serde::{Serialize, Serializer};
 
+/// Size of internal capacity
+pub const SIZE: usize = 1024;
+
 /// Working buffer of raw bytes. Can operate both in **managed** mode (where it
 /// keeps track of length) and **unmanaged** mode (where it acts) as a plain
 /// byte buffer.
 #[derive(Debug)]
-pub struct Buffer<const SIZE: usize> {
+pub struct Buffer {
     pub len: usize,
     pub b:   [u8; SIZE],
 }
@@ -39,7 +42,7 @@ pub trait BufferLike {
     fn content_unmanaged(&self) -> &[u8];
 }
 
-impl<const SIZE: usize> Buffer<SIZE> {
+impl Buffer {
     pub fn from_str_truncate<A: AsRef<str>>(src: A) -> Self {
         // Copy the string into the buffer
         let mut buffer = Self::default();
@@ -55,10 +58,9 @@ impl<const SIZE: usize> Buffer<SIZE> {
         buffer.len = len;
         buffer
     }
-}
 
-impl<const SIZE: usize> Default for Buffer<SIZE> {
-    fn default() -> Self {
+    #[must_use]
+    pub const fn new() -> Self {
         Self {
             len: 0,
             b:   [0; SIZE],
@@ -66,7 +68,13 @@ impl<const SIZE: usize> Default for Buffer<SIZE> {
     }
 }
 
-impl<const SIZE: usize> Serialize for Buffer<SIZE> {
+impl Default for Buffer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl Serialize for Buffer {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
@@ -79,7 +87,7 @@ impl<const SIZE: usize> Serialize for Buffer<SIZE> {
     }
 }
 
-impl<const SIZE: usize> io::Write for Buffer<SIZE> {
+impl io::Write for Buffer {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         let mut len = 0;
         for (i, b) in buf.iter().enumerate() {
@@ -97,7 +105,7 @@ impl<const SIZE: usize> io::Write for Buffer<SIZE> {
     fn flush(&mut self) -> io::Result<()> { Ok(()) }
 }
 
-impl<const SIZE: usize> BufferLike for Buffer<SIZE> {
+impl BufferLike for Buffer {
     #[inline]
     #[must_use]
     fn trim(&self) -> &[u8] {

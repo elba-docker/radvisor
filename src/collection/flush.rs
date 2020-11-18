@@ -1,22 +1,19 @@
 #![allow(clippy::module_name_repetitions)]
 
-use crate::util::{self, Buffer};
+use crate::util;
 use std::io::{Result as IoResult, Write};
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 
 use csv::Writer;
 use serde::Serialize;
-
-// Max length of a target ID
-// (Docker container or Kubernetes pod)
-const TARGET_ID_BUFFER_LENGTH: usize = 64;
+use arraystring::{ArrayString, typenum::U64};
 
 /// Stores metadata about a buffer flush event
 #[derive(Debug, Serialize)]
 pub struct FlushEvent {
     timestamp: u128,
-    target_id: Buffer<TARGET_ID_BUFFER_LENGTH>,
+    target_id: ArrayString<U64>,
     written:   usize,
     success:   bool,
 }
@@ -31,7 +28,7 @@ impl FlushEvent {
         let written = *result.as_ref().unwrap_or(&0);
         Self {
             timestamp: util::nano_ts(),
-            target_id: Buffer::from_str_truncate(id),
+            target_id: ArrayString::from_str_truncate(id),
             written,
             success,
         }

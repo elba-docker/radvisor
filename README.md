@@ -189,23 +189,17 @@ To build rAdvisor using Docker, run the following command (needs to have `docker
 $ sudo make
 ```
 
-For the Docker build method, the Rust nightly image is used ([rustlang/rust:nightly](https://hub.docker.com/r/rustlang/rust/)) to run a Docker container with the necessary toolchains pre-installed.
+For the Docker build method, the Rust stable image is used ([rustlang/rust](https://hub.docker.com/r/rustlang/rust/)) to run a Docker container with the necessary toolchains pre-installed.
 
 ### 💽 Directly From Source
 
-To build rAdvisor from source, Rust **nightly** is used. To install Rust nightly, we recommend using [rustup](https://rustup.rs/) to install the Rust toolchain, and then running the following command to switch to nightly:
-
-```
-$ rustup default nightly
-```
+To build rAdvisor from source, Rust **stable** is used. We recommend using [rustup](https://rustup.rs/) to install the Rust toolchain.
 
 Now, in the cloned repository root, run `make compile` to generate a release-grade binary at `./target/release/radvisor`. This build process may take up to ten minutes.
 
 ```console
 $ make compile
 cargo build --release --bins \
--Z unstable-options \
---out-dir /home/jazev/dev/radvisor \
 --target x86_64-unknown-linux-gnu
    Compiling libc v0.2.68
    Compiling autocfg v1.0.0

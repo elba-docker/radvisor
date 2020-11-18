@@ -7,7 +7,7 @@ on:
 # Workflow for creating a new release and attaching clean-built artifacts
 name: release
 env:
-  toolchain: nightly
+  toolchain: stable
 
 # ? Note: doesn't currently use a matrix due to each target OS having very
 # ?       different dependency installation requirements

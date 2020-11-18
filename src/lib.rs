@@ -1,11 +1,3 @@
-// Features
-#![allow(incomplete_features)]
-// Allow const generics feature in Rust nightly
-#![feature(const_generics)]
-// Use draining on BTreeSet to optimizing memory movement
-#![feature(btree_drain_filter)]
-// Allow constant functions to include conditionals/loops
-#![feature(const_fn)]
 // Lint options
 #![deny(clippy::all)]
 #![deny(clippy::pedantic)]

@@ -38,12 +38,11 @@ impl<T: Ord + Clone> ItemPool<T> {
         // Add all new target Ids to the working set
         working_set.extend(new_target_ids);
 
-        let added: Vec<T> = working_set
-            .drain_filter(|i| !items.contains(i))
-            .collect::<Vec<_>>();
-        let removed: Vec<T> = items
-            .drain_filter(|i| !working_set.contains(i))
-            .collect::<Vec<_>>();
+        // Note: this uses more clones than needed
+        // because `BTreeSet::drain_iter` is not yet stabilized
+        // https://github.com/rust-lang/rust/issues/70530
+        let added = working_set.difference(items).cloned().collect::<Vec<_>>();
+        let removed = items.difference(working_set).cloned().collect::<Vec<_>>();
 
         items.extend(added.iter().cloned());
         working_set.clear();

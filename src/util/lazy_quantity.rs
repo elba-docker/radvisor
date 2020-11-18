@@ -36,7 +36,7 @@ impl<'a, T: FromRadix10Checked + SaturatingAdd + Integer> LazyQuantity<'a, T> {
     }
 
     /// Writes the quantity into the buffer
-    pub fn write_to<const SIZE: usize>(self, dest: &mut Buffer<SIZE>) -> io::Result<usize> {
+    pub fn write_to(self, dest: &mut Buffer) -> io::Result<usize> {
         match self {
             Self::Zero => dest.write(b"0"),
             Self::Single(current) => dest.write(current),
@@ -46,11 +46,7 @@ impl<'a, T: FromRadix10Checked + SaturatingAdd + Integer> LazyQuantity<'a, T> {
 
     /// Writes the quantity to a record, using the working buffer as an
     /// intermediate
-    pub fn write_to_record<const SIZE: usize>(
-        self,
-        working: &mut Buffer<SIZE>,
-        record: &mut ByteRecord,
-    ) {
+    pub fn write_to_record(self, working: &mut Buffer, record: &mut ByteRecord) {
         // Write the quantity to to the temporary copy buffer
         working.len = self.write_to(working).unwrap_or(0);
 

@@ -10,16 +10,14 @@ docker-exists: ; @which docker > /dev/null
 docker: check
 	docker run --rm \
 	-v $(shell pwd):/opt \
-	rustlang/rust:nightly \
+	rustlang/rust:latest \
 	/bin/bash -c 'cd /opt && make compile OUT_DIR=/opt BUILD_TARGET=$(BUILD_TARGET)'
 
 # Compiles the project via `cargo build`
-# Enable unstable-options to use `--out-dir`
 compile:
 	cargo build --release --bins \
-	-Z unstable-options \
-	--out-dir $(OUT_DIR) \
-	--target $(BUILD_TARGET)
+	--target $(BUILD_TARGET) \
+	&& cp ./target/release/radvisor $(OUT_DIR)/radvisor
 
 # Enable static OpenSSL linking on Windows
 windows: export OPENSSL_STATIC = 1
@@ -28,4 +26,3 @@ windows: export RUSTFLAGS = -Ctarget-feature=+crt-static
 windows:
 	cargo build \
 	-Z features=itarget
-

@@ -114,10 +114,6 @@ pub fn get_header() -> &'static ByteRecord { &HEADER }
 /// to prevent expensive re-allocation
 const ROW_BUFFER_SIZE: usize = 1200;
 
-/// Length of the buffer used to read proc files in with. Designed to be an
-/// upper limit for the various virtual files that need to be read
-const WORKING_BUFFER_SIZE: usize = 1024;
-
 /// Length of the buffer used to build up stat file entries as the reader uses
 /// pre-examined layouts to map lines to entries.
 ///
@@ -127,8 +123,8 @@ const SLICES_BUFFER_SIZE: usize = 16;
 /// Working buffers used to avoid heap allocations at runtime
 pub struct WorkingBuffers {
     record:      ByteRecord,
-    buffer:      Buffer<WORKING_BUFFER_SIZE>,
-    copy_buffer: Buffer<WORKING_BUFFER_SIZE>,
+    buffer:      Buffer,
+    copy_buffer: Buffer,
     slices:      [AnonymousSlice; SLICES_BUFFER_SIZE],
 }
 
@@ -144,14 +140,8 @@ impl WorkingBuffers {
         Self {
             record:      ByteRecord::with_capacity(ROW_BUFFER_SIZE, *ROW_LENGTH),
             slices:      [<AnonymousSlice>::default(); SLICES_BUFFER_SIZE],
-            buffer:      Buffer {
-                len: 0,
-                b:   [0_u8; WORKING_BUFFER_SIZE],
-            },
-            copy_buffer: Buffer {
-                len: 0,
-                b:   [0_u8; WORKING_BUFFER_SIZE],
-            },
+            buffer:      Buffer::new(),
+            copy_buffer: Buffer::new(),
         }
     }
 }
