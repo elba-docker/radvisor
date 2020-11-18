@@ -82,7 +82,7 @@ fn run(opts: RunCommand, shell: Arc<Shell>) {
         .name(String::from("poll"))
         .spawn(move || {
             // Resolve container metadata provider
-            let mut provider: Box<dyn Provider> = opts.provider.into_impl();
+            let mut provider: Box<dyn Provider> = opts.provider.clone().into_impl();
 
             // Determine if the current process can connect to the provider source
             let provider_shell = Arc::clone(&polling_context.shell);
@@ -108,12 +108,12 @@ fn run(opts: RunCommand, shell: Arc<Shell>) {
         .unwrap();
 
     // Join the threads, which automatically exit upon termination
-    collection_thread
-        .join()
-        .expect("Error: collection thread resulted in panic");
-    polling_thread
-        .join()
-        .expect("Error: polling thread resulted in panic");
+    if collection_thread.join().is_err() {
+        shell.error("Error: collection thread resulted in panic");
+    }
+    if polling_thread.join().is_err() {
+        shell.error("Error: polling thread resulted in panic");
+    }
     shell.status("Exiting", "rAdvisor");
 }
 

@@ -1,3 +1,4 @@
+# Use "cargo +nightly fmt" to run formatter while on stable
 enum_discrim_align_threshold = 30
 struct_field_align_threshold = 30
 fn_single_line = true

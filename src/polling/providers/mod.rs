@@ -6,8 +6,8 @@ pub mod kubernetes;
 use crate::cli::RunCommand;
 use crate::shared::CollectionEvent;
 use crate::shell::Shell;
+use std::path::PathBuf;
 use std::sync::Arc;
-use strum_macros::EnumString;
 
 use clap::Clap;
 use failure::{Error, Fail};
@@ -37,24 +37,61 @@ pub trait Provider {
     fn poll(&mut self) -> Result<Vec<CollectionEvent>, Error>;
 }
 
-/// Type of provider to use to generate collection events
-#[derive(EnumString, Clap, Clone, Copy, Debug, PartialEq, Serialize)]
-#[strum(serialize_all = "snake_case")]
-#[serde(rename_all = "snake_case")]
-pub enum ProviderType {
-    #[cfg(feature = "docker")]
-    #[clap(
-        about = "runs collection using docker as the target backend; collecting stats for each \
-                 container"
-    )]
-    Docker,
+pub use provider_type::ProviderType;
+mod provider_type {
+    // There seems to be a bug around EnumString macro expansion
+    // that causes clippy to complain, so we include ProviderType in its own
+    // private module
+    #![allow(clippy::default_trait_access)]
 
-    #[cfg(feature = "kubernetes")]
-    #[clap(
-        about = "runs collection using kubernetes as the target backend; collecting stats for \
-                 each pod"
-    )]
-    Kubernetes,
+    use super::KubernetesOptions;
+    use crate::cli::{AUTHORS, VERSION};
+    use clap::Clap;
+    use serde::{Serialize, Serializer};
+    use strum_macros::IntoStaticStr;
+
+    #[derive(IntoStaticStr, Clap, Clone, Debug, PartialEq)]
+    #[strum(serialize_all = "snake_case")]
+    pub enum ProviderType {
+        #[cfg(feature = "docker")]
+        #[cfg(feature = "kubernetes")]
+        #[clap(
+            version = VERSION.unwrap_or("unknown"),
+            author = AUTHORS.as_deref().unwrap_or("contributors"),
+            about = "Runs collection using docker as the target backend; collecting stats for \
+            each container"
+        )]
+        Docker,
+
+        #[cfg(feature = "kubernetes")]
+        #[clap(
+            version = VERSION.unwrap_or("unknown"),
+            author = AUTHORS.as_deref().unwrap_or("contributors"),
+            about = "Runs collection using kubernetes as the target backend; collecting stats for \
+            each pod"
+        )]
+        Kubernetes(KubernetesOptions),
+    }
+
+    // Implement custom serialize so that inner structs are left off
+    impl Serialize for ProviderType {
+        fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+        where
+            S: Serializer,
+        {
+            serializer.serialize_str(self.into())
+        }
+    }
+}
+
+/// Type of provider to use to generate collection events
+#[allow(clippy::default_trait_access)]
+#[cfg(feature = "kubernetes")]
+#[derive(Default, Clap, Clone, Debug, PartialEq, Serialize)]
+pub struct KubernetesOptions {
+    /// Location of kubernetes config file (used to connect to the cluster)
+    #[clap(parse(from_os_str), short = 'k', long = "kube-config")]
+    pub kube_config: Option<PathBuf>,
 }
 
 impl ProviderType {
@@ -65,7 +102,7 @@ impl ProviderType {
             #[cfg(feature = "docker")]
             Self::Docker => Box::new(docker::Docker::new()),
             #[cfg(feature = "kubernetes")]
-            Self::Kubernetes => Box::new(kubernetes::Kubernetes::new()),
+            Self::Kubernetes(_) => Box::new(kubernetes::Kubernetes::new()),
         }
     }
 }

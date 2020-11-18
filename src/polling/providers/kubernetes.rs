@@ -1,5 +1,5 @@
 use crate::cli::RunCommand;
-use crate::polling::providers::{InitializationError, Provider};
+use crate::polling::providers::{InitializationError, Provider, ProviderType};
 use crate::shared::{CollectionEvent, CollectionMethod, CollectionTarget};
 use crate::shell::Shell;
 use crate::util::{self, CgroupManager, CgroupPath, ItemPool};
@@ -7,6 +7,7 @@ use std::cell::RefCell;
 use std::collections::BTreeMap;
 use std::fmt::Debug;
 use std::future::Future;
+use std::path::PathBuf;
 use std::str::FromStr;
 use std::sync::Arc;
 
@@ -110,8 +111,8 @@ impl QualityOfService {
         pod.status
             .as_ref()
             .and_then(|status| status.qos_class.as_ref())
-            // Use EnumString macro's `from_str` implementation here
-            .and_then(|qos| Self::from_str(qos).ok())
+            // Use strum_macro's `EnumString::from_str` implementation here
+            .and_then(|qos| Self::from_str(&qos.to_lowercase()).ok())
     }
 }
 
@@ -159,14 +160,20 @@ impl StartCollectionError {
 impl Provider for Kubernetes {
     fn initialize(
         &mut self,
-        _opts: &RunCommand,
+        opts: &RunCommand,
         shell: Arc<Shell>,
     ) -> Result<(), InitializationError> {
         self.shell = Some(Arc::clone(&shell));
         self.shell()
             .status("Initializing", "Kubernetes API provider");
 
-        match self.try_init() {
+        // Load the inner options
+        let inner_opts = match opts.provider.clone() {
+            ProviderType::Kubernetes(opts) => opts,
+            ProviderType::Docker => panic!("Invalid provider given to Kubernetes initialization"),
+        };
+
+        match self.try_init(inner_opts.kube_config) {
             Ok(_) => Ok(()),
             Err(init_err) => Err(init_err.into()),
         }
@@ -224,15 +231,17 @@ impl Provider for Kubernetes {
         let processed_num = start_events.len();
         events.extend(start_events);
 
-        self.shell().verbose(|sh| {
-            sh.info(format!(
-                "Received {} -> {} (+{}, -{}) containers from the Docker API",
-                original_num,
-                pods_map.len(),
-                processed_num,
-                removed_len
-            ))
-        });
+        if processed_num != 0 || removed_len != 0 {
+            self.shell().verbose(|sh| {
+                sh.info(format!(
+                    "Received {} -> {} (+{}, -{}) containers from the Kubernetes API",
+                    original_num,
+                    pods_map.len(),
+                    processed_num,
+                    removed_len
+                ))
+            });
+        }
 
         Ok(events)
     }
@@ -250,6 +259,7 @@ impl Kubernetes {
         // (emulating synchronous I/O)
         let runtime = tokio_02::runtime::Builder::new()
             .basic_scheduler()
+            .enable_all()
             .build()
             .unwrap();
         Self {
@@ -277,17 +287,30 @@ impl Kubernetes {
     ///   2. Can't load Kubernetes config from filesystem
     ///   3. Cgroups mounted unexpectedly/improperly
     ///   4. API server/Node can't be communicated with
-    fn try_init(&mut self) -> Result<(), KubernetesInitError> {
+    fn try_init(&mut self, kube_config: Option<PathBuf>) -> Result<(), KubernetesInitError> {
         if !util::cgroups_mounted_properly() {
             return Err(KubernetesInitError::InvalidCgroupMount);
         }
 
-        let config = self
-            .exec(config::Config::infer())
+        // Load the config using the given kubeconfig file if given,
+        // otherwise use the standard series of potential sources
+        let config_load_result = match kube_config {
+            None => self.exec(config::Config::infer()),
+            Some(kube_config) => self.exec(config::Config::from_custom_kubeconfig(
+                config::Kubeconfig::read_from(kube_config)
+                    .map_err(|err| KubernetesInitError::ConfigLoadError(Error::from(err)))?,
+                &config::KubeConfigOptions::default(),
+            )),
+        };
+        let config = config_load_result
             .map_err(|err| KubernetesInitError::ConfigLoadError(Error::from(err)))?;
+
+        // Initialize the API clients
         let client = Client::new(config);
         self.pod_client = Some(Api::all(client.clone()));
         self.node_client = Some(Api::all(client));
+
+        // Load the hostname of the machine
         let hostname = gethostname()
             .into_string()
             .map_err(KubernetesInitError::InvalidHostnameError)?;

@@ -17,7 +17,7 @@ docker: check
 compile:
 	cargo build --release --bins \
 	--target $(BUILD_TARGET) \
-	&& cp ./target/release/radvisor $(OUT_DIR)/radvisor
+	&& cp ./target/$(BUILD_TARGET)/release/radvisor $(OUT_DIR)/radvisor
 
 # Enable static OpenSSL linking on Windows
 windows: export OPENSSL_STATIC = 1

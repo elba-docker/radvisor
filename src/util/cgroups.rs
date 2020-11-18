@@ -30,6 +30,7 @@ pub struct CgroupManager {
 
 /// Resolved and existing cgroup path constructed from the construction methods
 /// on `CgroupManager`
+#[derive(Clone, Debug, PartialEq, Serialize)]
 pub struct CgroupPath {
     pub path:   PathBuf,
     pub driver: CgroupDriver,

@@ -45,8 +45,18 @@ pub struct Opts {
 }
 
 #[derive(Clap, Clone)]
+pub enum Command {
+    #[clap(
+        version = VERSION.unwrap_or("unknown"),
+        author = AUTHORS.as_deref().unwrap_or("contributors"),
+        about = "Runs a collection thread that writes resource statistics to output CSV files"
+    )]
+    Run(RunCommand),
+}
+
+#[derive(Clap, Clone)]
 pub struct RunCommand {
-    #[clap()]
+    #[clap(subcommand)]
     /// Provider to use to generate collection targets (such as containers/pods)
     pub provider: ProviderType,
 
@@ -110,27 +120,6 @@ pub struct PollingOptions {
         global = true
     )]
     pub interval: Duration,
-}
-
-pub use command::Command;
-mod command {
-    // There seems to be a bug around Clap macro expansion that creates unused
-    // braces around enum wrapper variants, so we include Command in its own
-    // private module
-    #![allow(unused_braces)]
-
-    use super::{RunCommand, AUTHORS, VERSION};
-    use clap::Clap;
-
-    #[derive(Clap, Clone)]
-    pub enum Command {
-        #[clap(
-            version = VERSION.unwrap_or("unknown"),
-            author = AUTHORS.as_deref().unwrap_or("contributors"),
-            about = "Runs a collection thread that writes resource statistics to output CSV files"
-        )]
-        Run(RunCommand),
-    }
 }
 
 #[derive(Debug, Clone)]
