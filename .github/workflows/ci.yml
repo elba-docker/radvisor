@@ -8,6 +8,8 @@ on:
 name: build/test
 env:
   toolchain: stable
+  # Use nightly features for rust fmt
+  fmt-toolchain: nightly
 
 # Build check for 64-bit linux
 jobs:
@@ -182,7 +184,7 @@ jobs:
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: ${{ env.toolchain }}
+          toolchain: ${{ env.fmt-toolchain }}
           components: rustfmt
           override: true
 

@@ -3,6 +3,7 @@ use crate::polling::providers::{InitializationError, Provider};
 use crate::shared::{CollectionEvent, CollectionMethod, CollectionTarget};
 use crate::shell::Shell;
 use crate::util::{self, CgroupManager, CgroupPath, ItemPool};
+use std::cell::RefCell;
 use std::collections::BTreeMap;
 use std::fmt::Debug;
 use std::future::Future;
@@ -13,10 +14,9 @@ use failure::Error;
 use gethostname::gethostname;
 use k8s_openapi::api::core::v1::{Node, Pod};
 use k8s_openapi::apimachinery::pkg::apis::meta::v1::Time;
-use kube::api::{ListParams, Meta, Resource};
+use kube::api::{Api, ListParams, Meta};
 use kube::client::Client;
 use kube::config;
-use kube::runtime::Reflector;
 use serde::Serialize;
 use strum_macros::{EnumString, IntoStaticStr};
 
@@ -31,10 +31,12 @@ const PROVIDER_TYPE: &str = "kubernetes";
 pub struct Kubernetes {
     cgroup_manager: CgroupManager,
     pod_uid_pool:   ItemPool<String>,
-    runtime:        tokio_03::runtime::Runtime,
-    pod_reflector:  Option<Reflector<Pod>>,
-    client:         Option<Client>,
+    runtime:        RefCell<tokio_02::runtime::Runtime>,
+    pod_client:     Option<Api<Pod>>,
+    node_client:    Option<Api<Node>>,
     shell:          Option<Arc<Shell>>,
+    hostname:       Option<String>,
+    node_name:      Option<String>,
 }
 
 /// Possible errors that can occur during Kubernetes provider initialization
@@ -45,7 +47,6 @@ enum KubernetesInitError {
     ConfigLoadError(Error),
     NodeDetectionError,
     NodeFetchError(Error),
-    InitialPodFetchError(Error),
     MissingNodeNameError,
 }
 
@@ -81,13 +82,6 @@ impl Into<InitializationError> for KubernetesInitError {
             Self::NodeFetchError(error) => InitializationError {
                 original:   Some(error),
                 suggestion: String::from("Could not get list of nodes in the Kubernetes cluster"),
-            },
-            Self::InitialPodFetchError(error) => InitializationError {
-                original:   Some(error),
-                suggestion: String::from(
-                    "Could not get the list of pods running on the current machine. \nMake sure \
-                     the node can access the API.",
-                ),
             },
             Self::MissingNodeNameError => InitializationError {
                 original:   None,
@@ -254,25 +248,32 @@ impl Kubernetes {
         // Use a single-threaded runtime so that Tokio doesn't create
         // a thread pool and instead executes futures in the current thread
         // (emulating synchronous I/O)
-        let runtime = tokio_03::runtime::Builder::new_current_thread()
+        let runtime = tokio_02::runtime::Builder::new()
+            .basic_scheduler()
             .build()
             .unwrap();
         Self {
             cgroup_manager: CgroupManager::new(),
-            pod_uid_pool: ItemPool::new(),
-            runtime,
-            pod_reflector: None,
-            client: None,
-            shell: None,
+            pod_uid_pool:   ItemPool::new(),
+            runtime:        RefCell::new(runtime),
+            pod_client:     None,
+            node_client:    None,
+            hostname:       None,
+            node_name:      None,
+            shell:          None,
         }
     }
 
     /// Executes a future on the internal runtime, blocking the current thread
     /// until it completes
-    fn exec<F: Future>(&self, future: F) -> F::Output { self.runtime.block_on(future) }
+    fn exec<F: Future>(&self, future: F) -> F::Output {
+        let mut rt = self.runtime.borrow_mut();
+        rt.block_on(future)
+    }
 
     /// Attempts to initialize the Kubernetes provider, failing if one of the
-    /// following conditions happens:   1. Invalid hostname from system
+    /// following conditions happens:
+    ///   1. Invalid hostname from system
     ///   2. Can't load Kubernetes config from filesystem
     ///   3. Cgroups mounted unexpectedly/improperly
     ///   4. API server/Node can't be communicated with
@@ -282,81 +283,44 @@ impl Kubernetes {
         }
 
         let config = self
-            .exec(config::load_kube_config())
+            .exec(config::Config::infer())
             .map_err(|err| KubernetesInitError::ConfigLoadError(Error::from(err)))?;
-        self.client = Some(Client::from(config));
+        let client = Client::new(config);
+        self.pod_client = Some(Api::all(client.clone()));
+        self.node_client = Some(Api::all(client));
+        let hostname = gethostname()
+            .into_string()
+            .map_err(KubernetesInitError::InvalidHostnameError)?;
+        self.hostname = Some(hostname);
 
         // Get current node by hostname and store in provider
         let node = self.get_current_node()?;
         let node_name = name_option(&node).ok_or(KubernetesInitError::MissingNodeNameError)?;
-        self.pod_reflector = Some(self.initialize_pod_reflector(node_name)?);
+        self.node_name = Some(String::from(node_name));
 
         Ok(())
     }
 
     /// Tries to get the current Node from the kubernetes API by its hostname
     fn get_current_node(&self) -> Result<Node, KubernetesInitError> {
-        let resource = Resource::all::<Node>();
-        let lp = ListParams::default().timeout(10);
-        let reflector: Reflector<Node> = self
-            .exec(Reflector::new(self.client().clone(), lp, resource).init())
-            .map_err(|err| KubernetesInitError::NodeFetchError(Error::from(err)))?;
-
-        let nodes = self
-            .exec(reflector.state())
-            .map_err(|err| KubernetesInitError::NodeFetchError(Error::from(err)))?;
-
-        let hostname = gethostname()
-            .into_string()
-            .map_err(KubernetesInitError::InvalidHostnameError)?;
-
-        // Try to get a node with the given hostname
-        nodes
+        // Attempt to find a node with the kubernetes.io/hostname label set
+        let lp =
+            ListParams::default().labels(&format!("kubernetes.io/hostname={}", self.hostname()));
+        let future = self.node_client().list(&lp);
+        self.exec(future)
+            .map_err(|err| KubernetesInitError::NodeFetchError(Error::from(err)))?
             .into_iter()
-            .find(|node| self.hostname_eq(node, &hostname))
+            .next()
             .ok_or(KubernetesInitError::NodeDetectionError)
-    }
-
-    /// Initializes the pod reflector and gets its initial state from the
-    /// Kubernetes API
-    fn initialize_pod_reflector(
-        &self,
-        node_name: &str,
-    ) -> Result<Reflector<Pod>, KubernetesInitError> {
-        // Create reflector for pods scheduled on the current node
-        let resource = Resource::all::<Pod>();
-        let selector: String = format!("spec.nodeName={}", node_name);
-        let lp = ListParams::default().fields(&selector).timeout(10);
-
-        self.exec(Reflector::new(self.client().clone(), lp, resource).init())
-            .map_err(|err| KubernetesInitError::InitialPodFetchError(Error::from(err)))
-    }
-
-    /// Determines whether the node's hostname is equal to the given hostname
-    fn hostname_eq(&self, node: &Node, hostname: &str) -> bool {
-        match &Meta::meta(node).labels {
-            None => false,
-            Some(labels) => match labels.get("kubernetes.io/hostname") {
-                Some(hs) => hs == hostname,
-                None => {
-                    self.shell().verbose(|sh| {
-                        sh.warn(format!(
-                            "Node lacks 'kubernetes.io/hostname' label: {}",
-                            name(node)
-                        ))
-                    });
-                    false
-                },
-            },
-        }
     }
 
     /// Tries to get all pods that are running on the current node, polling the
     /// Kubernetes API backend to get a fresh list
     fn get_pods(&self) -> Result<Vec<Pod>, Error> {
-        self.exec(self.pod_reflector().poll())?;
-        let pods = self.exec(self.pod_reflector().state())?;
-        Ok(pods.into_iter().collect::<Vec<_>>())
+        let lp = ListParams::default().fields(&format!("spec.nodeName={}", self.node_name()));
+        let future = self.pod_client().list(&lp);
+        let pods = self.exec(future)?.into_iter().collect::<Vec<_>>();
+        Ok(pods)
     }
 
     /// Converts a pod to a collection start event, preparing all
@@ -423,18 +387,32 @@ impl Kubernetes {
         cgroup_option
     }
 
-    /// Gets a reference to the current Kubernetes API client
-    fn client(&self) -> &Client {
-        self.client
+    /// Gets the current node's hostname
+    fn hostname(&self) -> &str {
+        self.hostname
             .as_ref()
-            .expect("Client must be initialized: invariant violated")
+            .expect("Hostname must be initialized: invariant violated")
     }
 
-    /// Gets a reference to the current pod reflector
-    fn pod_reflector(&self) -> &Reflector<Pod> {
-        self.pod_reflector
+    /// Gets the current node's name
+    fn node_name(&self) -> &str {
+        self.node_name
             .as_ref()
-            .expect("Pod reflector must be initialized: invariant violated")
+            .expect("Node name must be initialized: invariant violated")
+    }
+
+    /// Gets a reference to the current pod client
+    fn pod_client(&self) -> &Api<Pod> {
+        self.pod_client
+            .as_ref()
+            .expect("Pod client must be initialized: invariant violated")
+    }
+
+    /// Gets a reference to the current node client
+    fn node_client(&self) -> &Api<Node> {
+        self.node_client
+            .as_ref()
+            .expect("Node client must be initialized: invariant violated")
     }
 
     /// Gets a reference to the current shell

@@ -69,9 +69,7 @@ impl Buffer {
 }
 
 impl Default for Buffer {
-    fn default() -> Self {
-        Self::new()
-    }
+    fn default() -> Self { Self::new() }
 }
 
 impl Serialize for Buffer {
