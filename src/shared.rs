@@ -19,6 +19,7 @@ pub type Id = String;
 
 /// Type of event pushed to common channel between the polling and collection
 /// threads, used to update the state of the collection
+#[derive(Clone, Debug, PartialEq, Serialize)]
 pub enum CollectionEvent {
     Stop(Id),
     Start {
@@ -28,6 +29,7 @@ pub enum CollectionEvent {
 }
 
 /// Type of collection used; corresponds to a resultant CSV schema
+#[derive(Clone, Debug, PartialEq, Serialize)]
 pub enum CollectionMethod {
     LinuxCgroups(CgroupPath),
 }

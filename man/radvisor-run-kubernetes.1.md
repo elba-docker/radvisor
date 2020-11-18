@@ -3,42 +3,20 @@
 NAME
 ====
 
-**radvisor run** - runs radvisor to collect statistics for a updating set of targets
+**radvisor run kubernetes** - runs radvisor to collect statistics for all active pods running on the current host
 
 SYNOPSIS
 ========
 
-**radvisor run** \[FLAGS\] \[OPTIONS\] *\<provider\>*
+**radvisor run kubernetes** \[FLAGS\] \[OPTIONS\]
 
 DESCRIPTION
 ===========
 
-**radvisor run** runs a collection thread that writes resource statistics to
-output CSV files using configurable intervals. It has two modes of operation (*providers*) as subcommands:
+**radvisor run kubernetes** runs a collection thread that writes resource statistics to
+output CSV files using configurable intervals. While running, it collects statistics for Kubernetes pods, polling the Kubernetes API server to get a list of all active running pods that have been scheduled on the current machine's node, using the cgroups for each pod.
 
-1. **docker** - Collects statistics for containers, polling the docker daemon to get a list of active running containers (every 1s by default)
-and using their cgroups to read information on their system resource utilization.
-
-  Likely needs to be run as root.
-2. **kubernetes** - Collects statistics for Kubernetes pods, polling the Kubernetes API server to get a list of all active running pods
-that have been scheduled on the current machine's node, using the cgroups for each pod.
-
-  Needs to be a part of an active cluster and needs to be able to find the Kubernetes config file.
-
-SUBCOMMANDS:
-------------
-
-docker
-
-:   Runs collection using Docker as the backing target *provider*
-
-kubernetes
-
-:   Runs collection using Kubernetes as the backing target *provider*
-
-help
-
-:   Prints this message or the help of the given subcommand(s)
+Needs to be a part of an active cluster and needs to be able to find the Kubernetes config file (or specified using **\--kube-config**).
 
 FLAGS:
 ------
@@ -61,6 +39,10 @@ FLAGS:
 
 OPTIONS:
 --------
+
+**-k**, **\--kube-config** \<path\>
+
+> (optional) Path to load the Kubernetes config from that is used to connect to the cluster. If not given, then radvisor attempts to automatically detect cluster configuration
 
 **-c**, **\--color** \<color-mode\>
 
@@ -96,8 +78,8 @@ Joseph Azevedo <https://jazevedo.me>
 SEE ALSO
 ========
 
+**radvisor-run(1)**
 **radvisor-run-docker(1)**
-**radvisor-run-kubernetes(1)**
 
 LICENSE
 =======

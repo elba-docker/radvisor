@@ -5,9 +5,9 @@ use std::io::{Result as IoResult, Write};
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 
+use arraystring::{typenum::U64, ArrayString};
 use csv::Writer;
 use serde::Serialize;
-use arraystring::{ArrayString, typenum::U64};
 
 /// Stores metadata about a buffer flush event
 #[derive(Debug, Serialize)]

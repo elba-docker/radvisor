@@ -6,7 +6,7 @@ use std::str::FromStr;
 use std::time::Duration;
 
 use byte_unit::{Byte, ByteError};
-use clap::Clap;
+use clap::{Clap, ValueHint};
 
 type ShellOptions = crate::shell::Options;
 
@@ -45,21 +45,23 @@ pub struct Opts {
 }
 
 #[derive(Clap, Clone)]
-pub struct RunCommand {
-    #[clap()]
-    /// Provider to use to generate collection targets (such as containers/pods)
-    pub provider: ProviderType,
-
-    // Polling-related options
-    #[clap(flatten)]
-    pub polling: PollingOptions,
-
-    // Collection-related options
-    #[clap(flatten)]
-    pub collection: CollectionOptions,
+pub enum Command {
+    #[clap(
+        version = VERSION.unwrap_or("unknown"),
+        author = AUTHORS.as_deref().unwrap_or("contributors"),
+        about = "Runs a collection thread that writes resource statistics to output CSV files"
+    )]
+    Run(RunCommand),
 }
 
 #[derive(Clap, Clone)]
+pub struct RunCommand {
+    #[clap(subcommand)]
+    /// Provider to use to generate collection targets (such as containers/pods)
+    pub provider: ProviderType,
+}
+
+#[derive(Clap, Clone, Debug, PartialEq)]
 pub struct CollectionOptions {
     /// Collection interval between log entries
     #[clap(
@@ -68,7 +70,8 @@ pub struct CollectionOptions {
         short = 'i',
         long = "interval",
         default_value = "50ms",
-        global = true
+        global = true,
+        value_hint = ValueHint::Other
     )]
     pub interval: Duration,
 
@@ -78,12 +81,19 @@ pub struct CollectionOptions {
         short = 'd',
         long = "directory",
         default_value = "/var/log/radvisor/stats",
-        global = true
+        global = true,
+        value_hint = ValueHint::DirPath
     )]
     pub directory: PathBuf,
 
     /// (optional) Target location to write an buffer flush event log
-    #[clap(parse(from_os_str), short = 'f', long = "flush-log", global = true)]
+    #[clap(
+        parse(from_os_str),
+        short = 'f',
+        long = "flush-log",
+        global = true,
+        value_hint = ValueHint::FilePath
+    )]
     pub flush_log: Option<PathBuf>,
 
     /// Size (in bytes) of the heap-allocated buffer to use to write collection
@@ -93,12 +103,13 @@ pub struct CollectionOptions {
         short = 'b',
         long = "buffer",
         default_value = "16MiB",
-        global = true
+        global = true,
+        value_hint = ValueHint::Other
     )]
     pub buffer_size: Byte,
 }
 
-#[derive(Clap, Clone)]
+#[derive(Clap, Clone, Debug, PartialEq)]
 pub struct PollingOptions {
     /// Interval between requests to providers to get targets
     #[clap(
@@ -107,30 +118,10 @@ pub struct PollingOptions {
         short = 'p',
         long = "poll",
         default_value = "1000ms",
-        global = true
+        global = true,
+        value_hint = ValueHint::Other
     )]
     pub interval: Duration,
-}
-
-pub use command::Command;
-mod command {
-    // There seems to be a bug around Clap macro expansion that creates unused
-    // braces around enum wrapper variants, so we include Command in its own
-    // private module
-    #![allow(unused_braces)]
-
-    use super::{RunCommand, AUTHORS, VERSION};
-    use clap::Clap;
-
-    #[derive(Clap, Clone)]
-    pub enum Command {
-        #[clap(
-            version = VERSION.unwrap_or("unknown"),
-            author = AUTHORS.as_deref().unwrap_or("contributors"),
-            about = "Runs a collection thread that writes resource statistics to output CSV files"
-        )]
-        Run(RunCommand),
-    }
 }
 
 #[derive(Debug, Clone)]

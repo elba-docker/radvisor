@@ -44,6 +44,11 @@ impl<T: Ord + Clone> ItemPool<T> {
         let added = working_set.difference(items).cloned().collect::<Vec<_>>();
         let removed = items.difference(working_set).cloned().collect::<Vec<_>>();
 
+        // Remove all items from the set
+        for item in &removed {
+            items.remove(item);
+        }
+
         items.extend(added.iter().cloned());
         working_set.clear();
         (added, removed)
