@@ -11,11 +11,11 @@ use std::time::Duration;
 
 use bus::Bus;
 
-/// Disable compilation on platforms other than Linux or Windows
-#[cfg(not(any(target_os = "windows", target_os = "linux")))]
+/// Disable compilation on platforms other than Linux
+#[cfg(not(target_os = "linux"))]
 fn target_check() {
     compile_error!(
-        "rAdvisor only compiles for Linux and Windows targets. To request support for additional \
+        "rAdvisor only compiles for Linux targets. To request support for additional \
          platforms, feel free to file an issue at https://github.com/elba-kubernetes/radvisor/issues/new"
     );
 }
@@ -34,16 +34,6 @@ fn main() {
     let opts: Opts = cli::load();
     // Wrap the shell in an Arc so that it can be sent across threads
     let shell = Arc::new(shell::Shell::new(&opts.shell_options));
-
-    // Exit if running on a platform other than Linux
-    if cfg!(not(target_os = "linux")) {
-        shell.error(
-            "rAdvisor only runs on Linux due to its reliance on cgroups. \n\
-             See https://github.com/elba-kubernetes/radvisor/issues/3 \
-             for the tracking issue on adding support to Windows",
-        );
-        std::process::exit(1);
-    }
 
     match opts.command {
         Command::Run(run_opts) => {

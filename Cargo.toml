@@ -84,18 +84,10 @@ kube-derive = { version = "0.43.0", optional = true }
 libc = "0.2.80"
 shiplift = { version = "0.6.0", optional = true }
 
-# Windows-specific dependencies
-[target.'cfg(windows)'.dependencies]
-winapi = { version = "0.3.9", features = ["std"] }
-shiplift = { version = "0.6.0", default-features = false, features = ["chrono", "tls"], optional = true }
-
 [features]
 docker = ["shiplift", "futures-01", "tokio-01"]
 kubernetes = ["kube", "kube-runtime", "kube-derive", "k8s-openapi", "tokio-02"]
 default = ["docker", "kubernetes"]
-
-[dev-dependencies]
-cargo-update = "4"
 
 [profile.release]
 lto = "thin"

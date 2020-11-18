@@ -1,5 +1,5 @@
 use crate::cli::RunCommand;
-use crate::polling::providers::{InitializationError, Provider, ProviderType};
+use crate::polling::providers::{InitializationError, KubernetesOptions, Provider};
 use crate::shared::{CollectionEvent, CollectionMethod, CollectionTarget};
 use crate::shell::Shell;
 use crate::util::{self, CgroupManager, CgroupPath, ItemPool};
@@ -167,14 +167,7 @@ impl Provider for Kubernetes {
         self.shell()
             .status("Initializing", "Kubernetes API provider");
 
-        // Load the inner options
-        let inner_opts = match opts.provider.clone() {
-            ProviderType::Kubernetes(opts) => opts,
-            ProviderType::Docker(_) => {
-                panic!("Invalid provider given to Kubernetes initialization")
-            },
-        };
-
+        let inner_opts: KubernetesOptions = opts.provider.clone().into_inner_kubernetes();
         match self.try_init(inner_opts.kube_config) {
             Ok(_) => Ok(()),
             Err(init_err) => Err(init_err.into()),
