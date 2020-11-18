@@ -13,7 +13,7 @@
 
 ```yaml
 ---
-Version: 1.3.0
+Version: 1.3.1
 Provider: docker
 Metadata:
   Created: "2020-10-11T04:22:18Z"
@@ -75,7 +75,7 @@ More information about what each column represents can be found in the [docs pag
 
 ```yaml
 ---
-Version: 1.3.0
+Version: 1.3.1
 Provider: kubernetes
 Metadata:
   Uid: 9f0b1893-15e7-442a-966a-b0d19a35fc1c
@@ -206,10 +206,10 @@ cargo build --release --bins \
    Compiling cfg-if v0.1.10
    ...
    Compiling shiplift v0.6.0
-   Compiling radvisor v1.3.0 (/home/jazev/dev/radvisor)
+   Compiling radvisor v1.3.1 (/home/jazev/dev/radvisor)
     Finished release [optimized] target(s) in 4m 52s
 $ ./radvisor --version
-radvisor 1.3.0
+radvisor 1.3.1
 ```
 
 ## ⚖️ License
