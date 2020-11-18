@@ -14,13 +14,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [![v1.3.1](https://img.shields.io/badge/release-v1.3.1-2bab64)](https://github.com/elba-docker/radvisor/releases/tag/v1.3.1)
 ### Added
 
-- (internal) Remove dependency on Nightly Rust and change toolchain to Stable Rust 1.47
-- (internal) Use single-threaded Tokio executors to reduce number of kernel threads used at runtime
-- (internal) Clean up Makefile builds and unify with CI
 - Remove support for Windows builds (until actual support for Host Compute Platform is added)
 - Add support for specifying the Kubernetes config file:
   - `radvisor run kubernetes --kube-config ~/.kube/config`
 - Re-enable ZSH completions on the generated Debian package, and add value hints for all relevant CLI options
+- (internal) Remove dependency on Nightly Rust and change toolchain to Stable Rust 1.47
+- (internal) Use single-threaded Tokio executors to reduce number of kernel threads used at runtime
+- (internal) Clean up Makefile builds and unify with CI
 
 ---
 
