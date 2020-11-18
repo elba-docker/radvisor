@@ -6,7 +6,7 @@ use std::str::FromStr;
 use std::time::Duration;
 
 use byte_unit::{Byte, ByteError};
-use clap::Clap;
+use clap::{Clap, ValueHint};
 
 type ShellOptions = crate::shell::Options;
 
@@ -70,7 +70,8 @@ pub struct CollectionOptions {
         short = 'i',
         long = "interval",
         default_value = "50ms",
-        global = true
+        global = true,
+        value_hint = ValueHint::Other
     )]
     pub interval: Duration,
 
@@ -80,12 +81,19 @@ pub struct CollectionOptions {
         short = 'd',
         long = "directory",
         default_value = "/var/log/radvisor/stats",
-        global = true
+        global = true,
+        value_hint = ValueHint::DirPath
     )]
     pub directory: PathBuf,
 
     /// (optional) Target location to write an buffer flush event log
-    #[clap(parse(from_os_str), short = 'f', long = "flush-log", global = true)]
+    #[clap(
+        parse(from_os_str),
+        short = 'f',
+        long = "flush-log",
+        global = true,
+        value_hint = ValueHint::FilePath
+    )]
     pub flush_log: Option<PathBuf>,
 
     /// Size (in bytes) of the heap-allocated buffer to use to write collection
@@ -95,7 +103,8 @@ pub struct CollectionOptions {
         short = 'b',
         long = "buffer",
         default_value = "16MiB",
-        global = true
+        global = true,
+        value_hint = ValueHint::Other
     )]
     pub buffer_size: Byte,
 }
@@ -109,7 +118,8 @@ pub struct PollingOptions {
         short = 'p',
         long = "poll",
         default_value = "1000ms",
-        global = true
+        global = true,
+        value_hint = ValueHint::Other
     )]
     pub interval: Duration,
 }

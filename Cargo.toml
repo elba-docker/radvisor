@@ -34,7 +34,7 @@ assets = [
     # Shell completion files
     ["out/completion/bash", "usr/share/bash-completion/completions/radvisor", "644"],
     ["out/completion/fish", "usr/share/fish/vendor_completions.d/radvisor.fish", "644"],
-    # Unsure where elvish/powershell completion files go
+    ["out/completion/zsh", "usr/share/zsh/vendor-completions/_radvisor", "644"],
     # Binary executables
     ["out/radvisor", "usr/bin/", "755"],
 ]

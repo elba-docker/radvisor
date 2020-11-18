@@ -73,8 +73,7 @@ fn generate_all_completions(opts: &Opts, shell: &Shell) {
     try_generate::<Fish, ParentOpts>(&directory, "fish", app_name, shell);
     try_generate::<PowerShell, ParentOpts>(&directory, "powershell", app_name, shell);
     try_generate::<Elvish, ParentOpts>(&directory, "elvish", app_name, shell);
-    // Zsh support is currently broken
-    // try_generate::<Zsh, ParentOpts>(&directory, "zsh", app_name, shell);
+    try_generate::<Zsh, ParentOpts>(&directory, "zsh", app_name, shell);
 }
 
 /// Tries to generate the given completion file, potentially failing to do so

@@ -10,7 +10,7 @@ use crate::shell::Shell;
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use clap::Clap;
+use clap::{Clap, ValueHint};
 use failure::{Error, Fail};
 use serde::{Serialize, Serializer};
 
@@ -161,7 +161,12 @@ pub struct DockerOptions {
 #[derive(Clap, Clone, Debug, PartialEq)]
 pub struct KubernetesOptions {
     /// Location of kubernetes config file (used to connect to the cluster)
-    #[clap(parse(from_os_str), short = 'k', long = "kube-config")]
+    #[clap(
+        parse(from_os_str),
+        short = 'k',
+        long = "kube-config",
+        value_hint = ValueHint::FilePath
+    )]
     pub kube_config: Option<PathBuf>,
 
     // Polling-related options
