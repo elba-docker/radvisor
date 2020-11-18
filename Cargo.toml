@@ -48,41 +48,41 @@ name = "radvisor"
 path = "src/main.rs"
 
 [dependencies]
-bus = "2.2.3"
-csv = "1.1.4"
-failure = "0.1.8"
-itoa = { version = "0.4.6", features = ["i128"] }
-arraystring = { version = "0.3", features = ["serde-traits"] }
-atoi = "0.3.3"
-num-traits = "0.2.14"
-ctrlc = { version = "3.1.7", features = ["termination"] }
+bus = "^2.2"
+csv = "^1.1"
+failure = "^0.1.8"
+itoa = { version = "^0.4.6", features = ["i128"] }
+arraystring = { version = "^0.3", features = ["serde-traits"] }
+atoi = "^0.3.3"
+num-traits = "^0.2.14"
+ctrlc = { version = "^3.1", features = ["termination"] }
 futures-01 = { package = "futures", version = "0.1", optional = true}
 tokio-01 = { package = "tokio", version = "0.1", optional = true }
 tokio-02 = { package = "tokio", version = "0.2", features = ["rt-core"], optional = true }
-lazy_static = "1.4.0"
-gethostname = "0.2.1"
-serde = { version = "1.0.117", features = ["derive"] }
-serde_yaml = "0.8.14"
-human-panic = "1.0.3"
-textwrap = "0.12.1"
-termcolor = "1.1.0"
-atty = "0.2.14"
-humantime = "2.0.1"
-strum = "0.19.5"
-strum_macros = "0.19.4"
-byte-unit = "4.0.9"
-sys-info = "0.7.0"
-clap = { version = "3.0.0-beta.2", default-features = false, features = [ "std", "suggestions", "color", "derive", "wrap_help" ] }
+lazy_static = "^1.4"
+gethostname = "^0.2.1"
+serde = { version = "^1.0", features = ["derive"] }
+serde_yaml = "^0.8.14"
+human-panic = "^1.0"
+textwrap = "^0.12.1"
+termcolor = "^1.1"
+atty = "^0.2.14"
+humantime = "^2.0"
+strum = "^0.19.5"
+strum_macros = "^0.19.4"
+byte-unit = "^4.0"
+sys-info = "^0.7.0"
+clap = { version = "^3.0.0-beta.2", default-features = false, features = [ "std", "suggestions", "color", "derive", "wrap_help" ] }
 # Kubernetes-specific dependencies
-k8s-openapi = { version = "0.9.0", default-features = false, features = ["v1_15"], optional = true  }
-kube = { version = "0.43.0", optional = true }
-kube-runtime = { version = "0.43.0", optional = true }
-kube-derive = { version = "0.43.0", optional = true }
+k8s-openapi = { version = "^0.9.0", default-features = false, features = ["v1_15"], optional = true  }
+kube = { version = "^0.43.0", optional = true }
+kube-runtime = { version = "^0.43.0", optional = true }
+kube-derive = { version = "^0.43.0", optional = true }
 
 # Unix-specific dependencies
 [target.'cfg(unix)'.dependencies]
-libc = "0.2.80"
-shiplift = { version = "0.6.0", optional = true }
+libc = "^0.2.80"
+shiplift = { version = "^0.6.0", optional = true }
 
 [features]
 docker = ["shiplift", "futures-01", "tokio-01"]

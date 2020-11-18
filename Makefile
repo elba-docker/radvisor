@@ -21,3 +21,7 @@ compile:
 	--no-default-features \
 	--features "$(FEATURES)" \
 	&& cp ./target/$(BUILD_TARGET)/release/radvisor $(OUT_DIR)/radvisor
+
+# Remove compiled files
+clean:
+	cargo clean
