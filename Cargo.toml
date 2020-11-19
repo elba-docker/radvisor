@@ -9,6 +9,8 @@ edition = "2018"
 readme = "README.md"
 license = "MIT"
 repository = "https://github.com/elba-docker/radvisor"
+homepage = "https://github.com/elba-docker/radvisor"
+documentation = "https://github.com/elba-docker/radvisor/tree/develop/man"
 keywords = ["resource-monitor", "docker", "instrumentation", "cgroups", "kubernetes", "linux"]
 categories = ["command-line-utilities"]
 
