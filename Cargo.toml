@@ -13,6 +13,7 @@ keywords = ["resource-monitor", "docker", "instrumentation", "cgroups", "kuberne
 categories = ["command-line-utilities"]
 
 [package.metadata.deb]
+depends = "libssl1.1 (>= 1.1.1a), libc6 (>= 2.27)"
 license-file = ["./LICENSE", "0"]
 extended-description="""\
 Monitors & collects system resource utilization on Linux for Docker containers and Kubernetes pods \
