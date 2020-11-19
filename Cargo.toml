@@ -13,6 +13,11 @@ homepage = "https://github.com/elba-docker/radvisor"
 documentation = "https://github.com/elba-docker/radvisor/tree/develop/man"
 keywords = ["resource-monitor", "docker", "instrumentation", "cgroups", "kubernetes", "linux"]
 categories = ["command-line-utilities"]
+exclude = [
+    ".fossa.yml",
+    ".editorconfig",
+    ".github",
+]
 
 [package.metadata.deb]
 depends = "libssl1.1 (>= 1.1.1a), libc6 (>= 2.27)"
