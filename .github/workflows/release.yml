@@ -31,6 +31,8 @@ jobs:
           override: true
 
       # Build binaries (cleanbuild for release)
+      - name: Make output directory
+        run: mkdir -p ${{ env.output-dir }}
       - name: Run cargo build
         run: make all BUILD_TARGET=${{ env.build-target }} OUT_DIR=${{ env.output-dir }}
       - name: Strip binary
