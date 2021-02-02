@@ -1,13 +1,13 @@
 [package]
 name = "radvisor"
-version = "1.3.1"
+version = "1.4.0"
 authors = ["Joseph Azevedo <joseph.az@gatech.edu>", "Bhanu Garg <bgarg6@gatech.edu>"]
 description = """\
 Resource utilization monitor for Docker containers & Kubernetes pods \
 that operates with fine granularity and low overhead."""
 edition = "2018"
 readme = "README.md"
-license = "MIT"
+license = "GPL-3.0-only"
 repository = "https://github.com/elba-docker/radvisor"
 homepage = "https://github.com/elba-docker/radvisor"
 documentation = "https://github.com/elba-docker/radvisor/tree/develop/man"

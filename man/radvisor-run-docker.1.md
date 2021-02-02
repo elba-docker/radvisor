@@ -1,4 +1,4 @@
-% RADVISOR(1) Version 1.3.1 | radvisor User Manual
+% RADVISOR(1) Version 1.4.0 | radvisor User Manual
 
 NAME
 ====
@@ -88,4 +88,4 @@ SEE ALSO
 LICENSE
 =======
 
-This project is licensed under the MIT License <https://github.com/elba-docker/radvisor/blob/develop/LICENSE>.
+This project is licensed under the GNU General Public License v3.0 <https://github.com/elba-docker/radvisor/blob/develop/LICENSE>.

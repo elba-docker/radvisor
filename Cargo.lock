@@ -1667,7 +1667,7 @@ dependencies = [
 
 [[package]]
 name = "radvisor"
-version = "1.3.1"
+version = "1.4.0"
 dependencies = [
  "arraystring",
  "atoi",
@@ -1704,7 +1704,7 @@ dependencies = [
 
 [[package]]
 name = "radvisor-toolbox"
-version = "1.3.1"
+version = "1.4.0"
 dependencies = [
  "clap",
  "clap_generate",

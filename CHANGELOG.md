@@ -5,7 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased](https://github.com/elba-docker/radvisor/compare/v1.3.1...HEAD)
+## [Unreleased](https://github.com/elba-docker/radvisor/compare/v1.4.0...HEAD)
+
+---
+
+## [1.4.0](https://github.com/elba-docker/radvisor/compare/v1.3.0...v1.4.0) - 2021-02-02
+
+[![v1.4.0](https://img.shields.io/badge/release-v1.4.0-2bab64)](https://github.com/elba-docker/radvisor/releases/tag/v1.4.0)
+### Added
+
+- Changed license from the MIT License to the GNU General Public License v3.0
 
 ---
 
