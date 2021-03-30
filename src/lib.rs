@@ -20,6 +20,8 @@
 #![allow(clippy::missing_errors_doc)]
 // Allow let x = match option() { } blocks
 #![allow(clippy::single_match_else)]
+// Allow trailing else statements
+#![allow(clippy::redundant_else)]
 
 // Re-export all items
 pub mod cli;
