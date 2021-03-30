@@ -10,10 +10,10 @@ use crate::shell::Shell;
 use std::path::PathBuf;
 use std::sync::Arc;
 
-#[cfg(feature = "kubernetes")]
-use clap::ValueHint;
 #[cfg(feature = "docker")]
 use clap::Clap;
+#[cfg(feature = "kubernetes")]
+use clap::ValueHint;
 use failure::{Error, Fail};
 use serde::{Serialize, Serializer};
 
