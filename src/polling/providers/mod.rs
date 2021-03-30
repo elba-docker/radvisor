@@ -10,7 +10,6 @@ use crate::shell::Shell;
 use std::path::PathBuf;
 use std::sync::Arc;
 
-#[cfg(feature = "docker")]
 use clap::Clap;
 #[cfg(feature = "kubernetes")]
 use clap::ValueHint;
