@@ -56,6 +56,7 @@ impl From<CollectionMethod> for CollectorImpl {
             CollectionMethod::LinuxCgroupV1(path) => {
                 Self::CgroupV1(cgroup_v1::Collector::new(path))
             },
+            CollectionMethod::LinuxCgroupV2(path) => todo!(),
         }
     }
 }

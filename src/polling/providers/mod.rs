@@ -9,8 +9,6 @@ use crate::shell::Shell;
 use anyhow::Error;
 use clap::Clap;
 use serde::{Serialize, Serializer};
-#[cfg(feature = "kubernetes")]
-use std::path::PathBuf;
 use std::sync::Arc;
 
 /// An error that occurred during provider initialization/connection check,

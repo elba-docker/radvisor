@@ -2,11 +2,12 @@ use crate::cli::RunCommand;
 use crate::polling::providers::{InitializationError, Provider};
 use crate::shared::{CollectionEvent, CollectionMethod, CollectionTarget};
 use crate::shell::Shell;
-use crate::util::{self, CgroupManager, CgroupPath, ItemPool};
+use crate::util::{self, CgroupManager, CgroupPath, CgroupSlices, GetCgroupError, ItemPool};
 use anyhow::Error;
 use shiplift::builder::ContainerListOptions;
 use shiplift::rep::Container;
 use std::collections::BTreeMap;
+use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::runtime::Runtime;
 
@@ -50,7 +51,8 @@ impl From<DockerInitError> for InitializationError {
 #[derive(Debug)]
 enum StartCollectionError {
     MetadataSerializationError(Error),
-    CgroupNotFound,
+    CgroupVersionDetectionFailed,
+    CgroupNotFound(PathBuf),
 }
 
 impl Provider for Docker {
@@ -112,11 +114,11 @@ impl Provider for Docker {
                     Err(error) => {
                         let container_display = display(container);
                         match error {
-                            StartCollectionError::CgroupNotFound => {
+                            StartCollectionError::CgroupNotFound(path) => {
                                 self.shell().warn(format!(
                                     "Could not start collection for container {}: cgroup path \
-                                     could not be constructed or does not exist",
-                                    container_display
+                                     '{:?}' does not exist on system",
+                                    container_display, path,
                                 ));
                             },
                             StartCollectionError::MetadataSerializationError(cause) => {
@@ -124,6 +126,14 @@ impl Provider for Docker {
                                     "Could not start collection for container {}: failed to \
                                      serialize container metadata: {}",
                                     container_display, cause
+                                ));
+                            },
+                            StartCollectionError::CgroupVersionDetectionFailed => {
+                                self.shell().warn(format!(
+                                    "Could not start collection for container {}: failed to \
+                                     detect the currently running cgroup version (are cgroups \
+                                     mounted in /sys/fs/cgroup?)",
+                                    container_display
                                 ));
                             },
                         }
@@ -231,27 +241,34 @@ impl Docker {
     ) -> Result<CollectionMethod, StartCollectionError> {
         // Only one type of CollectionMethod currently
         match self.get_cgroup(container) {
-            Some(cgroup) => Ok(CollectionMethod::LinuxCgroupV1(cgroup)),
-            None => Err(StartCollectionError::CgroupNotFound),
+            Ok(cgroup) => match cgroup.version {
+                util::CgroupVersion::V1 => Ok(CollectionMethod::LinuxCgroupV1(cgroup)),
+                util::CgroupVersion::V2 => Ok(CollectionMethod::LinuxCgroupV2(cgroup)),
+            },
+            Err(GetCgroupError::VersionDetectionFailed) => {
+                Err(StartCollectionError::CgroupVersionDetectionFailed)
+            },
+            Err(GetCgroupError::NotFound(path)) => Err(StartCollectionError::CgroupNotFound(path)),
+            Err(GetCgroupError::CgroupV1NotEnabled) => unreachable!(),
         }
     }
 
     /// Gets the group path for the given container, printing out a
     /// message upon the first successful cgroup resolution
-    fn get_cgroup(&mut self, c: &Container) -> Option<CgroupPath> {
+    fn get_cgroup(&mut self, c: &Container) -> Result<CgroupPath, GetCgroupError> {
         // Determine if the manager had a resolved group beforehand
         let had_driver = self.cgroup_manager.driver().is_some();
 
         // Container cgroups are under the dockerd parent, and are in leaf
-        // cgroups by (full) container ID. Cgroup path depends on the driver used:
-        // according to https://docs.docker.com/engine/reference/commandline/dockerd/#default-cgroup-parent ,
+        // cgroups by (full) container ID.
+        // Cgroup path depends on the driver used and version enabled.
+        // According to https://docs.docker.com/engine/reference/commandline/dockerd/#default-cgroup-parent ,
         // "[container cgroups are mounted at] `/docker` for fs cgroup driver and
         // `system.slice` for systemd cgroup driver."
-        let cgroup_option: Option<CgroupPath> = self.cgroup_manager.get_cgroup_divided(
-            &["system.slice", &format!("docker-{}.scope", &c.id)],
-            &["docker", &c.id],
-            false,
-        );
+        let result = self.cgroup_manager.get_cgroup(CgroupSlices {
+            systemd:  &["system.slice", &format!("docker-{}.scope", &c.id)],
+            cgroupfs: &["docker", &c.id],
+        });
 
         if !had_driver {
             if let Some(driver) = self.cgroup_manager.driver() {
@@ -260,7 +277,7 @@ impl Docker {
             }
         }
 
-        cgroup_option
+        result
     }
 
     /// Gets a reference to the current shell
