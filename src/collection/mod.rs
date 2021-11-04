@@ -58,13 +58,10 @@ pub fn run(
     let table_metadata = Arc::new(collect::get_table_metadata());
 
     // If we are monitoring events, initialize the event log
-    let flush_log = match &options.flush_log {
-        Some(log_path) => Some(Arc::new(Mutex::new(FlushLog::new(
-            log_path,
-            EVENT_BUFFER_LENGTH,
-        )))),
-        None => None,
-    };
+    let flush_log = options
+        .flush_log
+        .as_ref()
+        .map(|log_path| Arc::new(Mutex::new(FlushLog::new(log_path, EVENT_BUFFER_LENGTH))));
 
     // Track when the collector is running and when SIGTERM/SIGINT are being handled
     let status_mutex = Arc::new(Mutex::new(CollectStatus {
@@ -93,12 +90,12 @@ pub fn run(
                         sh.info(
                             "Currently collecting: stopping & flushing buffers at the end of the \
                              next collector tick",
-                        )
+                        );
                     });
                 },
                 false => {
                     shell_c.verbose(|sh| {
-                        sh.info("Currently yielding: stopping & flushing buffers right now")
+                        sh.info("Currently yielding: stopping & flushing buffers right now");
                     });
 
                     // The collection thread is yielding to the sleep; flush the buffers now
@@ -161,7 +158,7 @@ pub fn run(
                 sh.info(
                     "Received termination flag from term handler thread; stopping and flushing \
                      buffers now",
-                )
+                );
             });
 
             // If termination signaled during collection, then the collection thread
@@ -238,7 +235,7 @@ fn handle_event(
                 sh.info(format!(
                     "Received start event for target '{}' from the collection thread",
                     target.name
-                ))
+                ));
             });
 
             match method {
@@ -276,7 +273,7 @@ fn handle_event(
                         .map(|c| c.borrow().target.name.clone())
                         .as_ref()
                         .unwrap_or(&id)
-                ))
+                ));
             });
 
             let collector = collectors.remove(&id);

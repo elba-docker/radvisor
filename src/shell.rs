@@ -164,7 +164,7 @@ impl Shell {
                 .out
                 .lock()
                 .expect("Could not unwrap stdout lock: mutex poisoned");
-            let _ = out.print(status, message, status_color, text_color, justified);
+            let _result = out.print(status, message, status_color, text_color, justified);
         }
     }
 
@@ -174,7 +174,7 @@ impl Shell {
             .err
             .lock()
             .expect("Could not unwrap stderr lock: mutex poisoned");
-        let _ = err.print(
+        let _result = err.print(
             &"(error)",
             Some(&message),
             Color::Red,

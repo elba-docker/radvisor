@@ -14,12 +14,12 @@ pub fn entry(file: &Option<File>, buffers: &mut WorkingBuffers) {
     let trimmed = buffers.buffer.trim();
     if util::content_len_raw(trimmed) == 0 {
         // Buffer ended up empty; prevent writing NUL bytes
-        buffers.record.push_field(&EMPTY_BUFFER[..]);
+        buffers.record.push_field(EMPTY_BUFFER);
     } else {
         buffers.record.push_field(trimmed);
     }
 
-    buffers.buffer.clear()
+    buffers.buffer.clear();
 }
 
 /// Parses every entry in a stats file, where each entry is a alphabetic key
@@ -56,7 +56,7 @@ pub fn stat_file(file: &Option<File>, offsets: &[usize], buffers: &mut WorkingBu
 
     // Write empty buffers for remaining positions that weren't parsed successfully
     for _ in 0..(offsets.len() - success_count) {
-        buffers.record.push_field(&EMPTY_BUFFER[..]);
+        buffers.record.push_field(EMPTY_BUFFER);
     }
 
     buffers.buffer.clear();
@@ -97,7 +97,7 @@ impl StatFileLayout {
                 // Ignore errors: if seeking fails, then the effect next time will be pushing
                 // empty buffers to the CSV rows, which lets the other monitoring
                 // continue
-                let _ = file_mut.seek(SeekFrom::Start(0));
+                let _result = file_mut.seek(SeekFrom::Start(0));
                 result.is_ok()
             },
         };
@@ -213,7 +213,7 @@ fn read_to_buffer(file: &Option<File>, buffers: &mut WorkingBuffers) -> Option<u
             // Ignore errors: if seeking fails, then the effect next time will be pushing
             // empty buffers to the CSV rows, which lets the other monitoring
             // continue
-            let _ = file_mut.seek(SeekFrom::Start(0));
+            let _result = file_mut.seek(SeekFrom::Start(0));
             result
         },
     }
@@ -253,10 +253,10 @@ pub fn io(file: &Option<File>, buffers: &mut WorkingBuffers) {
     let trimmed = buffers.buffer.trim();
     if util::content_len_raw(trimmed) == 0 {
         // Buffer ended up empty; prevent writing NUL bytes
-        buffers.record.push_field(&EMPTY_BUFFER[..]);
-        buffers.record.push_field(&EMPTY_BUFFER[..]);
-        buffers.record.push_field(&EMPTY_BUFFER[..]);
-        buffers.record.push_field(&EMPTY_BUFFER[..]);
+        buffers.record.push_field(EMPTY_BUFFER);
+        buffers.record.push_field(EMPTY_BUFFER);
+        buffers.record.push_field(EMPTY_BUFFER);
+        buffers.record.push_field(EMPTY_BUFFER);
     } else {
         // Scan each line and aggregate into 4 records
         aggregate_lines(buffers);
@@ -336,7 +336,7 @@ pub fn simple_io(file: &Option<File>, buffers: &mut WorkingBuffers) {
     let trimmed = buffers.buffer.trim();
     if util::content_len_raw(trimmed) == 0 {
         // Buffer ended up empty; prevent writing NUL bytes
-        buffers.record.push_field(&EMPTY_BUFFER[..]);
+        buffers.record.push_field(EMPTY_BUFFER);
     } else {
         // Scan each line and aggregate into a single record
         aggregate_lines_simple(buffers);

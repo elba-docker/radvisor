@@ -51,14 +51,14 @@ enum KubernetesInitError {
     MissingNodeNameError,
 }
 
-impl Into<InitializationError> for KubernetesInitError {
-    fn into(self) -> InitializationError {
-        match self {
-            Self::InvalidCgroupMount => InitializationError {
+impl From<KubernetesInitError> for InitializationError {
+    fn from(other: KubernetesInitError) -> Self {
+        match other {
+            KubernetesInitError::InvalidCgroupMount => Self {
                 original:   None,
                 suggestion: String::from(util::INVALID_CGROUP_MOUNT_MESSAGE),
             },
-            Self::InvalidHostnameError(hostname) => InitializationError {
+            KubernetesInitError::InvalidHostnameError(hostname) => Self {
                 original:   None,
                 suggestion: format!(
                     "Could not retrieve hostname to use for node detection: Invalid string '{:?}' \
@@ -66,25 +66,25 @@ impl Into<InitializationError> for KubernetesInitError {
                     hostname
                 ),
             },
-            Self::ConfigLoadError(error) => InitializationError {
+            KubernetesInitError::ConfigLoadError(error) => Self {
                 original:   Some(error),
                 suggestion: String::from(
                     "Could not load kubernetes config. Make sure the current machine is a part of \
                      a cluster \nand has the cluster configuration copied to the config directory.",
                 ),
             },
-            Self::NodeDetectionError => InitializationError {
+            KubernetesInitError::NodeDetectionError => Self {
                 original:   None,
                 suggestion: String::from(
                     "Could not get the current node via the Kubernetes API. \nMake sure the \
                      current machine is running its own node.",
                 ),
             },
-            Self::NodeFetchError(error) => InitializationError {
+            KubernetesInitError::NodeFetchError(error) => Self {
                 original:   Some(error),
                 suggestion: String::from("Could not get list of nodes in the Kubernetes cluster"),
             },
-            Self::MissingNodeNameError => InitializationError {
+            KubernetesInitError::MissingNodeNameError => Self {
                 original:   None,
                 suggestion: String::from(
                     "The node running on the current host lacks a Name field. \nThe pod polling \
@@ -180,7 +180,7 @@ impl Provider for Kubernetes {
         let original_num = pods.len();
         let pods_map: BTreeMap<String, Pod> = pods
             .into_iter()
-            .flat_map(|p| {
+            .filter_map(|p| {
                 let uid = uid_option(&p);
                 uid.map(ToOwned::to_owned).map(|id| (id, p))
             })
@@ -198,7 +198,7 @@ impl Provider for Kubernetes {
         // Add all added Ids as Start events
         let start_events = added
             .into_iter()
-            .flat_map(|uid| {
+            .filter_map(|uid| {
                 // It shouldn't be possible to have a Uid that doesn't exist in the map, but
                 // check anyways
                 let pod: &Pod = match pods_map.get(uid.as_str()) {
@@ -234,7 +234,7 @@ impl Provider for Kubernetes {
                     pods_map.len(),
                     processed_num,
                     removed_len
-                ))
+                ));
             });
         }
 

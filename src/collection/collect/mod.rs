@@ -236,7 +236,7 @@ fn collect_memory(
     read::entry(&handles.memory_limit_in_bytes, buffers);
     read::entry(&handles.memory_soft_limit_in_bytes, buffers);
     read::entry(&handles.memory_failcnt, buffers);
-    read::with_layout(&handles.memory_stat, layout, buffers)
+    read::with_layout(&handles.memory_stat, layout, buffers);
 }
 
 /// Collects all stats for the blkio subsystem

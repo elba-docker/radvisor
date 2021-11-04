@@ -16,8 +16,9 @@
 #![deny(clippy::useless_transmute)]
 // Allow for using booleans in match statements where it makes it more readable
 #![allow(clippy::match_bool)]
-// Allow missing Errors docs
+// Allow missing Errors & Panics docs
 #![allow(clippy::missing_errors_doc)]
+#![allow(clippy::missing_panics_doc)]
 // Allow let x = match option() { } blocks
 #![allow(clippy::single_match_else)]
 // Allow trailing else statements

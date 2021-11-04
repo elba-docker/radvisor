@@ -30,17 +30,17 @@ enum DockerInitError {
     InvalidCgroupMount,
 }
 
-impl Into<InitializationError> for DockerInitError {
-    fn into(self) -> InitializationError {
-        match self {
-            Self::ConnectionFailed(error) => InitializationError {
+impl From<DockerInitError> for InitializationError {
+    fn from(other: DockerInitError) -> Self {
+        match other {
+            DockerInitError::ConnectionFailed(error) => Self {
                 original:   Some(error.into()),
                 suggestion: String::from(
                     "Could not connect to the docker socket. Are you running rAdvisor as \
                      root?\nIf running at a non-standard URL, set DOCKER_HOST to the correct URL.",
                 ),
             },
-            Self::InvalidCgroupMount => InitializationError {
+            DockerInitError::InvalidCgroupMount => Self {
                 original:   None,
                 suggestion: String::from(util::INVALID_CGROUP_MOUNT_MESSAGE),
             },
@@ -102,7 +102,7 @@ impl Provider for Docker {
         // Add all added Ids as Start events
         let start_events = added
             .into_iter()
-            .flat_map(|id| {
+            .filter_map(|id| {
                 // It shouldn't be possible to have an Id that doesn't exist in the map, but
                 // check anyways
                 let container = match to_collect.get(&id) {
@@ -154,7 +154,7 @@ impl Provider for Docker {
                     to_collect.len(),
                     processed_num,
                     removed_len
-                ))
+                ));
             });
         }
 
