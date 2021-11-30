@@ -256,8 +256,9 @@ impl Docker {
     /// Gets the group path for the given container, printing out a
     /// message upon the first successful cgroup resolution
     fn get_cgroup(&mut self, c: &Container) -> Result<CgroupPath, GetCgroupError> {
-        // Determine if the manager had a resolved group beforehand
+        // Determine if the manager had a resolved version or driver beforehand
         let had_driver = self.cgroup_manager.driver().is_some();
+        let had_version = self.cgroup_manager.version().is_some();
 
         // Container cgroups are under the dockerd parent, and are in leaf
         // cgroups by (full) container ID.
@@ -274,6 +275,13 @@ impl Docker {
             if let Some(driver) = self.cgroup_manager.driver() {
                 self.shell()
                     .info(format!("Identified {} as cgroup driver", driver));
+            }
+        }
+
+        if !had_version {
+            if let Some(version) = self.cgroup_manager.version() {
+                self.shell()
+                    .info(format!("Identified {} as cgroup version", version));
             }
         }
 

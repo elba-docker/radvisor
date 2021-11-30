@@ -231,7 +231,7 @@ impl CgroupManager {
     #[must_use]
     pub const fn driver(&self) -> Option<CgroupDriver> { self.driver }
 
-    /// Gets the current resolved cgroups version for the manager
+    /// Gets the current resolved cgroup version for the manager
     #[must_use]
     pub const fn version(&self) -> Option<CgroupVersion> { self.version }
 }

@@ -428,7 +428,7 @@ impl Kubernetes {
         qos_class: QualityOfService,
     ) -> Result<CgroupPath, GetCgroupError> {
         let pod_slice = String::from("pod") + uid;
-        // Determine if the manager had a resolved group or driver beforehand
+        // Determine if the manager had a resolved version or driver beforehand
         let had_driver = self.cgroup_manager.driver().is_some();
         let had_version = self.cgroup_manager.version().is_some();
 
