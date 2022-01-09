@@ -3,22 +3,23 @@ use crate::polling::providers::{InitializationError, KubernetesOptions, Provider
 use crate::shared::{CollectionEvent, CollectionMethod, CollectionTarget};
 use crate::shell::Shell;
 use crate::util::{self, CgroupManager, CgroupPath, ItemPool};
-use failure::Error;
+use anyhow::Error;
 use gethostname::gethostname;
 use k8s_openapi::api::core::v1::{Node, Pod};
 use k8s_openapi::apimachinery::pkg::apis::meta::v1::Time;
-use kube::api::{Api, ListParams, Meta};
+use kube::api::{Api, ListParams};
 use kube::client::Client;
 use kube::config;
+use kube::Resource as _;
 use serde::Serialize;
-use std::cell::RefCell;
 use std::collections::BTreeMap;
+use std::convert::TryFrom;
 use std::fmt::Debug;
-use std::future::Future;
 use std::path::PathBuf;
 use std::str::FromStr;
 use std::sync::Arc;
 use strum_macros::{EnumString, IntoStaticStr};
+use tokio::runtime::Runtime;
 
 /// String representation for "None"
 const NONE_STR: &str = "~";
@@ -31,7 +32,7 @@ const PROVIDER_TYPE: &str = "kubernetes";
 pub struct Kubernetes {
     cgroup_manager: CgroupManager,
     pod_uid_pool:   ItemPool<String>,
-    runtime:        RefCell<tokio_02::runtime::Runtime>,
+    runtime:        Runtime,
     pod_client:     Option<Api<Pod>>,
     node_client:    Option<Api<Node>>,
     shell:          Option<Arc<Shell>>,
@@ -127,25 +128,30 @@ enum StartCollectionError {
 
 impl StartCollectionError {
     fn display(&self, pod: &Pod) -> String {
-        let pod_display: &str = name_option(pod)
-            .or_else(|| uid_option(pod))
+        let pod_display: &str = pod
+            .meta()
+            .name
+            .as_deref()
+            .or_else(|| pod.meta().uid.as_deref())
             .unwrap_or(NONE_STR);
         match self {
             Self::CgroupNotFound => format!(
-                "Could not create pod metadata for pod {}: cgroup path could not be constructed \
-                 or does not exist",
+                "Could not start collection for pod {}: cgroup path could not be constructed or \
+                 does not exist",
                 pod_display
             ),
             Self::MetadataSerializationError(cause) => format!(
-                "Could not serialize metadata for pod {}: {}",
+                "Could not start collection for pod {}: failed to serialize pod metadata: {}",
                 pod_display, cause
             ),
             Self::MissingPodUid => format!(
-                "Could not get uid for node {}! This shouldn't happen",
+                "Could not start collection for pod {}: could not get uid for node! This \
+                 shouldn't happen",
                 pod_display
             ),
             Self::FailedQosParse => format!(
-                "Could not parse quality of service class for pod {}: invalid value '{}'",
+                "Could not start collection for pod {}: could not parse quality of service class \
+                 (invalid value '{}')",
                 pod_display,
                 pod.status
                     .as_ref()
@@ -179,10 +185,7 @@ impl Provider for Kubernetes {
         let original_num = pods.len();
         let pods_map: BTreeMap<String, Pod> = pods
             .into_iter()
-            .filter_map(|p| {
-                let uid = uid_option(&p);
-                uid.map(ToOwned::to_owned).map(|id| (id, p))
-            })
+            .filter_map(|p| p.meta().uid.clone().map(|id| (id, p)))
             .collect::<BTreeMap<_, _>>();
 
         let uids = pods_map.keys().map(String::clone);
@@ -251,28 +254,21 @@ impl Kubernetes {
         // Use a single-threaded runtime so that Tokio doesn't create
         // a thread pool and instead executes futures in the current thread
         // (emulating synchronous I/O)
-        let runtime = tokio_02::runtime::Builder::new()
-            .basic_scheduler()
-            .enable_all()
+        let runtime = tokio::runtime::Builder::new_current_thread()
+            .enable_time()
+            .enable_io()
             .build()
             .unwrap();
         Self {
             cgroup_manager: CgroupManager::new(),
-            pod_uid_pool:   ItemPool::new(),
-            runtime:        RefCell::new(runtime),
-            pod_client:     None,
-            node_client:    None,
-            hostname:       None,
-            node_name:      None,
-            shell:          None,
+            pod_uid_pool: ItemPool::new(),
+            runtime,
+            pod_client: None,
+            node_client: None,
+            hostname: None,
+            node_name: None,
+            shell: None,
         }
-    }
-
-    /// Executes a future on the internal runtime, blocking the current thread
-    /// until it completes
-    fn exec<F: Future>(&self, future: F) -> F::Output {
-        let mut rt = self.runtime.borrow_mut();
-        rt.block_on(future)
     }
 
     /// Attempts to initialize the Kubernetes provider, failing if one of the
@@ -289,18 +285,21 @@ impl Kubernetes {
         // Load the config using the given kubeconfig file if given,
         // otherwise use the standard series of potential sources
         let config_load_result = match kube_config {
-            None => self.exec(config::Config::infer()),
-            Some(kube_config) => self.exec(config::Config::from_custom_kubeconfig(
-                config::Kubeconfig::read_from(kube_config)
-                    .map_err(|err| KubernetesInitError::ConfigLoadError(Error::from(err)))?,
-                &config::KubeConfigOptions::default(),
-            )),
+            None => self.runtime.block_on(config::Config::infer()),
+            Some(kube_config) => self
+                .runtime
+                .block_on(config::Config::from_custom_kubeconfig(
+                    config::Kubeconfig::read_from(kube_config)
+                        .map_err(|err| KubernetesInitError::ConfigLoadError(Error::from(err)))?,
+                    &config::KubeConfigOptions::default(),
+                )),
         };
         let config = config_load_result
             .map_err(|err| KubernetesInitError::ConfigLoadError(Error::from(err)))?;
 
         // Initialize the API clients
-        let client = Client::new(config);
+        let client = Client::try_from(config)
+            .map_err(|err| KubernetesInitError::ConfigLoadError(Error::from(err)))?;
         self.pod_client = Some(Api::all(client.clone()));
         self.node_client = Some(Api::all(client));
 
@@ -312,8 +311,12 @@ impl Kubernetes {
 
         // Get current node by hostname and store in provider
         let node = self.get_current_node()?;
-        let node_name = name_option(&node).ok_or(KubernetesInitError::MissingNodeNameError)?;
-        self.node_name = Some(String::from(node_name));
+        let node_name = node
+            .meta()
+            .name
+            .clone()
+            .ok_or(KubernetesInitError::MissingNodeNameError)?;
+        self.node_name = Some(node_name);
 
         Ok(())
     }
@@ -324,7 +327,8 @@ impl Kubernetes {
         let lp =
             ListParams::default().labels(&format!("kubernetes.io/hostname={}", self.hostname()));
         let future = self.node_client().list(&lp);
-        self.exec(future)
+        self.runtime
+            .block_on(future)
             .map_err(|err| KubernetesInitError::NodeFetchError(Error::from(err)))?
             .into_iter()
             .next()
@@ -336,14 +340,22 @@ impl Kubernetes {
     fn get_pods(&self) -> Result<Vec<Pod>, Error> {
         let lp = ListParams::default().fields(&format!("spec.nodeName={}", self.node_name()));
         let future = self.pod_client().list(&lp);
-        let pods = self.exec(future)?.into_iter().collect::<Vec<_>>();
+        let pods = self
+            .runtime
+            .block_on(future)?
+            .into_iter()
+            .collect::<Vec<_>>();
         Ok(pods)
     }
 
     /// Converts a pod to a collection start event, preparing all
     /// serialization/cgroup checks needed
     fn make_start_event(&mut self, pod: &Pod) -> Result<CollectionEvent, StartCollectionError> {
-        let uid: &str = uid_option(pod).ok_or(StartCollectionError::MissingPodUid)?;
+        let uid: &str = pod
+            .meta()
+            .uid
+            .as_deref()
+            .ok_or(StartCollectionError::MissingPodUid)?;
         let method = self.get_collection_method(pod, uid)?;
         let metadata = match serialize_pod_info(pod) {
             Ok(metadata) => metadata,
@@ -357,7 +369,11 @@ impl Kubernetes {
             target: CollectionTarget {
                 provider:  PROVIDER_TYPE,
                 metadata:  Some(metadata),
-                name:      name(pod).to_owned(),
+                name:      pod
+                    .meta()
+                    .name
+                    .clone()
+                    .unwrap_or_else(|| String::from(NONE_STR)),
                 poll_time: util::nano_ts(),
                 id:        uid.to_owned(),
             },
@@ -460,7 +476,7 @@ impl<'a> PodInfo<'a> {
     /// Attempts to extract all state/metadata from the given pod, and collects
     /// it in a single pod info struct
     fn new(p: &'a Pod) -> Self {
-        let meta = Meta::meta(p);
+        let meta = p.meta();
         let (uid, name, created_at, labels, namespace) = (
             &meta.uid,
             &meta.name,
@@ -505,9 +521,3 @@ fn serialize_pod_info(pod: &Pod) -> Result<serde_yaml::Value, Error> {
     let serde_output = serde_yaml::to_value(&pod_info)?;
     Ok(serde_output)
 }
-
-fn uid_option<O: Meta>(obj: &O) -> Option<&str> { Meta::meta(obj).uid.as_deref() }
-
-fn name_option<O: Meta>(obj: &O) -> Option<&str> { Meta::meta(obj).name.as_deref() }
-
-fn name<O: Meta>(obj: &O) -> &str { name_option(obj).unwrap_or(NONE_STR) }

@@ -1,11 +1,12 @@
 use crate::util::buffer::{Buffer, BufferLike};
-use atoi::{atoi, FromRadix10Checked};
+use atoi::FromRadix10Checked;
 use csv::ByteRecord;
 use itoa::{self, Integer};
 use num_traits::ops::saturating::SaturatingAdd;
 use std::io::{self, Write};
 
-pub enum LazyQuantity<'a, T: FromRadix10Checked + SaturatingAdd + Integer> {
+#[derive(Copy, Clone)]
+pub enum LazyQuantity<'a, T: FromRadix10Checked + SaturatingAdd + Integer + Copy> {
     /// Contains a zero quantity (result of no aggregation)
     Zero,
     /// Contains a single quantity in its textual form
@@ -14,20 +15,20 @@ pub enum LazyQuantity<'a, T: FromRadix10Checked + SaturatingAdd + Integer> {
     Aggregate(T),
 }
 
-impl<'a, T: FromRadix10Checked + SaturatingAdd + Integer> LazyQuantity<'a, T> {
+impl<'a, T: FromRadix10Checked + SaturatingAdd + Integer + Copy> LazyQuantity<'a, T> {
     /// Adds the given quantity to this one
     pub fn plus<'b: 'a>(self, quantity: &'b [u8]) -> Self {
         match self {
             Self::Zero => Self::Single(quantity),
             Self::Single(current) => {
-                match atoi::<T>(current) {
+                match T::from_radix_10_checked(current).0 {
                     // If the conversion failed, downgrade
                     None => Self::Single(quantity),
                     // Otherwise, call the number + number case
                     Some(as_int) => Self::Aggregate(as_int).plus(quantity),
                 }
             },
-            Self::Aggregate(ref current_int) => match atoi::<T>(quantity) {
+            Self::Aggregate(ref current_int) => match T::from_radix_10_checked(quantity).0 {
                 None => self,
                 Some(as_int) => Self::Aggregate(current_int.saturating_add(&as_int)),
             },
@@ -39,7 +40,11 @@ impl<'a, T: FromRadix10Checked + SaturatingAdd + Integer> LazyQuantity<'a, T> {
         match self {
             Self::Zero => dest.write(b"0"),
             Self::Single(current) => dest.write(current),
-            Self::Aggregate(current_int) => itoa::write(dest, current_int),
+            Self::Aggregate(current_int) => {
+                let mut itoa_buffer = itoa::Buffer::new();
+                let formatted = itoa_buffer.format(current_int);
+                dest.write(formatted.as_bytes())
+            },
         }
     }
 
@@ -59,6 +64,6 @@ impl<'a, T: FromRadix10Checked + SaturatingAdd + Integer> LazyQuantity<'a, T> {
     }
 }
 
-impl<'a, T: FromRadix10Checked + SaturatingAdd + Integer> Default for LazyQuantity<'a, T> {
+impl<'a, T: FromRadix10Checked + SaturatingAdd + Integer + Copy> Default for LazyQuantity<'a, T> {
     fn default() -> Self { Self::Zero }
 }

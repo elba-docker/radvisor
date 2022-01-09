@@ -1,7 +1,7 @@
 use crate::collection::collect::files::ProcFileHandles;
 use crate::collection::collector::Collector;
 use crate::collection::perf_table::{Column, ColumnType, TableMetadata};
-use crate::util::{self, AnonymousSlice, Buffer, BufferLike};
+use crate::util::{self, AnonymousSlice, Buffer};
 use csv::{ByteRecord, Error};
 use std::collections::BTreeMap;
 
@@ -165,9 +165,10 @@ pub fn run(collector: &mut Collector, buffers: &mut WorkingBuffers) -> Result<()
 /// Collects the nanosecond unix timestamp read time
 #[inline]
 fn collect_read(buffers: &mut WorkingBuffers) {
-    buffers.buffer.len = itoa::write(&mut buffers.buffer.b[..], util::nano_ts()).unwrap_or(0);
-    buffers.record.push_field(buffers.buffer.content());
-    buffers.buffer.clear_unmanaged();
+    let nano_ts = util::nano_ts();
+    let mut itoa_buffer = itoa::Buffer::new();
+    let formatted = itoa_buffer.format(nano_ts);
+    buffers.record.push_field(formatted.as_bytes());
 }
 
 /// Collects all stats for the pids subsystem

@@ -18,8 +18,14 @@ path = "src/main.rs"
 
 [dependencies]
 radvisor = { path = "../." }
+# These can't be updated to the stable v3
+# until Ubuntu updates the version of rustc to be at least 1.54.
+# This is because feature(extended_key_value_attributes),
+# which was stabilized in 1.54, is used in clap v3 (starting in beta 3):
+# https://github.com/rust-lang/rust/issues/78835
+# https://github.com/rust-lang/rust/pull/83366
 clap = { version = "3.0.0-beta.2", default-features = false, features = ["std", "derive"] }
 clap_generate = "3.0.0-beta.2"
-tar = "0.4.26"
-flate2 = "1.0.14"
-fs_extra = "1.1.0"
+tar = "^0.4"
+flate2 = "^1.0"
+fs_extra = "^1.1"
