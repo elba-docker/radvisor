@@ -10,14 +10,14 @@
 
 ### 🐋 Docker
 
-##### `/var/log/radvisor/stats/c0cd2077ec95e1b340e85c2...b_1585108344.log`
+##### `/var/log/radvisor/stats/7762ff15c99a2d238f4d26c...1_1641734705.log`
 
 ```yaml
 ---
-Version: 1.3.1
+Version: 1.4.0
 Provider: docker
 Metadata:
-  Created: "2020-10-11T04:22:18Z"
+  Created: "2022-01-09T13:25:04Z"
   Command: 'bash -c ''sleep 2s; apt-get update; sleep 2s; DEBIAN_FRONTEND=noninteractive apt-get install -y stress wget; sleep 2s; dd if=/dev/zero of=/tmp/file1 bs=512M count=1 oflag=direct; sleep 2s; stress --cpu 8 --io 4 --vm 4 --vm-bytes 1024M --timeout 10s; sleep 2s; wget "http://ipv4.download.thinkbroadband.com/10MB.zip"; sleep 2s'''
   Id: 7762ff15c99a2d238f4d26c22b5eda5b97ebc03bd0a711693104dcb6f71fe411
   Image: ubuntu
@@ -28,46 +28,30 @@ Metadata:
   Status: Up Less than a second
   SizeRw: ~
   SizeRootFs: ~
-PerfTable:
-  Delimiter: ","
-  Columns:
-    cpu.usage.percpu:
-      Type: int
-      Count: 32
-    read:
-      Type: epoch19
+PerfTable: # ...
 System:
   OsType: Linux
   OsRelease: 4.15.0
-  Distribution:
-    Id: ubuntu
-    IdLike: debian
-    Name: Ubuntu
-    PrettyName: Ubuntu 18.04.1 LTS
-    Version: 18.04.1 LTS (Bionic Beaver)
-    VersionId: "18.04"
-    VersionCodename: bionic
-    CpeName: ~
-    BuildId: ~
-    Variant: ~
-    VariantId: ~
+  Distribution: # ...
   MemoryTotal: 65870408
   SwapTotal: 3145724
   Hostname: node-0.sandbox.infosphere.emulab.net
   CpuCount: 32
   CpuOnlineCount: 4
   CpuSpeed: 1279
-Cgroup: system.slice/docker-7762ff15c99a2d238f4d26c22b5eda5b97ebc03bd0a711693104dcb6f71fe411.scope
-CgroupDriver: systemd
-PolledAt: 1602390140142271945
-InitializedAt: 1602390140157676566
+CollectorType: cgroup_v2
+CollectorMetadata:
+  Cgroup: system.slice/docker-7762ff15c99a2d238f4d26c22b5eda5b97ebc03bd0a711693104dcb6f71fe411.scope
+  CgroupDriver: systemd
+PolledAt: 1641734740142271945
+InitializedAt: 1641734740157676566
 ---
-read,pids.current,pids.max,cpu.usage.total,cpu.usage.system,cpu.usage.user,cpu.usage.percpu,cpu.stat.user,cpu.stat.system,cpu.throttling.periods,cpu.throttling.throttled.count,cpu.throttling.throttled.time,memory.usage.current,memory.usage.max,memory.limit.hard,memory.limit.soft,memory.failcnt,memory.hierarchical_limit.memory,memory.hierarchical_limit.memoryswap,memory.cache,memory.rss.all,memory.rss.huge,memory.mapped,memory.swap,memory.paged.in,memory.paged.out,memory.fault.total,memory.fault.major,memory.anon.inactive,memory.anon.active,memory.file.inactive,memory.file.active,memory.unevictable,blkio.time,blkio.sectors,blkio.service.bytes.read,blkio.service.bytes.write,blkio.service.bytes.sync,blkio.service.bytes.async,blkio.service.ios.read,blkio.service.ios.write,blkio.service.ios.sync,blkio.service.ios.async,blkio.service.time.read,blkio.service.time.write,blkio.service.time.sync,blkio.service.time.async,blkio.queued.read,blkio.queued.write,blkio.queued.sync,blkio.queued.async,blkio.wait.read,blkio.wait.write,blkio.wait.sync,blkio.wait.async,blkio.merged.read,blkio.merged.write,blkio.merged.sync,blkio.merged.async,blkio.throttle.service.bytes.read,blkio.throttle.service.bytes.write,blkio.throttle.service.bytes.sync,blkio.throttle.service.bytes.async,blkio.throttle.service.ios.read,blkio.throttle.service.ios.write,blkio.throttle.service.ios.sync,blkio.throttle.service.ios.async,blkio.bfq.service.bytes.read,blkio.bfq.service.bytes.write,blkio.bfq.service.bytes.sync,blkio.bfq.service.bytes.async,blkio.bfq.service.ios.read,blkio.bfq.service.ios.write,blkio.bfq.service.ios.sync,blkio.bfq.service.ios.async
-1602390175053135973,18,4915,45675783181,0,45675783181,9719044209 12310201631 11027849186 12618688155 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0,2925,1668,0,0,0,2802823168,3667771392,9223372036854771712,9223372036854771712,0,9223372036854771712,,35323904,2754781184,0,28672,,6837817,6156636,6854722,0,0,2754711552,7380992,27942912,0,2273087370,1306336,0,668844032,662777856,6066176,0,331937,331753,184,0,68057100860,68011971780,45129080,0,0,0,0,0,222907407415,222860666999,46740416,0,32,0,32,0,668844032,662777856,6066176,0,331937,331753,184,,,,,,,,
-1602390175103189646,18,4915,45876609757,0,45876610443,9767491855 12362201213 11076227542 12670689833 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0,2938,1676,0,0,0,2968367104,3667771392,9223372036854771712,9223372036854771712,0,9223372036854771712,,35323904,2920067072,0,28672,,6878171,6156636,6895076,0,0,2919976960,7380992,27942912,0,2273087370,1306336,0,668844032,662777856,6066176,0,333749,333565,184,0,68057100860,68011971780,45129080,0,0,0,0,0,222907407415,222860666999,46740416,0,32,0,32,0,668844032,662777856,6066176,0,333750,333566,184,,,,,,,,
+read,pids.current,pids.max,cpu.stat/usage_usec,cpu.stat/system_usec,cpu.stat/user_usec,cpu.stat/nr_periods,cpu.stat/nr_throttled,cpu.stat/throttled_usec,memory.current,memory.high,memory.max,memory.stat/anon,memory.stat/file,memory.stat/kernel_stack,memory.stat/pagetables,memory.stat/percpu,memory.stat/sock,memory.stat/shmem,memory.stat/file_mapped,memory.stat/file_dirty,memory.stat/file_writeback,memory.stat/swapcached,memory.stat/inactive_anon,memory.stat/active_anon,memory.stat/inactive_file,memory.stat/active_file,memory.stat/unevictable,memory.stat/pgfault,memory.stat/pgmajfault,io.stat/rbytes,io.stat/wbytes,io.stat/rios,io.stat/wios,io.stat/dbytes,io.stat/dios
+1641734705052508079,1,28989,58688,40630,18057,0,0,0,5558272,max,max,405504,3514368,49152,0,0,0,0,2838528,0,0,0,270336,0,1486848,2027520,0,1650,0,3891200,0,58,0,0,0
+# ...
 ```
 
-More information about what each column represents can be found in the [docs page](https://github.com/elba-docker/radvisor/blob/master/docs/collecting.md).
+More information about what each column represents can be found in the [docs pages](https://github.com/elba-docker/radvisor/blob/master/docs/collecting_cgroup_v2.md) (for information about the columns ouputted when `CollectorType: cgroup_v1`, see [this page instead](https://github.com/elba-docker/radvisor/blob/master/docs/collecting.md)).
 
 ### ⚓ Kubernetes
 
@@ -75,7 +59,7 @@ More information about what each column represents can be found in the [docs pag
 
 ```yaml
 ---
-Version: 1.3.1
+Version: 1.4.0
 Provider: kubernetes
 Metadata:
   Uid: 9f0b1893-15e7-442a-966a-b0d19a35fc1c
@@ -91,29 +75,11 @@ Metadata:
   Phase: Running
   QosClass: BestEffort
   StartedAt: "2020-03-29T04:32:36Z"
-PerfTable:
-  Delimiter: ","
-  Columns:
-    cpu.usage.percpu:
-      Type: int
-      Count: 32
-    read:
-      Type: epoch19
+PerfTable: # ...
 System:
   OsType: Linux
   OsRelease: 4.15.0
-  Distribution:
-    Id: ubuntu
-    IdLike: debian
-    Name: Ubuntu
-    PrettyName: Ubuntu 18.04.1 LTS
-    Version: 18.04.1 LTS (Bionic Beaver)
-    VersionId: "18.04"
-    VersionCodename: bionic
-    CpeName: ~
-    BuildId: ~
-    Variant: ~
-    VariantId: ~
+  Distribution: # ...
   MemoryTotal: 65870408
   SwapTotal: 3145724
   Hostname: node-0.sandbox.infosphere.emulab.net
@@ -121,13 +87,15 @@ System:
   CpuOnlineCount: 32
   CpuSpeed: 1198
 PolledAt: 1585470948008442929
-Cgroup: /kubepods.slice/kubepods-besteffort.slice/kubepods-besteffort-pod9f0b1893_15e7_442a_966a_b0d19a35fc1c.slice
-CgroupDriver: systemd
+CollectorType: cgroup_v1
+CollectorMetadata:
+  Cgroup: /kubepods.slice/kubepods-besteffort.slice/kubepods-besteffort-pod9f0b1893_15e7_442a_966a_b0d19a35fc1c.slice
+  CgroupDriver: systemd
 InitializedAt: 1585470948030565581
 ---
 read,pids.current,pids.max,cpu.usage.total,cpu.usage.system,cpu.usage.user,cpu.usage.percpu,cpu.stat.user,cpu.stat.system,cpu.throttling.periods,cpu.throttling.throttled.count,cpu.throttling.throttled.time,memory.usage.current,memory.usage.max,memory.limit.hard,memory.limit.soft,memory.failcnt,memory.hierarchical_limit.memory,memory.hierarchical_limit.memoryswap,memory.cache,memory.rss.all,memory.rss.huge,memory.mapped,memory.swap,memory.paged.in,memory.paged.out,memory.fault.total,memory.fault.major,memory.anon.inactive,memory.anon.active,memory.file.inactive,memory.file.active,memory.unevictable,blkio.time,blkio.sectors,blkio.service.bytes.read,blkio.service.bytes.write,blkio.service.bytes.sync,blkio.service.bytes.async,blkio.service.ios.read,blkio.service.ios.write,blkio.service.ios.sync,blkio.service.ios.async,blkio.service.time.read,blkio.service.time.write,blkio.service.time.sync,blkio.service.time.async,blkio.queued.read,blkio.queued.write,blkio.queued.sync,blkio.queued.async,blkio.wait.read,blkio.wait.write,blkio.wait.sync,blkio.wait.async,blkio.merged.read,blkio.merged.write,blkio.merged.sync,blkio.merged.async,blkio.throttle.service.bytes.read,blkio.throttle.service.bytes.write,blkio.throttle.service.bytes.sync,blkio.throttle.service.bytes.async,blkio.throttle.service.ios.read,blkio.throttle.service.ios.write,blkio.throttle.service.ios.sync,blkio.throttle.service.ios.async,blkio.bfq.service.bytes.read,blkio.bfq.service.bytes.write,blkio.bfq.service.bytes.sync,blkio.bfq.service.bytes.async,blkio.bfq.service.ios.read,blkio.bfq.service.ios.write,blkio.bfq.service.ios.sync,blkio.bfq.service.ios.async
 1602390175053135973,18,4915,45675783181,0,45675783181,9719044209 12310201631 11027849186 12618688155 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0,2925,1668,0,0,0,2802823168,3667771392,9223372036854771712,9223372036854771712,0,9223372036854771712,,35323904,2754781184,0,28672,,6837817,6156636,6854722,0,0,2754711552,7380992,27942912,0,2273087370,1306336,0,668844032,662777856,6066176,0,331937,331753,184,0,68057100860,68011971780,45129080,0,0,0,0,0,222907407415,222860666999,46740416,0,32,0,32,0,668844032,662777856,6066176,0,331937,331753,184,,,,,,,,
-1602390175103189646,18,4915,45876609757,0,45876610443,9767491855 12362201213 11076227542 12670689833 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0,2938,1676,0,0,0,2968367104,3667771392,9223372036854771712,9223372036854771712,0,9223372036854771712,,35323904,2920067072,0,28672,,6878171,6156636,6895076,0,0,2919976960,7380992,27942912,0,2273087370,1306336,0,668844032,662777856,6066176,0,333749,333565,184,0,68057100860,68011971780,45129080,0,0,0,0,0,222907407415,222860666999,46740416,0,32,0,32,0,668844032,662777856,6066176,0,333750,333566,184,,,,,,,,
+# ...
 ```
 
 ## 📜 Runtime Options
@@ -136,7 +104,7 @@ Many of the specific details of collection can be controlled via the command lin
 
 ```console
 $ radvisor help
-radvisor 1.3.1
+radvisor 1.4.0
 Joseph Azevedo <joseph.az@gatech.edu>, Bhanu Garg <bgarg6@gatech.edu>
 Monitors container resource utilization with high granularity and low overhead
 

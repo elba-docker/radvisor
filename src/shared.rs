@@ -31,6 +31,7 @@ pub enum CollectionEvent {
 #[derive(Clone, Debug, PartialEq, Serialize)]
 pub enum CollectionMethod {
     LinuxCgroupV1(CgroupPath),
+    LinuxCgroupV2(CgroupPath),
 }
 
 /// Single container/pod/process/other entity that represents a single target

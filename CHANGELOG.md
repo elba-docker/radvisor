@@ -9,13 +9,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [1.4.0](https://github.com/elba-docker/radvisor/compare/v1.3.0...v1.4.0) - 2021-02-02
+## [1.4.0](https://github.com/elba-docker/radvisor/compare/v1.3.0...v1.4.0) - 2022-01-09
 
 [![v1.4.0](https://img.shields.io/badge/release-v1.4.0-2bab64)](https://github.com/elba-docker/radvisor/releases/tag/v1.4.0)
 
 ### Added
 
 - Changed license from the MIT License to the GNU General Public License v3.0
+- Support for [cgroup v2](https://www.kernel.org/doc/html/latest/admin-guide/cgroup-v2.html) was added to the Docker container statistics collection.
+  - **Motivation**: Cgroup v2 handles accounting for writeback I/O better than cgroup v1, and is slowly replacing cgroup v1 as the more modern system.
+  - **Support**: Docker added support for Cgroup v2 in its 20.10 release, and most low-level container runtimes added support for it by the end of 2021. Additionally Cgroup v2 is the default-mounted cgroup version in Ubuntu starting in 21.10, and in most other popular distros starting around 2021.
+  - **Changes**:
+    - The schema for the CSV data in the log-file is different in cgroup v1 and cgroup v2, since the kernel exposes different statistics for each.
+    - The `CollectorType` log metadata field was added to distinguish whether a log file contains statistics from `cgroup_v1` or `cgroup_v2`
+    - `Cgroup` and `CgroupDriver` log metadata fields were moved under `CollectorMetadata`
+    - (internal) A new abstraction was introduced, `Collector`, which defines a trait that is used to collect resource utilization statistics for a running target. Both `cgroup_v1::Collector` and `cgroup_v2::Collector` implement this trait.
 
 ---
 

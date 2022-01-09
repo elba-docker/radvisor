@@ -21,7 +21,7 @@ Originally developed in Rust as a custom tool to help detect and analyze millibo
 rAdvisor runs by polling the target *provider* (either the local Docker daemon or the Kubernetes API server)
 every 1 second to get a list of active, running containers/pods.
 From this list, rAdvisor runs a collection thread every 50ms to get resource utilization data for each active target
-using Linux [`cgroups`](https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/6/html/resource_management_guide/ch01),
+using Linux [`cgroups`](https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/6/html/resource_management_guide/ch01) (both v1 and v2),
 outputting the resultant logs in `/var/log/radvisor/stats`.
 
 The primary command is `radvisor run`, which has its own man page at **radvisor-run(1)**.

@@ -62,6 +62,9 @@ impl<'a, T: FromRadix10Checked + SaturatingAdd + Integer + Copy> LazyQuantity<'a
         record.push_field(working.content());
         working.clear();
     }
+
+    /// Returns whether the lazy quantity has had any values added to it
+    pub fn is_zero(&self) -> bool { matches!(self, Self::Zero) }
 }
 
 impl<'a, T: FromRadix10Checked + SaturatingAdd + Integer + Copy> Default for LazyQuantity<'a, T> {

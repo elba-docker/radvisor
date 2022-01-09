@@ -2,7 +2,7 @@ use crate::cli::RunCommand;
 use crate::polling::providers::{InitializationError, KubernetesOptions, Provider};
 use crate::shared::{CollectionEvent, CollectionMethod, CollectionTarget};
 use crate::shell::Shell;
-use crate::util::{self, CgroupManager, CgroupPath, ItemPool};
+use crate::util::{self, CgroupManager, CgroupPath, CgroupSlices, GetCgroupError, ItemPool};
 use anyhow::Error;
 use gethostname::gethostname;
 use k8s_openapi::api::core::v1::{Node, Pod};
@@ -121,9 +121,11 @@ impl QualityOfService {
 #[derive(Debug)]
 enum StartCollectionError {
     MetadataSerializationError(Error),
-    CgroupNotFound,
     MissingPodUid,
     FailedQosParse,
+    CgroupNotFound(PathBuf),
+    CgroupVersionDetectionFailed,
+    CgroupV1NotEnabled,
 }
 
 impl StartCollectionError {
@@ -135,10 +137,10 @@ impl StartCollectionError {
             .or_else(|| pod.meta().uid.as_deref())
             .unwrap_or(NONE_STR);
         match self {
-            Self::CgroupNotFound => format!(
-                "Could not start collection for pod {}: cgroup path could not be constructed or \
-                 does not exist",
-                pod_display
+            Self::CgroupNotFound(path) => format!(
+                "Could not start collection for pod {}: cgroup path '{:?}' does not exist on \
+                 system",
+                pod_display, path,
             ),
             Self::MetadataSerializationError(cause) => format!(
                 "Could not start collection for pod {}: failed to serialize pod metadata: {}",
@@ -157,6 +159,16 @@ impl StartCollectionError {
                     .as_ref()
                     .and_then(|s| s.qos_class.as_deref())
                     .unwrap_or(NONE_STR)
+            ),
+            Self::CgroupVersionDetectionFailed => format!(
+                "Could not start collection for pod {}: failed to detect the currently running \
+                 cgroup version (are cgroups mounted in /sys/fs/cgroup?)",
+                pod_display
+            ),
+            Self::CgroupV1NotEnabled => format!(
+                "Could not start collection for pod {}: cgroup v1 isn't enabled (the Kubernetes \
+                 collector does not support cgroup v2)",
+                pod_display
             ),
         }
     }
@@ -394,21 +406,39 @@ impl Kubernetes {
         // Construct the cgroup path from the UID and QoS class
         // from the metadata, and make sure it exists/is mounted
         match self.get_cgroup(uid, qos_class) {
-            Some(cgroup) => Ok(CollectionMethod::LinuxCgroupV1(cgroup)),
-            None => Err(StartCollectionError::CgroupNotFound),
+            Ok(cgroup) => match cgroup.version {
+                util::CgroupVersion::V1 => Ok(CollectionMethod::LinuxCgroupV1(cgroup)),
+                util::CgroupVersion::V2 => Ok(CollectionMethod::LinuxCgroupV2(cgroup)),
+            },
+            Err(GetCgroupError::VersionDetectionFailed) => {
+                Err(StartCollectionError::CgroupVersionDetectionFailed)
+            },
+            Err(GetCgroupError::NotFound(path)) => Err(StartCollectionError::CgroupNotFound(path)),
+            Err(GetCgroupError::CgroupV1NotEnabled) => {
+                Err(StartCollectionError::CgroupV1NotEnabled)
+            },
         }
     }
 
     /// Gets the group path for the given UID and quality of service class,
     /// printing out a message upon the first successful cgroup resolution
-    fn get_cgroup(&mut self, uid: &str, qos_class: QualityOfService) -> Option<CgroupPath> {
+    fn get_cgroup(
+        &mut self,
+        uid: &str,
+        qos_class: QualityOfService,
+    ) -> Result<CgroupPath, GetCgroupError> {
         let pod_slice = String::from("pod") + uid;
-        // Determine if the manager had a resolved group beforehand
+        // Determine if the manager had a resolved version or driver beforehand
         let had_driver = self.cgroup_manager.driver().is_some();
+        let had_version = self.cgroup_manager.version().is_some();
 
-        let cgroup_option: Option<CgroupPath> = self
-            .cgroup_manager
-            .get_cgroup(&[ROOT_CGROUP, qos_class.into(), &pod_slice], true);
+        let base_cgroup_slices = &[ROOT_CGROUP, qos_class.into(), &pod_slice];
+        // Only support cgroup v1 for Kubernetes pods
+        // (cgroup v2 is untested)
+        let result = self.cgroup_manager.get_cgroup_v1(CgroupSlices {
+            cgroupfs: base_cgroup_slices,
+            systemd:  &util::build_systemd_cgroup_hierarchy(base_cgroup_slices),
+        });
 
         if !had_driver {
             if let Some(driver) = self.cgroup_manager.driver() {
@@ -417,7 +447,14 @@ impl Kubernetes {
             }
         }
 
-        cgroup_option
+        if !had_version {
+            if let Some(version) = self.cgroup_manager.version() {
+                self.shell()
+                    .info(format!("Identified {} as cgroup version", version));
+            }
+        }
+
+        result
     }
 
     /// Gets the current node's hostname

@@ -1,5 +1,6 @@
 mod all;
 mod cgroup_v1;
+mod cgroup_v2;
 
 use crate::cli;
 use crate::collection::buffers::WorkingBuffers;

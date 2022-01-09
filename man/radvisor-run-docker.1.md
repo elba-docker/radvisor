@@ -14,7 +14,7 @@ DESCRIPTION
 ===========
 
 **radvisor run docker** runs a collection thread that writes resource statistics to
-output CSV files using configurable intervals. While running, it collects statistics for containers by polling the docker daemon to get a list of active running containers (every 1s by default) and using their cgroups to read information on their system resource utilization.
+output CSV files using configurable intervals. While running, it collects statistics for containers by polling the docker daemon to get a list of active running containers (every 1s by default) and using their cgroups to read information on their system resource utilization. This works whether the host has enabled cgroup v1 or cgroup v2, though the individual fields collected will be different.
 
 Likely needs to be run as root.
 
