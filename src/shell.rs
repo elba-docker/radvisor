@@ -1,10 +1,9 @@
 use crate::cli::ParseFailure;
 use crate::util;
+use clap::Clap;
 use std::fmt;
 use std::io::{self, Write};
 use std::sync::Mutex;
-
-use clap::Clap;
 use termcolor::{self, Color, ColorSpec, StandardStream, WriteColor};
 
 /// Inspiration/partial implementations taken from the Cargo source at

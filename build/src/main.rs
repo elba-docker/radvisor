@@ -1,12 +1,11 @@
-use radvisor::shell::Shell;
-use std::fs::{self, File};
-use std::io::{self, Write};
-use std::path::{Path, PathBuf};
-
 use clap::{App, Clap, IntoApp};
 use clap_generate::{generate, generators::*};
 use flate2::write::GzEncoder;
 use flate2::Compression;
+use radvisor::shell::Shell;
+use std::fs::{self, File};
+use std::io::{self, Write};
+use std::path::{Path, PathBuf};
 
 type ShellOptions = radvisor::shell::Options;
 type ParentOpts = radvisor::cli::Opts;

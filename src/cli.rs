@@ -1,12 +1,11 @@
 use crate::polling::providers::ProviderType;
+use byte_unit::{Byte, ByteError};
+use clap::{Clap, ValueHint};
 use std::error;
 use std::fmt;
 use std::path::PathBuf;
 use std::str::FromStr;
 use std::time::Duration;
-
-use byte_unit::{Byte, ByteError};
-use clap::{Clap, ValueHint};
 
 type ShellOptions = crate::shell::Options;
 

@@ -1,10 +1,9 @@
 use crate::shell::Shell;
 use crate::util::CgroupPath;
-use std::sync::Arc;
-use std::time::Duration;
-
 use bus::BusReader;
 use serde::Serialize;
+use std::sync::Arc;
+use std::time::Duration;
 
 /// Common context used for the two interval worker threads (collection and
 /// polling)

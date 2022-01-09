@@ -6,11 +6,10 @@ pub mod kubernetes;
 use crate::cli::{CollectionOptions, PollingOptions, RunCommand};
 use crate::shared::CollectionEvent;
 use crate::shell::Shell;
-use std::sync::Arc;
-
 use clap::Clap;
 use failure::{Error, Fail};
 use serde::{Serialize, Serializer};
+use std::sync::Arc;
 
 /// An error that occurred during provider initialization/connection check,
 /// including a suggestion message printed to stdout

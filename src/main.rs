@@ -1,3 +1,4 @@
+use bus::Bus;
 use radvisor::cli::{self, Command, Opts, RunCommand};
 use radvisor::collection;
 use radvisor::polling;
@@ -8,8 +9,6 @@ use std::sync::mpsc::{self, Receiver, Sender};
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::Duration;
-
-use bus::Bus;
 
 /// Disable compilation on platforms other than Linux
 #[cfg(not(target_os = "linux"))]

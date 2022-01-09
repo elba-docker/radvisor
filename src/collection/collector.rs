@@ -7,14 +7,13 @@ use crate::collection::perf_table::TableMetadata;
 use crate::collection::system_info::SystemInfo;
 use crate::shared::CollectionTarget;
 use crate::util::{self, CgroupDriver, CgroupPath};
+use csv::{Writer, WriterBuilder};
+use failure::Error;
+use serde::Serialize;
 use std::fs::{self, File, OpenOptions};
 use std::io::{self, ErrorKind, Write};
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
-
-use csv::{Writer, WriterBuilder};
-use failure::Error;
-use serde::Serialize;
 
 /// Contains the file handle for the open stats file as well as the file handles
 /// for /proc virtual files used during reading the system stats. `active` is

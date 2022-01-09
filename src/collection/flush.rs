@@ -1,13 +1,12 @@
 #![allow(clippy::module_name_repetitions)]
 
 use crate::util;
-use std::io::{Result as IoResult, Write};
-use std::path::{Path, PathBuf};
-use std::sync::{Arc, Mutex};
-
 use arraystring::{typenum::U64, ArrayString};
 use csv::Writer;
 use serde::Serialize;
+use std::io::{Result as IoResult, Write};
+use std::path::{Path, PathBuf};
+use std::sync::{Arc, Mutex};
 
 /// Stores metadata about a buffer flush event
 #[derive(Debug, Serialize)]
