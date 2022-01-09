@@ -57,42 +57,53 @@ path = "src/main.rs"
 [dependencies]
 bus = "^2.2"
 csv = "^1.1"
-failure = "^0.1.8"
-itoa = { version = "^0.4.6", features = ["i128"] }
-atoi = "^0.3.3"
-num-traits = "^0.2.14"
+anyhow = "^1.0"
+thiserror = "^1.0"
+itoa = "^1.0"
+atoi = "^0.4"
+num-traits = "^0.2"
 ctrlc = { version = "^3.1", features = ["termination"] }
-futures-01 = { package = "futures", version = "0.1", optional = true}
-tokio-01 = { package = "tokio", version = "0.1", optional = true }
-tokio-02 = { package = "tokio", version = "0.2", features = ["rt-core"], optional = true }
+# Use the single-threaded runtime,
+# since we only really need tokio to run API network requests
+# on the polling thread, and we want it to block anyways.
+tokio = { version = "^1.0", features = ["rt"] }
 lazy_static = "^1.4"
 gethostname = "^0.2.1"
 serde = { version = "^1.0", features = ["derive"] }
-serde_yaml = "^0.8.14"
+serde_yaml = "^0.8"
 human-panic = "^1.0"
-textwrap = "^0.12.1"
+textwrap = "^0.14"
 termcolor = "^1.1"
-atty = "^0.2.14"
+atty = "^0.2"
 humantime = "^2.0"
-strum = "^0.22"
-strum_macros = "^0.22"
+strum = "^0.23"
+strum_macros = "^0.23"
 byte-unit = "^4.0"
-sys-info = "^0.7.0"
-clap = { version = "^3.0.0-beta.2", default-features = false, features = [ "std", "suggestions", "color", "derive", "wrap_help" ] }
+sys-info = "^0.9"
+# This can't be updated to the stable v3.x
+# until Ubuntu updates the version of rustc to be at least 1.54.
+# This is because feature(extended_key_value_attributes),
+# which was stabilized in 1.54, is used in clap v3 (starting in beta 3):
+# https://github.com/rust-lang/rust/issues/78835
+# https://github.com/rust-lang/rust/pull/83366
+clap = { version = "3.0.0-beta.2", default-features = false, features = [ "std", "suggestions", "color", "derive", "wrap_help" ] }
 # Kubernetes-specific dependencies
-k8s-openapi = { version = "^0.9.0", default-features = false, features = ["v1_15"], optional = true  }
-kube = { version = "^0.43.0", optional = true }
-kube-runtime = { version = "^0.43.0", optional = true }
-kube-derive = { version = "^0.43.0", optional = true }
+k8s-openapi = { version = "^0.13.1", default-features = false, features = ["v1_22"], optional = true }
+# These are stuck at v0.62
+# until Ubuntu updates the version of rustc to be at least 1.56.
+# This is because they all use feature(edition2021)
+kube = { version = "^0.62", optional = true }
+kube-runtime = { version = "^0.62", optional = true }
+kube-derive = { version = "^0.62", optional = true }
 
 # Unix-specific dependencies
 [target.'cfg(unix)'.dependencies]
 libc = "^0.2.80"
-shiplift = { version = "^0.6.0", optional = true }
+shiplift = { version = "^0.7", optional = true }
 
 [features]
-docker = ["shiplift", "futures-01", "tokio-01"]
-kubernetes = ["kube", "kube-runtime", "kube-derive", "k8s-openapi", "tokio-02"]
+docker = ["shiplift"]
+kubernetes = ["kube", "kube-runtime", "kube-derive", "k8s-openapi"]
 default = ["docker", "kubernetes"]
 
 [profile.release]

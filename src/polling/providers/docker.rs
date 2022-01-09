@@ -3,14 +3,12 @@ use crate::polling::providers::{InitializationError, Provider};
 use crate::shared::{CollectionEvent, CollectionMethod, CollectionTarget};
 use crate::shell::Shell;
 use crate::util::{self, CgroupManager, CgroupPath, ItemPool};
-use failure::Error;
-use futures_01::future::Future;
+use anyhow::Error;
 use shiplift::builder::ContainerListOptions;
 use shiplift::rep::Container;
-use std::cell::RefCell;
 use std::collections::BTreeMap;
 use std::sync::Arc;
-use tokio_01::runtime::current_thread::Runtime;
+use tokio::runtime::Runtime;
 
 const PROVIDER_TYPE: &str = "docker";
 
@@ -19,7 +17,7 @@ pub struct Docker {
     cgroup_manager:    CgroupManager,
     client:            shiplift::Docker,
     shell:             Option<Arc<Shell>>,
-    runtime:           RefCell<Runtime>,
+    runtime:           Runtime,
 }
 
 /// Possible errors that can occur during Docker provider initialization
@@ -71,11 +69,10 @@ impl Provider for Docker {
     }
 
     fn poll(&mut self) -> Result<Vec<CollectionEvent>, Error> {
-        let future = self
-            .client
-            .containers()
-            .list(&ContainerListOptions::default());
-        let containers = self.exec(future)?;
+        let containers = self.client.containers();
+        let container_options = ContainerListOptions::default();
+        let future = containers.list(&container_options);
+        let containers = self.runtime.block_on(future)?;
 
         let original_num = containers.len();
         let to_collect: BTreeMap<String, Container> = containers
@@ -171,21 +168,18 @@ impl Docker {
         // Use a single-threaded runtime so that Tokio doesn't create
         // a thread pool and instead executes futures in the current thread
         // (emulating synchronous I/O)
-        let runtime = Runtime::new().unwrap();
+        let runtime = tokio::runtime::Builder::new_current_thread()
+            .enable_time()
+            .enable_io()
+            .build()
+            .unwrap();
         Self {
             container_id_pool: ItemPool::new(),
-            cgroup_manager:    CgroupManager::new(),
-            client:            shiplift::Docker::new(),
-            shell:             None,
-            runtime:           RefCell::new(runtime),
+            cgroup_manager: CgroupManager::new(),
+            client: shiplift::Docker::new(),
+            shell: None,
+            runtime,
         }
-    }
-
-    /// Executes a future on the internal runtime, blocking the current thread
-    /// until it completes
-    fn exec<I, E>(&self, future: impl Future<Item = I, Error = E>) -> Result<I, E> {
-        let mut rt = self.runtime.borrow_mut();
-        rt.block_on(future)
     }
 
     /// Attempts to initialize the Docker provider, failing if the connection
@@ -194,7 +188,8 @@ impl Docker {
     fn try_init(&mut self) -> Result<(), DockerInitError> {
         // Ping the Docker API to make sure the current process can connect
         let future = self.client.ping();
-        self.exec(future)
+        self.runtime
+            .block_on(future)
             .map_err(DockerInitError::ConnectionFailed)?;
 
         // Make sure cgroups are mounted properly

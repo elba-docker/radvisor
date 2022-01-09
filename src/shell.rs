@@ -291,7 +291,7 @@ impl OutSink {
                             None => writeln!(stream, " {}", message)?,
                             Some(width) => {
                                 let formatted: String = format!("{}", message);
-                                let lines = textwrap::wrap_iter(&formatted, width - (offset + 1));
+                                let lines = textwrap::wrap(&formatted, width - (offset + 1));
                                 let mut is_first = true;
                                 let indent = " ".repeat(offset);
                                 for line in lines {

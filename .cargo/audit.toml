@@ -1,0 +1,17 @@
+[advisories]
+ignore = [
+  # This can be ignored, since bus uses an ::atomic_option::AtomicOption internally
+  # for storing a ::std::thread::Thread, which is Send.
+  "RUSTSEC-2020-0113",
+  # These two vulenrabilities revolve around unsafeness
+  # with mutating an environment while reading the time zone offset.
+  # The dependencies, time and chrono, are both deep in shiplift (Docker)
+  # and Kubernetes-related crates, and there is no way for us to solve this.
+  # However, with the nature of only using time-related features
+  # in response to API network calls
+  # (and the lack of intentionally mutating the environment
+  # once the program has started),
+  # it's unlikely rAdvisor is affected by this.
+  "RUSTSEC-2020-0159",
+  "RUSTSEC-2020-0071",
+]
