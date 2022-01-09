@@ -394,7 +394,7 @@ impl Kubernetes {
         // Construct the cgroup path from the UID and QoS class
         // from the metadata, and make sure it exists/is mounted
         match self.get_cgroup(uid, qos_class) {
-            Some(cgroup) => Ok(CollectionMethod::LinuxCgroupsV1(cgroup)),
+            Some(cgroup) => Ok(CollectionMethod::LinuxCgroupV1(cgroup)),
             None => Err(StartCollectionError::CgroupNotFound),
         }
     }

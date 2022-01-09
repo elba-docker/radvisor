@@ -14,7 +14,7 @@ use std::collections::BTreeMap;
 use std::path::PathBuf;
 
 /// Implements `crate::collection::collector::Collector`
-/// for cgroups v1-sourced data
+/// for cgroup v1-sourced data
 pub struct Collector {
     cgroup:        CgroupPath,
     file_handles:  Option<ProcFileHandles>,
@@ -87,7 +87,7 @@ impl CollectorTrait for Collector {
         }
     }
 
-    fn get_type(&self) -> &'static str { "cgroups_v1" }
+    fn get_type(&self) -> &'static str { "cgroup_v1" }
 
     fn init(&mut self) -> Result<(), Error> {
         // Open file handles to all of the /proc files in the cgroupfs

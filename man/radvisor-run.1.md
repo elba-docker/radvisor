@@ -21,7 +21,7 @@ and using their cgroups to read information on their system resource utilization
 
   Likely needs to be run as root.
 2. **kubernetes** - Collects statistics for Kubernetes pods, polling the Kubernetes API server to get a list of all active running pods
-that have been scheduled on the current machine's node, using the cgroups for each pod.
+that have been scheduled on the current machine's node, using the cgroup for each pod.
 
   Needs to be a part of an active cluster and needs to be able to find the Kubernetes config file.
 

@@ -8,14 +8,14 @@
 
 pub(self) mod buffer;
 pub(self) mod byte;
-pub(self) mod cgroups;
+pub(self) mod cgroup;
 pub(self) mod lazy_quantity;
 pub(self) mod pool;
 pub(self) mod system;
 
 pub use buffer::*;
 pub use byte::*;
-pub use cgroups::*;
+pub use cgroup::*;
 pub use lazy_quantity::*;
 pub use pool::*;
 pub use system::*;

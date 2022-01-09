@@ -1,6 +1,6 @@
-# Runtime Statistics Collection
+# Runtime Statistics Collection - cgroup v1
 
-Runtime statistics for each container are taken from the virtual files for each container's cgroup, located at `/sys/fs/cgroup/<subsystem>/docker/<container id>/file`.
+Runtime statistics for each Docker container are taken from the virtual files for each container's cgroup, located at `/sys/fs/cgroup/<subsystem>/docker/<container id>/file`.
 
 More information is available at the Docker wiki: [Runtime metrics](https://docs.docker.com/config/containers/runmetrics/).
 

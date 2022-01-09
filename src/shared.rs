@@ -30,7 +30,7 @@ pub enum CollectionEvent {
 /// Type of collection used; corresponds to a resultant CSV schema
 #[derive(Clone, Debug, PartialEq, Serialize)]
 pub enum CollectionMethod {
-    LinuxCgroupsV1(CgroupPath),
+    LinuxCgroupV1(CgroupPath),
 }
 
 /// Single container/pod/process/other entity that represents a single target

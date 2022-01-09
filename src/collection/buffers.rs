@@ -13,7 +13,7 @@ const WORKING_BUFFER_SIZE: usize = 16384;
 /// pre-examined layouts to map lines to entries.
 ///
 /// **Currently set to the number of entries used for `memory.stat`**
-/// (for the cgroups v1 Collector implementation)
+/// (for the cgroup v1 Collector implementation)
 const SLICES_BUFFER_SIZE: usize = 16;
 
 const BASE_FIELD_COUNT: usize = 75;

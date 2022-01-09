@@ -77,13 +77,7 @@ impl Provider for Docker {
         let original_num = containers.len();
         let to_collect: BTreeMap<String, Container> = containers
             .into_iter()
-            .filter_map(|c| {
-                if should_collect_stats(&c) {
-                    Some((c.id.clone(), c))
-                } else {
-                    None
-                }
-            })
+            .map(|c| (c.id.clone(), c))
             .collect::<BTreeMap<_, _>>();
 
         let ids = to_collect.keys().map(String::clone);
@@ -120,15 +114,16 @@ impl Provider for Docker {
                         match error {
                             StartCollectionError::CgroupNotFound => {
                                 self.shell().warn(format!(
-                                    "Could not create container metadata for container {}: cgroup \
-                                     path could not be constructed or does not exist",
+                                    "Could not start collection for container {}: cgroup path \
+                                     could not be constructed or does not exist",
                                     container_display
                                 ));
                             },
                             StartCollectionError::MetadataSerializationError(cause) => {
                                 self.shell().warn(format!(
-                                    "Could not serialize container metadata: {}",
-                                    cause
+                                    "Could not start collection for container {}: failed to \
+                                     serialize container metadata: {}",
+                                    container_display, cause
                                 ));
                             },
                         }
@@ -183,7 +178,7 @@ impl Docker {
     }
 
     /// Attempts to initialize the Docker provider, failing if the connection
-    /// check to the Docker daemon failed or if the needed Cgroups aren't
+    /// check to the Docker daemon failed or if the needed cgroups aren't
     /// mounted properly
     fn try_init(&mut self) -> Result<(), DockerInitError> {
         // Ping the Docker API to make sure the current process can connect
@@ -236,7 +231,7 @@ impl Docker {
     ) -> Result<CollectionMethod, StartCollectionError> {
         // Only one type of CollectionMethod currently
         match self.get_cgroup(container) {
-            Some(cgroup) => Ok(CollectionMethod::LinuxCgroupsV1(cgroup)),
+            Some(cgroup) => Ok(CollectionMethod::LinuxCgroupV1(cgroup)),
             None => Err(StartCollectionError::CgroupNotFound),
         }
     }
@@ -275,11 +270,6 @@ impl Docker {
             .expect("Shell must be initialized: invariant violated")
     }
 }
-
-/// Whether radvisor should collect statistics for the given container
-/// TODO investigate more stringent checks
-#[allow(clippy::missing_const_for_fn)]
-fn should_collect_stats(_c: &Container) -> bool { true }
 
 /// Gets a human-readable representation of the container, attempting to use the
 /// name before using the Id as a fallback

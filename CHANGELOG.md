@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [1.4.0](https://github.com/elba-docker/radvisor/compare/v1.3.0...v1.4.0) - 2021-02-02
 
 [![v1.4.0](https://img.shields.io/badge/release-v1.4.0-2bab64)](https://github.com/elba-docker/radvisor/releases/tag/v1.4.0)
+
 ### Added
 
 - Changed license from the MIT License to the GNU General Public License v3.0
@@ -21,6 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [1.3.1](https://github.com/elba-docker/radvisor/compare/v1.3.0...v1.3.1) - 2020-11-18
 
 [![v1.3.1](https://img.shields.io/badge/release-v1.3.1-2bab64)](https://github.com/elba-docker/radvisor/releases/tag/v1.3.1)
+
 ### Added
 
 - Remove support for Windows builds (until actual support for Host Compute Platform is added)
@@ -36,6 +38,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [1.3.0](https://github.com/elba-docker/radvisor/compare/v1.2.2...v1.3.0) - 2020-10-11
 
 [![v1.3.0](https://img.shields.io/badge/release-v1.3.0-2bab64)](https://github.com/elba-docker/radvisor/releases/tag/v1.3.0)
+
 ### Added
 
 - Block I/O stats have been better-parsed to now be useful as simple scalar values.
