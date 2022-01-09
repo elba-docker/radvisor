@@ -2,7 +2,7 @@ on:
   pull_request:
   push:
     branches:
-      - master
+      - main
 
 # Workflow to run build checks/tests/lints for each commit/PR
 name: build/test
