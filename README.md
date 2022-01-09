@@ -1,6 +1,6 @@
 <h1><img alt="rAdvisor" width="280" src="https://raw.githubusercontent.com/elba-docker/radvisor/main/.github/readme/logo.svg" /></h1>
 
-![build/test](https://github.com/elba-docker/radvisor/workflows/build/test/badge.svg?branch=master) ![security](https://github.com/elba-docker/radvisor/workflows/security/badge.svg?branch=master) [![License: GNU GPLv3](https://img.shields.io/badge/License-GNU_GPLv3-blue.svg)](/LICENSE) [![Latest release](https://img.shields.io/github/v/release/elba-docker/radvisor?color=2bab64)](https://github.com/elba-docker/radvisor/releases)
+![build/test](https://github.com/elba-docker/radvisor/workflows/build/test/badge.svg?branch=main) ![security](https://github.com/elba-docker/radvisor/workflows/security/badge.svg?branch=main) [![License: GNU GPLv3](https://img.shields.io/badge/License-GNU_GPLv3-blue.svg)](/LICENSE) [![Latest release](https://img.shields.io/github/v/release/elba-docker/radvisor?color=2bab64)](https://github.com/elba-docker/radvisor/releases)
 
 > Monitors & collects system resource utilization on Linux for [Docker](https://www.docker.com/) containers and [Kubernetes](https://kubernetes.io/) pods with **fine granularity** and **low overhead**, emitting resource utilization logs in [CSVY](https://csvy.org/) (csv + yaml) format. Originally, developed in Rust as a custom tool to help detect and analyze millibottlenecks in containerized online systems, rAdvisor runs by polling the target provider (either the local Docker daemon or the Kubernetes API server) every 1 second to get a list of active, running containers/pods. From this list, rAdvisor runs a collection thread every 50ms to get resource utilization data for each active target using Linux [`cgroups`](https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/6/html/resource_management_guide/ch01), outputting the resultant logs in `/var/log/radvisor/stats`.
 
@@ -51,7 +51,7 @@ read,pids.current,pids.max,cpu.stat/usage_usec,cpu.stat/system_usec,cpu.stat/use
 # ...
 ```
 
-More information about what each column represents can be found in the [docs pages](https://github.com/elba-docker/radvisor/blob/master/docs/collecting_cgroup_v2.md) (for information about the columns ouputted when `CollectorType: cgroup_v1`, see [this page instead](https://github.com/elba-docker/radvisor/blob/master/docs/collecting.md)).
+More information about what each column represents can be found in the [docs pages](https://github.com/elba-docker/radvisor/blob/main/docs/collecting_cgroup_v2.md) (for information about the columns ouputted when `CollectorType: cgroup_v1`, see [this page instead](https://github.com/elba-docker/radvisor/blob/main/docs/collecting.md)).
 
 ### ⚓ Kubernetes
 
