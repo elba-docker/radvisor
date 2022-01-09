@@ -120,10 +120,10 @@ impl QualityOfService {
 /// initialization
 #[derive(Debug)]
 enum StartCollectionError {
-    CgroupNotFound(PathBuf),
     MetadataSerializationError(Error),
     MissingPodUid,
     FailedQosParse,
+    CgroupNotFound(PathBuf),
     CgroupVersionDetectionFailed,
     CgroupV1NotEnabled,
 }

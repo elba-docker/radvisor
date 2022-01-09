@@ -51,8 +51,8 @@ impl From<DockerInitError> for InitializationError {
 #[derive(Debug)]
 enum StartCollectionError {
     MetadataSerializationError(Error),
-    CgroupVersionDetectionFailed,
     CgroupNotFound(PathBuf),
+    CgroupVersionDetectionFailed,
 }
 
 impl Provider for Docker {

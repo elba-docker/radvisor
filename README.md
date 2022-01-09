@@ -10,7 +10,7 @@
 
 ### 🐋 Docker
 
-##### `/var/log/radvisor/stats/7762ff15c99a2d238f4d26c22b5eda5b97ebc03bd0a711693104dcb6...b_1641734705.log`
+##### `/var/log/radvisor/stats/7762ff15c99a2d238f4d26c...1_1641734705.log`
 
 ```yaml
 ---
@@ -51,7 +51,7 @@ read,pids.current,pids.max,cpu.stat/usage_usec,cpu.stat/system_usec,cpu.stat/use
 # ...
 ```
 
-More information about what each column represents can be found in the [docs page](https://github.com/elba-docker/radvisor/blob/master/docs/collecting.md).
+More information about what each column represents can be found in the [docs pages](https://github.com/elba-docker/radvisor/blob/master/docs/collecting_cgroup_v2.md) (for information about the columns ouputted when `CollectorType: cgroup_v1`, see [this page instead](https://github.com/elba-docker/radvisor/blob/master/docs/collecting.md)).
 
 ### ⚓ Kubernetes
 
