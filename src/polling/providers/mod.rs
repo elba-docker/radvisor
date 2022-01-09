@@ -6,13 +6,9 @@ pub mod kubernetes;
 use crate::cli::{CollectionOptions, PollingOptions, RunCommand};
 use crate::shared::CollectionEvent;
 use crate::shell::Shell;
-#[cfg(feature = "kubernetes")]
-use std::path::PathBuf;
 use std::sync::Arc;
 
 use clap::Clap;
-#[cfg(feature = "kubernetes")]
-use clap::ValueHint;
 use failure::{Error, Fail};
 use serde::{Serialize, Serializer};
 
@@ -47,10 +43,6 @@ mod provider_type {
     // private module
     #![allow(clippy::default_trait_access)]
 
-    #[cfg(feature = "docker")]
-    use super::DockerOptions;
-    #[cfg(feature = "kubernetes")]
-    use super::KubernetesOptions;
     use crate::cli::{AUTHORS, VERSION};
     use clap::Clap;
     use strum_macros::IntoStaticStr;
@@ -66,7 +58,7 @@ mod provider_type {
             about = "Runs collection using docker as the target backend; collecting stats for \
             each container"
         )]
-        Docker(DockerOptions),
+        Docker(super::DockerOptions),
 
         #[cfg(feature = "kubernetes")]
         #[clap(
@@ -75,7 +67,7 @@ mod provider_type {
             about = "Runs collection using kubernetes as the target backend; collecting stats for \
             each pod"
         )]
-        Kubernetes(KubernetesOptions),
+        Kubernetes(super::KubernetesOptions),
     }
 }
 
@@ -100,6 +92,7 @@ impl ProviderType {
             Self::Kubernetes(opts) => opts,
         }
     }
+
     /// Gets the inner options struct for Docker
     #[must_use]
     #[cfg(feature = "docker")]
@@ -167,9 +160,9 @@ pub struct KubernetesOptions {
         parse(from_os_str),
         short = 'k',
         long = "kube-config",
-        value_hint = ValueHint::FilePath
+        value_hint = ::clap::ValueHint::FilePath
     )]
-    pub kube_config: Option<PathBuf>,
+    pub kube_config: Option<std::path::PathBuf>,
 
     // Polling-related options
     #[clap(flatten)]
