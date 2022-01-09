@@ -1,4 +1,4 @@
-<h1><img alt="dotfiles" width="280" src="https://raw.githubusercontent.com/elba-docker/radvisor/main/.github/readme/logo.svg" /></h1>
+<h1><img alt="rAdvisor" width="280" src="https://raw.githubusercontent.com/elba-docker/radvisor/main/.github/readme/logo.svg" /></h1>
 
 ![build/test](https://github.com/elba-docker/radvisor/workflows/build/test/badge.svg?branch=master) ![security](https://github.com/elba-docker/radvisor/workflows/security/badge.svg?branch=master) [![License: GNU GPLv3](https://img.shields.io/badge/License-GNU_GPLv3-blue.svg)](/LICENSE) [![Latest release](https://img.shields.io/github/v/release/elba-docker/radvisor?color=2bab64)](https://github.com/elba-docker/radvisor/releases)
 
