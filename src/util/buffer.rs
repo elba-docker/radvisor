@@ -6,16 +6,13 @@ use serde::{Serialize, Serializer};
 use std::io;
 use std::str::from_utf8;
 
-/// Size of internal capacity
-pub const SIZE: usize = 1024;
-
 /// Working buffer of raw bytes. Can operate both in **managed** mode (where it
 /// keeps track of length) and **unmanaged** mode (where it acts) as a plain
 /// byte buffer.
 #[derive(Debug)]
-pub struct Buffer {
+pub struct Buffer<const CAP: usize> {
     pub len: usize,
-    pub b:   [u8; SIZE],
+    pub b:   [u8; CAP],
 }
 
 pub trait BufferLike {
@@ -41,14 +38,14 @@ pub trait BufferLike {
     fn content_unmanaged(&self) -> &[u8];
 }
 
-impl Buffer {
+impl<const CAP: usize> Buffer<CAP> {
     pub fn from_str_truncate<A: AsRef<str>>(src: A) -> Self {
         // Copy the string into the buffer
         let mut buffer = Self::default();
         let mut len = 0;
         for (i, b) in src.as_ref().bytes().enumerate() {
             // Make sure we don't copy too far
-            if i >= SIZE {
+            if i >= CAP {
                 break;
             }
             buffer.b[i] = b;
@@ -62,16 +59,16 @@ impl Buffer {
     pub const fn new() -> Self {
         Self {
             len: 0,
-            b:   [0; SIZE],
+            b:   [0; CAP],
         }
     }
 }
 
-impl Default for Buffer {
+impl<const CAP: usize> Default for Buffer<CAP> {
     fn default() -> Self { Self::new() }
 }
 
-impl Serialize for Buffer {
+impl<const CAP: usize> Serialize for Buffer<CAP> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
@@ -84,12 +81,12 @@ impl Serialize for Buffer {
     }
 }
 
-impl io::Write for Buffer {
+impl<const CAP: usize> io::Write for Buffer<CAP> {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         let mut len = 0;
         for (i, b) in buf.iter().enumerate() {
             // Make sure we don't copy too far
-            if i >= SIZE {
+            if i >= CAP {
                 break;
             }
             self.b[i] = *b;
@@ -102,7 +99,7 @@ impl io::Write for Buffer {
     fn flush(&mut self) -> io::Result<()> { Ok(()) }
 }
 
-impl BufferLike for Buffer {
+impl<const CAP: usize> BufferLike for Buffer<CAP> {
     #[inline]
     #[must_use]
     fn trim(&self) -> &[u8] {
@@ -147,7 +144,7 @@ impl BufferLike for Buffer {
 
     #[inline]
     fn clear_unmanaged(&mut self) {
-        for i in 0..SIZE {
+        for i in 0..CAP {
             if self.b[i] == 0_u8 {
                 break;
             } else {
@@ -159,7 +156,7 @@ impl BufferLike for Buffer {
 
     #[inline]
     fn clear_unmanaged_backwards(&mut self) {
-        for i in (0..SIZE).rev() {
+        for i in (0..CAP).rev() {
             if self.b[i] == 0_u8 {
                 break;
             } else {

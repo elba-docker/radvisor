@@ -59,7 +59,6 @@ bus = "^2.2"
 csv = "^1.1"
 failure = "^0.1.8"
 itoa = { version = "^0.4.6", features = ["i128"] }
-arraystring = { version = "^0.3", features = ["serde-traits"] }
 atoi = "^0.3.3"
 num-traits = "^0.2.14"
 ctrlc = { version = "^3.1", features = ["termination"] }
