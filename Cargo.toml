@@ -14,7 +14,6 @@ documentation = "https://github.com/elba-docker/radvisor/tree/develop/man"
 keywords = ["resource-monitor", "docker", "cli", "cgroups", "kubernetes"]
 categories = ["command-line-utilities"]
 exclude = [
-    ".fossa.yml",
     ".editorconfig",
     ".github",
 ]
