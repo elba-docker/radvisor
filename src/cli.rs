@@ -145,7 +145,7 @@ impl error::Error for ParseFailure {
 }
 
 fn parse_duration(raw: &str) -> Result<Duration, humantime::DurationError> {
-    humantime::Duration::from_str(raw).map(|d| d.into())
+    humantime::Duration::from_str(raw).map(Into::into)
 }
 
 fn parse_byte(raw: &str) -> Result<Byte, ByteError> { Byte::from_str(raw) }

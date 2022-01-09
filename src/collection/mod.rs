@@ -69,7 +69,7 @@ pub fn run(
     let collectors_c = Arc::clone(&collectors);
     let status_mutex_c = Arc::clone(&status_mutex);
     let shell_c = Arc::clone(&context.shell);
-    let flush_log_c = flush_log.as_ref().map(|c| Arc::clone(c));
+    let flush_log_c = flush_log.clone();
     let stop_handle_c = stop_handle.clone();
     let mut term_rx = context.term_rx;
     thread::Builder::new()
@@ -120,7 +120,7 @@ pub fn run(
         let mut collectors = collectors.lock().unwrap();
 
         // Check to see if update thread has sent any new start/stop events
-        let flush_log_ref = flush_log.as_ref().map(|r| Arc::clone(r));
+        let flush_log_ref = flush_log.clone();
         for event in rx.try_iter() {
             handle_event(
                 event,
@@ -234,7 +234,7 @@ fn handle_event(
 
             let collector: CollectorImpl = method.into();
             let id = target.id.clone();
-            let flush_log_c = flush_log.as_ref().map(|r| Arc::clone(r));
+            let flush_log_c = flush_log.clone();
             match Handle::new(
                 logs_location,
                 target,
