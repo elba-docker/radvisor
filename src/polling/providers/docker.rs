@@ -236,7 +236,7 @@ impl Docker {
     ) -> Result<CollectionMethod, StartCollectionError> {
         // Only one type of CollectionMethod currently
         match self.get_cgroup(container) {
-            Some(cgroup) => Ok(CollectionMethod::LinuxCgroups(cgroup)),
+            Some(cgroup) => Ok(CollectionMethod::LinuxCgroupsV1(cgroup)),
             None => Err(StartCollectionError::CgroupNotFound),
         }
     }
