@@ -1,10 +1,9 @@
 use crate::util::buffer::{Buffer, BufferLike};
-use std::io::{self, Write};
-
 use atoi::{atoi, FromRadix10Checked};
 use csv::ByteRecord;
 use itoa::{self, Integer};
 use num_traits::ops::saturating::SaturatingAdd;
+use std::io::{self, Write};
 
 pub enum LazyQuantity<'a, T: FromRadix10Checked + SaturatingAdd + Integer> {
     /// Contains a zero quantity (result of no aggregation)

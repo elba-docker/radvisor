@@ -3,14 +3,13 @@ use crate::polling::providers::{InitializationError, Provider};
 use crate::shared::{CollectionEvent, CollectionMethod, CollectionTarget};
 use crate::shell::Shell;
 use crate::util::{self, CgroupManager, CgroupPath, ItemPool};
-use std::cell::RefCell;
-use std::collections::BTreeMap;
-use std::sync::Arc;
-
 use failure::Error;
 use futures_01::future::Future;
 use shiplift::builder::ContainerListOptions;
 use shiplift::rep::Container;
+use std::cell::RefCell;
+use std::collections::BTreeMap;
+use std::sync::Arc;
 use tokio_01::runtime::current_thread::Runtime;
 
 const PROVIDER_TYPE: &str = "docker";

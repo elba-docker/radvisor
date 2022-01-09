@@ -3,14 +3,6 @@ use crate::polling::providers::{InitializationError, KubernetesOptions, Provider
 use crate::shared::{CollectionEvent, CollectionMethod, CollectionTarget};
 use crate::shell::Shell;
 use crate::util::{self, CgroupManager, CgroupPath, ItemPool};
-use std::cell::RefCell;
-use std::collections::BTreeMap;
-use std::fmt::Debug;
-use std::future::Future;
-use std::path::PathBuf;
-use std::str::FromStr;
-use std::sync::Arc;
-
 use failure::Error;
 use gethostname::gethostname;
 use k8s_openapi::api::core::v1::{Node, Pod};
@@ -19,6 +11,13 @@ use kube::api::{Api, ListParams, Meta};
 use kube::client::Client;
 use kube::config;
 use serde::Serialize;
+use std::cell::RefCell;
+use std::collections::BTreeMap;
+use std::fmt::Debug;
+use std::future::Future;
+use std::path::PathBuf;
+use std::str::FromStr;
+use std::sync::Arc;
 use strum_macros::{EnumString, IntoStaticStr};
 
 /// String representation for "None"

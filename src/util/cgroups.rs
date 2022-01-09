@@ -1,8 +1,7 @@
+use serde::Serialize;
 use std::fmt;
 use std::fs;
 use std::path::{Path, PathBuf};
-
-use serde::Serialize;
 
 /// Docker cgroup driver used to orchestrate moving containers in and out of
 /// cgroups

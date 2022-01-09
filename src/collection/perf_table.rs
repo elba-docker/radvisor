@@ -1,6 +1,5 @@
-use std::collections::BTreeMap;
-
 use serde::Serialize;
+use std::collections::BTreeMap;
 
 /// Contains all metadata used for perf table parsing
 #[derive(Clone, Debug, PartialEq, Serialize)]

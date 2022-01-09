@@ -2,9 +2,8 @@ use crate::collection::collect::files::ProcFileHandles;
 use crate::collection::collector::Collector;
 use crate::collection::perf_table::{Column, ColumnType, TableMetadata};
 use crate::util::{self, AnonymousSlice, Buffer, BufferLike};
-use std::collections::BTreeMap;
-
 use csv::{ByteRecord, Error};
+use std::collections::BTreeMap;
 
 pub mod files;
 pub mod read;

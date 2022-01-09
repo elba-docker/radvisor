@@ -2,10 +2,9 @@
 //! additionally include length when in managed mode.
 
 use crate::util::byte::is_whitespace;
+use serde::{Serialize, Serializer};
 use std::io;
 use std::str::from_utf8;
-
-use serde::{Serialize, Serializer};
 
 /// Size of internal capacity
 pub const SIZE: usize = 1024;
