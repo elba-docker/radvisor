@@ -57,7 +57,7 @@ impl CollectorTrait for Collector {
         }
     }
 
-    fn get_type(&self) -> &'static str { "cgroups_v2" }
+    fn get_type(&self) -> &'static str { "cgroup_v2" }
 
     fn init(&mut self) -> Result<(), Error> {
         // Open file handles to all of the /proc files in the cgroupfs

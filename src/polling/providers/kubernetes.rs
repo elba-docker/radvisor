@@ -433,6 +433,8 @@ impl Kubernetes {
         let had_version = self.cgroup_manager.version().is_some();
 
         let base_cgroup_slices = &[ROOT_CGROUP, qos_class.into(), &pod_slice];
+        // Only support cgroup v1 for Kubernetes pods
+        // (cgroup v2 is untested)
         let result = self.cgroup_manager.get_cgroup_v1(CgroupSlices {
             cgroupfs: base_cgroup_slices,
             systemd:  &util::build_systemd_cgroup_hierarchy(base_cgroup_slices),

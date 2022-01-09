@@ -14,7 +14,7 @@ DESCRIPTION
 ===========
 
 **radvisor run kubernetes** runs a collection thread that writes resource statistics to
-output CSV files using configurable intervals. While running, it collects statistics for Kubernetes pods, polling the Kubernetes API server to get a list of all active running pods that have been scheduled on the current machine's node, using the cgroup for each pod.
+output CSV files using configurable intervals. While running, it collects statistics for Kubernetes pods, polling the Kubernetes API server to get a list of all active running pods that have been scheduled on the current machine's node, using the cgroup for each pod. Note that the Kubernetes command only supports cgroup v1.
 
 Needs to be a part of an active cluster and needs to be able to find the Kubernetes config file (or specified using **\--kube-config**).
 
