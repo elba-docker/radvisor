@@ -1,5 +1,5 @@
-use crate::collection::collect::{AnonymousSlice, WorkingBuffers};
-use crate::util::{self, BufferLike, LazyQuantity};
+use crate::collection::buffers::WorkingBuffers;
+use crate::util::{self, AnonymousSlice, BufferLike, LazyQuantity};
 use std::fs::File;
 use std::io::{Read, Seek, SeekFrom};
 

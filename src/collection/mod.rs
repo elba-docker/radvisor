@@ -1,15 +1,14 @@
-pub mod collect;
-pub mod collector;
-pub mod flush;
+mod buffers;
+mod collectors;
+mod flush;
 mod perf_table;
-pub mod system_info;
+mod system_info;
 
 use crate::cli::CollectionOptions;
-use crate::collection::collect::WorkingBuffers;
-use crate::collection::collector::Collector;
+use crate::collection::buffers::WorkingBuffers;
+use crate::collection::collectors::{CollectorImpl, Handle};
 use crate::collection::flush::FlushLog;
-use crate::collection::perf_table::TableMetadata;
-use crate::shared::{CollectionEvent, CollectionMethod, IntervalWorkerContext};
+use crate::shared::{CollectionEvent, IntervalWorkerContext};
 use crate::shell::Shell;
 use crate::timer::{Stoppable, Timer};
 use std::cell::RefCell;
@@ -29,8 +28,8 @@ struct CollectStatus {
     collecting:  bool,
 }
 
-/// Mutex-protected map of target ids to collector state
-type CollectorMap = Arc<Mutex<HashMap<String, RefCell<Collector>>>>;
+/// Mutex-protected map of target ids to collector handles
+type CollectorMap = Arc<Mutex<HashMap<String, RefCell<Handle>>>>;
 
 /// Thread function that collects all active targets and updates the active
 /// list, if possible
@@ -53,9 +52,6 @@ pub fn run(
 
     let (timer, stop_handle) = Timer::new(context.interval, "collect");
     let collectors: CollectorMap = Arc::new(Mutex::new(HashMap::new()));
-
-    // Initialize the table metadata
-    let table_metadata = Arc::new(collect::get_table_metadata());
 
     // If we are monitoring events, initialize the event log
     let flush_log = options
@@ -131,7 +127,6 @@ pub fn run(
                 &mut collectors,
                 location,
                 buffer_size,
-                &table_metadata,
                 &flush_log_ref,
                 &context.shell,
             );
@@ -178,7 +173,7 @@ pub fn run(
 /// Flushes the buffers for the given collectors.
 /// This should only happen once (during teardown)
 fn flush_buffers(
-    collectors: &HashMap<String, RefCell<Collector>>,
+    collectors: &HashMap<String, RefCell<Handle>>,
     shell: &Arc<Shell>,
     flush_log_option: Option<Arc<Mutex<FlushLog>>>,
 ) {
@@ -222,10 +217,9 @@ fn flush_buffers(
 /// for newly monitored targets
 fn handle_event(
     event: CollectionEvent,
-    collectors: &mut HashMap<String, RefCell<Collector>>,
+    collectors: &mut HashMap<String, RefCell<Handle>>,
     logs_location: &Path,
     buffer_capacity: usize,
-    table_metadata: &Arc<TableMetadata>,
     flush_log: &Option<Arc<Mutex<FlushLog>>>,
     shell: &Shell,
 ) {
@@ -238,29 +232,25 @@ fn handle_event(
                 ));
             });
 
-            match method {
-                CollectionMethod::LinuxCgroups(path) => {
-                    let id = target.id.clone();
-                    let flush_log_c = flush_log.as_ref().map(|r| Arc::clone(r));
-                    match Collector::create(
-                        logs_location,
-                        target,
-                        &path,
-                        buffer_capacity,
-                        &Arc::clone(table_metadata),
-                        flush_log_c,
-                    ) {
-                        Ok(new_collector) => {
-                            collectors.insert(id, RefCell::new(new_collector));
-                        },
-                        Err(err) => {
-                            // Back off until next iteration if the target is still running
-                            shell.error(format!(
-                                "Could not initialize collector for target id {}: {}",
-                                id, err
-                            ));
-                        },
-                    }
+            let collector: CollectorImpl = method.into();
+            let id = target.id.clone();
+            let flush_log_c = flush_log.as_ref().map(|r| Arc::clone(r));
+            match Handle::new(
+                logs_location,
+                target,
+                collector,
+                buffer_capacity,
+                flush_log_c,
+            ) {
+                Ok(new_collector) => {
+                    collectors.insert(id, RefCell::new(new_collector));
+                },
+                Err(err) => {
+                    // Back off until next iteration if the target is still running
+                    shell.error(format!(
+                        "Could not initialize collector for target id {}: {}",
+                        id, err
+                    ));
                 },
             }
         },
